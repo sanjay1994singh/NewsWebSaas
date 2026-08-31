@@ -1,0 +1,36 @@
+<!doctype html>
+{% load subscription_extras %}
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review Onboarding</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; color: #13201b; background: #f7faf8; }
+    main { width: min(960px, calc(100% - 32px)); margin: 32px auto; }
+    .panel, form { background: #fff; border: 1px solid #d8e1dc; border-radius: 8px; padding: 22px; margin-bottom: 18px; }
+    textarea, select { width: 100%; padding: 10px; border: 1px solid #bccbc4; border-radius: 6px; }
+    .btn { border: 0; border-radius: 6px; background: #16614f; color: #fff; padding: 11px 16px; font-weight: 700; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Review {{ onboarding.tenant.publication_name }}</h1>
+    <div class="panel">
+      <p><strong>Status:</strong> {{ onboarding.get_status_display }}</p>
+      <p><strong>Site Title:</strong> {{ onboarding.site_title }}</p>
+      <p><strong>Organization:</strong> {{ onboarding.organization_name }}</p>
+      <p><strong>Enabled Features:</strong>
+        {% for code, entitlement in entitlements.items %}
+          {% if entitlement.is_enabled %}{{ code }} {% endif %}
+        {% endfor %}
+      </p>
+    </div>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button class="btn" type="submit">Record Review Action</button>
+    </form>
+  </main>
+</body>
+</html>

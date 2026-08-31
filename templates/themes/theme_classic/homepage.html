@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ tenant.publication_name }}</title>
+</head>
+<body>
+  <header>
+    <h1>{{ tenant.publication_name }}</h1>
+    {% if preview %}<p>Draft Preview</p>{% endif %}
+  </header>
+  <main>
+    {% for block in blocks %}
+      <section data-block-type="{{ block.block_type }}">
+        <h2>{{ block.heading|default:block.get_block_type_display }}</h2>
+        {% if block.category %}<p>{{ block.category.name }}</p>{% endif %}
+      </section>
+    {% empty %}
+      <section><h2>No homepage sections enabled.</h2></section>
+    {% endfor %}
+  </main>
+</body>
+</html>

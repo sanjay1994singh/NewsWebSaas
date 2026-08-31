@@ -1,0 +1,79 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Homepage Builder</title>
+  <link rel="stylesheet" href="{% static 'builder/builder.css' %}">
+</head>
+<body>
+  <main class="builder-shell">
+    <header class="builder-header">
+      <div>
+        <h1>Homepage Builder</h1>
+        <p>{{ request.tenant.publication_name }}</p>
+      </div>
+      <nav class="builder-actions">
+        <a class="button" href="{% url 'pages:homepage_preview' %}" target="_blank">Preview Draft</a>
+        <form method="post" action="{% url 'pages:publish_homepage' %}">{% csrf_token %}<button>Publish</button></form>
+        <form method="post" action="{% url 'pages:restore_published' %}">{% csrf_token %}<button>Restore Published</button></form>
+        <form method="post" action="{% url 'pages:restore_default' %}">{% csrf_token %}<button>Restore Default</button></form>
+      </nav>
+    </header>
+
+    <section class="builder-grid">
+      <div class="panel">
+        <h2>Sections</h2>
+        <ol id="homepage-blocks" data-save-url="{% url 'pages:save_homepage_draft' %}">
+          {% for block in blocks %}
+            <li class="block-row" data-id="{{ block.id }}">
+              <button class="drag-handle" type="button" aria-label="Drag section">☰</button>
+              <input class="block-heading" value="{{ block.heading }}" aria-label="Heading">
+              <select class="block-category" aria-label="Category">
+                <option value="">No category</option>
+                {% for category in categories %}
+                  <option value="{{ category.id }}" {% if block.category_id == category.id %}selected{% endif %}>{{ category.name }}</option>
+                {% endfor %}
+              </select>
+              <input class="block-count" type="number" min="1" max="50" value="{{ block.article_count }}" aria-label="Article count">
+              <input class="block-columns" type="number" min="1" max="6" value="{{ block.desktop_columns }}" aria-label="Desktop columns">
+              <label><input class="block-enabled" type="checkbox" {% if block.is_enabled %}checked{% endif %}> Visible</label>
+              <label><input class="block-image" type="checkbox" {% if block.show_image %}checked{% endif %}> Image</label>
+              <label><input class="block-description" type="checkbox" {% if block.show_description %}checked{% endif %}> Description</label>
+              <form method="post" action="{% url 'pages:duplicate_block' block.id %}">{% csrf_token %}<button>Duplicate</button></form>
+              <form method="post" action="{% url 'pages:remove_block' block.id %}">{% csrf_token %}<button>Remove</button></form>
+              <span class="block-type">{{ block.get_block_type_display }}</span>
+            </li>
+          {% endfor %}
+        </ol>
+        <button id="save-layout">Save Draft</button>
+      </div>
+
+      <aside class="panel">
+        <h2>Add Block</h2>
+        <form method="post" action="{% url 'pages:add_block' %}">
+          {% csrf_token %}
+          <select name="block_type">
+            {% for value,label in block_types %}
+              <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+          <select name="category_id">
+            <option value="">No category</option>
+            {% for category in categories %}
+              <option value="{{ category.id }}">{{ category.name }}</option>
+            {% endfor %}
+          </select>
+          <button>Add</button>
+        </form>
+        <a class="button" href="{% url 'pages:menu_builder' 'header' %}">Header Menu</a>
+        <a class="button" href="{% url 'pages:menu_builder' 'footer' %}">Footer Menu</a>
+      </aside>
+    </section>
+  </main>
+  <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+  <script src="https://code.jquery.com/ui/1.13.3/jquery-ui.min.js"></script>
+  <script src="{% static 'builder/homepage_builder.js' %}"></script>
+</body>
+</html>

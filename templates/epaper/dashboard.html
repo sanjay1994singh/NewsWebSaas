@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>E-Paper Dashboard</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #f7faf8; color: #13201b; }
+    main { width: min(1040px, calc(100% - 32px)); margin: 32px auto; }
+    .card { background: #fff; border: 1px solid #d8e1dc; border-radius: 8px; padding: 18px; margin: 12px 0; }
+    .btn { display: inline-block; border: 0; border-radius: 6px; background: #16614f; color: #fff; padding: 10px 14px; text-decoration: none; font-weight: 700; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>E-Paper</h1>
+    {% if can_upload %}<a class="btn" href="{% url 'epaper:create_edition' %}">Add Edition</a>{% endif %}
+    {% for edition in editions %}
+      <article class="card">
+        <h2>{{ edition.title }}</h2>
+        <p>{{ edition.publication_date }} / {{ edition.city }} / {{ edition.get_status_display }}</p>
+        {% if edition.status == "ready" %}
+          <form method="post" action="{% url 'epaper:publish_edition' edition.id %}">
+            {% csrf_token %}
+            <button class="btn" type="submit">Publish</button>
+          </form>
+        {% endif %}
+      </article>
+    {% empty %}
+      <p>No ePaper editions yet.</p>
+    {% endfor %}
+  </main>
+</body>
+</html>

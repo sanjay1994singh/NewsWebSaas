@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Add Domain</title></head>
+<body>
+  <main>
+    <h1>Add Domain</h1>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button>Add Domain</button>
+    </form>
+  </main>
+</body>
+</html>

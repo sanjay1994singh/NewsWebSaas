@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Account Status</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #f7faf8; color: #13201b; }
+    main { width: min(1080px, calc(100% - 32px)); margin: 32px auto; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .card { background: #fff; border: 1px solid #d8e1dc; border-radius: 8px; padding: 18px; }
+    .btn { display: inline-block; border-radius: 6px; background: #16614f; color: #fff; padding: 10px 14px; text-decoration: none; font-weight: 700; }
+    .muted { color: #66766e; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Account Status</h1>
+    <section class="card">
+      {% if tenant %}
+        <h2>{{ tenant.publication_name }}</h2>
+        <p>Status: {{ tenant.get_status_display }}</p>
+      {% else %}
+        <h2>No tenant workspace yet</h2>
+        <p class="muted">Choose a subscription plan to reserve your publication workspace.</p>
+      {% endif %}
+      {% if subscription %}
+        <p>Subscription: {{ subscription.get_status_display }} / {{ subscription.plan.name }}</p>
+      {% else %}
+        <p>No active subscription found.</p>
+      {% endif %}
+      {% if onboarding %}<p>Onboarding: {{ onboarding.get_status_display }}</p>{% endif %}
+    </section>
+    <h2>Available Plans</h2>
+    <div class="grid">
+      {% for card in plans %}
+        <article class="card">
+          <h3>{{ card.plan.name }}</h3>
+          <p>{{ card.monthly_display|default:"Pricing pending" }}</p>
+          {% if card.signup_price %}<a class="btn" href="{% url 'public_saas_signup' %}?price={{ card.signup_price.id }}">Choose Plan</a>{% endif %}
+        </article>
+      {% endfor %}
+    </div>
+  </main>
+</body>
+</html>

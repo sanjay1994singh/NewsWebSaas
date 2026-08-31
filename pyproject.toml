@@ -1,0 +1,21 @@
+[project]
+name = "infosaas"
+version = "0.1.0"
+description = "Production-grade multi-tenant news SaaS built with Django."
+requires-python = ">=3.14"
+dependencies = [
+    "Django>=5.2.8,<5.3",
+    "djangorestframework>=3.15",
+    "mysqlclient>=2.2",
+    "celery>=5.4",
+    "redis>=5.0",
+    "python-dotenv>=1.0",
+    "bleach>=6.2",
+    "Pillow>=11.0",
+    "dnspython>=2.7",
+    "razorpay>=1.4",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+python_files = ["tests.py", "test_*.py", "*_tests.py"]

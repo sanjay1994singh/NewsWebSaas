@@ -1,0 +1,96 @@
+from django.contrib.auth.decorators import login_required, user_passes_test
+from django.core.exceptions import PermissionDenied
+from django.shortcuts import get_object_or_404, render
+
+from core.models import user_can_access_tenant
+from domains.models import TenantDomain
+from news.models import NewsArticle
+from subscriptions.entitlements import get_effective_entitlements
+from subscriptions.models import TenantOnboarding, TenantSubscription
+
+from .forms import TenantSettingsForm
+from .models import Tenant, TenantMembership
+
+
+def is_platform_admin(user):
+    return user.is_authenticated and (user.is_superuser or user.is_super_admin or user.is_support_admin)
+
+
+@login_required
+@user_passes_test(is_platform_admin)
+def saas_admin_dashboard(request):
+    tenants = Tenant.objects.select_related('owner').order_by('-created_at')[:50]
+    return render(request, 'tenants/saas_admin_dashboard.html', {'tenants': tenants})
+
+
+@login_required
+def tenant_dashboard(request):
+    tenant = getattr(request, 'tenant', None)
+    if tenant is None:
+        membership = (
+            TenantMembership.objects
+            .select_related('tenant')
+            .filter(user=request.user, status=TenantMembership.Status.ACTIVE)
+            .order_by('role', 'created_at')
+            .first()
+        )
+        tenant = membership.tenant if membership else Tenant.objects.filter(owner=request.user).first()
+    if not user_can_access_tenant(request.user, tenant):
+        raise PermissionDenied("You do not have access to this tenant.")
+
+    try:
+        subscription = tenant.subscription
+    except TenantSubscription.DoesNotExist:
+        subscription = None
+    try:
+        onboarding = tenant.commercial_onboarding
+    except TenantOnboarding.DoesNotExist:
+        onboarding = None
+
+    entitlements = get_effective_entitlements(tenant)
+    primary_domain = TenantDomain.objects.filter(tenant=tenant, is_primary=True).first()
+    article_queryset = NewsArticle.objects.filter(tenant=tenant)
+    news_stats = {
+        'total': article_queryset.count(),
+        'published': article_queryset.filter(status=NewsArticle.Status.PUBLISHED).count(),
+        'draft': article_queryset.filter(status=NewsArticle.Status.DRAFT).count(),
+        'review': article_queryset.filter(status=NewsArticle.Status.REVIEW).count(),
+    }
+    feature_menu = [
+        ('news_articles', 'News Publishing', '/cms/'),
+        ('epaper', 'E-Paper', '/dashboard/epaper/'),
+        ('youtube_videos', 'Videos', '/cms/videos/'),
+        ('youtube_shorts', 'Shorts', '/cms/shorts/'),
+        ('live_tv', 'Live TV', '/cms/live-tv/'),
+        ('advertisement_manager', 'Advertisements', '/dashboard/ads/'),
+        ('analytics', 'Analytics', '/dashboard/analytics/'),
+        ('custom_domain', 'Domains', '/dashboard/domains/'),
+        ('mobile_app', 'Mobile App', '/dashboard/mobile-app/'),
+    ]
+    visible_menu = [
+        {'code': code, 'label': label, 'url': url, 'entitlement': entitlements.get(code)}
+        for code, label, url in feature_menu
+        if entitlements.get(code, {}).get('is_enabled')
+    ]
+    return render(
+        request,
+        'tenants/tenant_dashboard.html',
+        {
+            'tenant': tenant,
+            'subscription': subscription,
+            'onboarding': onboarding,
+            'entitlements': entitlements,
+            'visible_menu': visible_menu,
+            'primary_domain': primary_domain,
+            'news_stats': news_stats,
+        },
+    )
+
+
+@login_required
+def tenant_settings(request, uuid):
+    tenant = get_object_or_404(Tenant, uuid=uuid)
+    if not user_can_access_tenant(request.user, tenant):
+        raise PermissionDenied("You do not have access to this tenant.")
+    form = TenantSettingsForm(instance=tenant)
+    return render(request, 'tenants/tenant_settings.html', {'tenant': tenant, 'form': form})

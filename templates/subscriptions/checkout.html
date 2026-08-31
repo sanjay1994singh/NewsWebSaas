@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Verify Subscription</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; color: #13201b; background: #f7faf8; }
+    main { width: min(780px, calc(100% - 32px)); margin: 40px auto; background: #fff; border: 1px solid #d8e1dc; border-radius: 8px; padding: 24px; }
+    input { width: 100%; padding: 11px; border: 1px solid #bccbc4; border-radius: 6px; }
+    label { display: block; font-weight: 700; margin: 14px 0 6px; }
+    .btn { margin-top: 18px; border: 0; border-radius: 6px; background: #16614f; color: #fff; padding: 12px 18px; font-weight: 700; cursor: pointer; }
+    .summary { background: #eef6f2; border-radius: 8px; padding: 16px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Verify Subscription</h1>
+    <div class="summary">
+      <p><strong>{{ acquisition.publication_name }}</strong></p>
+      <p>{{ acquisition.plan_price.plan.name }} / {{ acquisition.plan_price.billing_cycle }} / {{ acquisition.plan_price.currency }} {{ acquisition.plan_price.amount }}</p>
+      <p>Razorpay Plan: {{ checkout.razorpay_plan_id }}</p>
+    </div>
+    <form method="post" action="{% url 'subscriptions:verify_subscription' acquisition.id %}">
+      {% csrf_token %}
+      <label for="provider_subscription_id">Verified Razorpay Subscription ID</label>
+      <input id="provider_subscription_id" name="provider_subscription_id" required>
+      <button class="btn" type="submit">Create Tenant Workspace</button>
+    </form>
+  </main>
+</body>
+</html>

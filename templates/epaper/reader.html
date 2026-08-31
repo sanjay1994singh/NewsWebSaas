@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ edition.title }}</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #111; color: #fff; }
+    .toolbar { position: sticky; top: 0; z-index: 2; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 12px; background: #13201b; }
+    button, a { border: 1px solid #45655a; border-radius: 6px; background: #20382f; color: #fff; padding: 9px 12px; text-decoration: none; cursor: pointer; }
+    iframe { width: 100%; height: calc(100vh - 64px); border: 0; background: #fff; transform-origin: top center; }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <strong>{{ edition.title }}</strong>
+    <button type="button" onclick="zoom(0.1)">Zoom In</button>
+    <button type="button" onclick="zoom(-0.1)">Zoom Out</button>
+    <button type="button" onclick="document.documentElement.requestFullscreen()">Fullscreen</button>
+    {% if edition.allow_download %}<a href="{% url 'epaper:download' tenant.slug edition.slug %}">Download</a>{% endif %}
+  </div>
+  <iframe id="reader" src="{{ edition.pdf_file.url }}"></iframe>
+  <script>
+    let scale = 1;
+    function zoom(delta) {
+      scale = Math.max(0.7, Math.min(1.8, scale + delta));
+      document.getElementById('reader').style.transform = `scale(${scale})`;
+      document.getElementById('reader').style.width = `${100 / scale}%`;
+    }
+  </script>
+</body>
+</html>

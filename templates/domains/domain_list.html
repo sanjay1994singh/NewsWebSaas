@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Domains</title></head>
+<body>
+  <main>
+    <h1>Domains</h1>
+    <a href="{% url 'domains:add_domain' %}">Add Domain</a>
+    <table>
+      <tbody>
+        {% for domain in domains %}
+          <tr>
+            <td><a href="{% url 'domains:domain_detail' domain.id %}">{{ domain.domain }}</a></td>
+            <td>{{ domain.get_status_display }}</td>
+            <td>{{ domain.get_ssl_status_display }}</td>
+            <td>{% if domain.is_primary %}Primary{% endif %}</td>
+            <td>
+              {% if domain.is_verified and not domain.is_primary %}
+                <form method="post" action="{% url 'domains:make_primary' domain.id %}">
+                  {% csrf_token %}
+                  <button>Make Primary</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% empty %}
+          <tr><td>No domains yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </main>
+</body>
+</html>

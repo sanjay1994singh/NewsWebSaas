@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Review Status</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #f7faf8; color: #13201b; }
+    main { width: min(900px, calc(100% - 32px)); margin: 32px auto; }
+    .card { background: #fff; border: 1px solid #d8e1dc; border-radius: 8px; padding: 18px; margin: 14px 0; }
+    .muted { color: #66766e; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>{{ tenant.publication_name }} Review Status</h1>
+    <section class="card">
+      <h2>{{ onboarding.get_status_display }}</h2>
+      <p class="muted">Your publication setup has been submitted and is waiting for admin review.</p>
+      {% if onboarding.reviewer_notes %}<p>{{ onboarding.reviewer_notes }}</p>{% endif %}
+    </section>
+    {% for event in events %}
+      <article class="card">
+        <strong>{{ event.get_action_display }}</strong>
+        <p class="muted">{{ event.created_at }}</p>
+        {% if event.notes %}<p>{{ event.notes }}</p>{% endif %}
+      </article>
+    {% endfor %}
+  </main>
+</body>
+</html>

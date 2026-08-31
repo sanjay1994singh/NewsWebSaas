@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>{{ domain.domain }}</title></head>
+<body>
+  <main>
+    <h1>{{ domain.domain }}</h1>
+    <dl>
+      <dt>Status</dt><dd>{{ domain.get_status_display }}</dd>
+      <dt>SSL</dt><dd>{{ domain.get_ssl_status_display }}</dd>
+      <dt>DNS TXT Name</dt><dd>{{ domain.dns_txt_name }}</dd>
+      <dt>DNS TXT Value</dt><dd>{{ domain.expected_txt_value }}</dd>
+    </dl>
+    <form method="post" action="{% url 'domains:verify_domain' domain.id %}">
+      {% csrf_token %}
+      <button>Verify DNS</button>
+    </form>
+    {% if domain.is_verified %}
+      <form method="post" action="{% url 'domains:provision_ssl' domain.id %}">
+        {% csrf_token %}
+        <button>Queue SSL</button>
+      </form>
+    {% endif %}
+  </main>
+</body>
+</html>

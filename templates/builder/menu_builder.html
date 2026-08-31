@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ menu.name }} Menu Builder</title>
+</head>
+<body>
+  <main>
+    <h1>{{ menu.name }} Menu Builder</h1>
+    <ol>
+      {% for item in items %}
+        <li>{{ item.label }} - {{ item.get_link_type_display }}</li>
+      {% empty %}
+        <li>No menu items yet.</li>
+      {% endfor %}
+    </ol>
+  </main>
+</body>
+</html>

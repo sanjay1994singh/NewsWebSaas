@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Add E-Paper</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #f7faf8; color: #13201b; }
+    main { width: min(780px, calc(100% - 32px)); margin: 32px auto; background: #fff; border: 1px solid #d8e1dc; border-radius: 8px; padding: 22px; }
+    label { display: block; font-weight: 700; margin: 14px 0 6px; }
+    input { width: 100%; padding: 10px; border: 1px solid #bccbc4; border-radius: 6px; }
+    .btn { border: 0; border-radius: 6px; background: #16614f; color: #fff; padding: 10px 14px; font-weight: 700; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Add E-Paper Edition</h1>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button class="btn" type="submit">Upload</button>
+    </form>
+  </main>
+</body>
+</html>

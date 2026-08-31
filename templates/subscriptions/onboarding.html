@@ -1,0 +1,37 @@
+<!doctype html>
+{% load subscription_extras %}
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Onboarding</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; color: #13201b; background: #f7faf8; }
+    main { width: min(960px, calc(100% - 32px)); margin: 32px auto; }
+    form, .panel { background: #fff; border: 1px solid #d8e1dc; border-radius: 8px; padding: 22px; margin-bottom: 18px; }
+    label { display: block; font-weight: 700; margin: 14px 0 6px; }
+    input, textarea { width: 100%; padding: 10px; border: 1px solid #bccbc4; border-radius: 6px; }
+    .btn { border: 0; border-radius: 6px; background: #16614f; color: #fff; padding: 11px 16px; font-weight: 700; cursor: pointer; margin-right: 8px; }
+    .muted { color: #5f6f67; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>{{ tenant.publication_name }} Onboarding</h1>
+    <div class="panel">
+      <strong>Status:</strong> {{ onboarding.get_status_display }}
+      {% if onboarding.reviewer_notes %}<p class="muted">{{ onboarding.reviewer_notes }}</p>{% endif %}
+    </div>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {{ form.as_p }}
+      {% with youtube=entitlements|get_item:"youtube_videos" live=entitlements|get_item:"live_tv" %}
+        {% if not youtube.is_enabled %}<p class="muted">YouTube fields are stored but visible features unlock only when enabled.</p>{% endif %}
+        {% if not live.is_enabled %}<p class="muted">Live TV stays restricted until entitlement is enabled.</p>{% endif %}
+      {% endwith %}
+      <button class="btn" type="submit" name="save">Save</button>
+      <button class="btn" type="submit" name="submit_for_review">Submit For Review</button>
+    </form>
+  </main>
+</body>
+</html>

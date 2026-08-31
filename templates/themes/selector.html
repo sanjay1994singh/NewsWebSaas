@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Themes</title>
+</head>
+<body>
+  <main>
+    <h1>Themes</h1>
+    <ul>
+      {% for value,label in themes %}
+        <li>
+          {{ label }}
+          {% if activation.active_theme == value %}<strong>Active</strong>{% endif %}
+          <form method="post" action="{% url 'themes:activate_theme' value %}">
+            {% csrf_token %}
+            <button>Activate</button>
+          </form>
+        </li>
+      {% endfor %}
+    </ul>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {{ theme_form.as_p }}
+      {{ branding_form.as_p }}
+      <button>Save</button>
+    </form>
+  </main>
+</body>
+</html>

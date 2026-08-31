@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>SaaS Admin</title></head>
+<body>
+  <main>
+    <h1>SaaS Admin</h1>
+    <table>
+      <tbody>
+        {% for tenant in tenants %}
+          <tr><td>{{ tenant.publication_name }}</td><td>{{ tenant.status }}</td></tr>
+        {% empty %}
+          <tr><td>No tenants yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </main>
+</body>
+</html>

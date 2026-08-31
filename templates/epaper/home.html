@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ tenant.publication_name }} E-Paper</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; color: #13201b; background: #fff; }
+    main { width: min(1080px, calc(100% - 32px)); margin: 32px auto; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
+    .card { border: 1px solid #d8e1dc; border-radius: 8px; padding: 18px; }
+    .btn { display: inline-block; border-radius: 6px; background: #16614f; color: #fff; padding: 10px 14px; text-decoration: none; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>{{ tenant.publication_name }} E-Paper</h1>
+    <div class="grid">
+      {% for edition in editions %}
+        <article class="card">
+          <h2>{{ edition.title }}</h2>
+          <p>{{ edition.publication_date }} / {{ edition.city }} {{ edition.region }}</p>
+          <a class="btn" href="{% url 'epaper:reader' tenant.slug edition.slug %}">Read</a>
+        </article>
+      {% empty %}
+        <p>No published editions.</p>
+      {% endfor %}
+    </div>
+  </main>
+</body>
+</html>

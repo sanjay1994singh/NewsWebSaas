@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ready To Publish</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #f7faf8; color: #13201b; }
+    main { width: min(960px, calc(100% - 32px)); margin: 32px auto; }
+    .card { background: #fff; border: 1px solid #d8e1dc; border-radius: 8px; padding: 18px; margin: 14px 0; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+    .muted { color: #66766e; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>{{ tenant.publication_name }} Is Ready To Publish</h1>
+    <section class="card">
+      <p>Onboarding is approved. Final publication needs explicit admin publish action.</p>
+      <p class="muted">Status: {{ onboarding.get_status_display }}</p>
+    </section>
+    <h2>Enabled Features</h2>
+    <div class="grid">
+      {% for code, entitlement in entitlements.items %}
+        {% if entitlement.is_enabled %}<div class="card">{{ code }}</div>{% endif %}
+      {% endfor %}
+    </div>
+  </main>
+</body>
+</html>
