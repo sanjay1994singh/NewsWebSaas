@@ -1,46 +1,115 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Account Status</title>
-  <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #f7faf8; color: #13201b; }
-    main { width: min(1080px, calc(100% - 32px)); margin: 32px auto; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
-    .card { background: #fff; border: 1px solid #d8e1dc; border-radius: 8px; padding: 18px; }
-    .btn { display: inline-block; border-radius: 6px; background: #16614f; color: #fff; padding: 10px 14px; text-decoration: none; font-weight: 700; }
-    .muted { color: #66766e; }
-  </style>
-</head>
-<body>
-  <main>
-    <h1>Account Status</h1>
-    <section class="card">
+{% extends "base.html" %}
+{% block title %}Account Status - InfoSaas{% endblock %}
+{% block styles %}
+.status-shell { display:grid; gap:24px; }
+.status-hero { display:grid; grid-template-columns:1.15fr .85fr; gap:24px; align-items:stretch; padding:30px 32px; background:linear-gradient(135deg,#f3fbf8 0%,#ffffff 58%,#eef7f2 100%); border:1px solid var(--line); border-radius:8px; }
+.status-kicker { margin:0 0 8px; color:var(--brand); font-weight:900; font-size:13px; text-transform:uppercase; letter-spacing:.08em; }
+.status-hero h1 { margin:0; font-size:40px; line-height:1.05; }
+.status-copy { margin:12px 0 0; color:var(--muted); max-width:640px; }
+.status-panel { background:#fff; border:1px solid var(--line); border-radius:8px; padding:18px; box-shadow:0 16px 40px rgba(19,32,27,.08); }
+.status-badge { display:inline-flex; align-items:center; border-radius:999px; padding:7px 11px; background:#e8f4ef; color:var(--brand); font-weight:900; font-size:13px; }
+.status-panel h2 { margin:14px 0 6px; font-size:24px; }
+.status-list { display:grid; gap:9px; margin-top:14px; }
+.status-row { display:flex; justify-content:space-between; gap:16px; padding-top:9px; border-top:1px solid var(--line); }
+.status-row span { color:var(--muted); }
+.status-row strong { text-align:right; }
+.section-head { display:flex; align-items:end; justify-content:space-between; gap:16px; margin-top:8px; }
+.section-head h2 { margin:0; font-size:30px; }
+.section-head p { margin:6px 0 0; color:var(--muted); }
+.plans-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+.plan-card { position:relative; display:flex; flex-direction:column; min-height:250px; padding:20px; background:#fff; border:1px solid var(--line); border-radius:8px; transition:transform .16s ease, box-shadow .16s ease, border-color .16s ease; }
+.plan-card:hover { transform:translateY(-2px); border-color:#bcd8cc; box-shadow:0 18px 40px rgba(19,32,27,.1); }
+.plan-card h3 { margin:0; font-size:22px; line-height:1.2; }
+.price-line { margin:16px 0 4px; display:flex; align-items:flex-end; gap:7px; }
+.price-line strong { font-size:30px; line-height:1; }
+.price-line span { color:var(--muted); font-weight:700; }
+.plan-features { display:grid; gap:8px; margin:14px 0 20px; padding:0; list-style:none; color:var(--muted); font-size:14px; }
+.plan-features li::before { content:""; display:inline-block; width:7px; height:7px; margin-right:8px; border-radius:50%; background:var(--brand); vertical-align:middle; }
+.plan-card .btn { margin-top:auto; width:100%; }
+.empty-note { padding:18px; border:1px dashed #bcd8cc; border-radius:8px; color:var(--muted); background:#fbfdfc; }
+@media (max-width:1040px) { .plans-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media (max-width:760px) {
+  .status-hero { grid-template-columns:1fr; padding:24px 20px; }
+  .status-hero h1 { font-size:32px; }
+  .section-head { align-items:start; flex-direction:column; }
+  .plans-grid { grid-template-columns:1fr; }
+  .status-row { align-items:flex-start; flex-direction:column; gap:3px; }
+  .status-row strong { text-align:left; }
+}
+{% endblock %}
+{% block content %}
+<main class="page status-shell">
+  <section class="status-hero">
+    <div>
+      <p class="status-kicker">Account status</p>
       {% if tenant %}
+        <h1>{{ tenant.publication_name }}</h1>
+        <p class="status-copy">Track your subscription, onboarding progress, and the next action needed to keep your publication workspace moving.</p>
+      {% else %}
+        <h1>No Workspace Yet</h1>
+        <p class="status-copy">Choose a plan to reserve your publication workspace. Your dashboard opens after payment verification and onboarding setup.</p>
+      {% endif %}
+    </div>
+    <aside class="status-panel">
+      {% if tenant %}
+        <span class="status-badge">{{ tenant.get_status_display }}</span>
         <h2>{{ tenant.publication_name }}</h2>
-        <p>Status: {{ tenant.get_status_display }}</p>
       {% else %}
-        <h2>No tenant workspace yet</h2>
-        <p class="muted">Choose a subscription plan to reserve your publication workspace.</p>
+        <span class="status-badge">Action required</span>
+        <h2>Reserve your workspace</h2>
       {% endif %}
-      {% if subscription %}
-        <p>Subscription: {{ subscription.get_status_display }} / {{ subscription.plan.name }}</p>
-      {% else %}
-        <p>No active subscription found.</p>
-      {% endif %}
-      {% if onboarding %}<p>Onboarding: {{ onboarding.get_status_display }}</p>{% endif %}
-    </section>
-    <h2>Available Plans</h2>
-    <div class="grid">
+      <div class="status-list">
+        <div class="status-row">
+          <span>Subscription</span>
+          <strong>{% if subscription %}{{ subscription.get_status_display }}{% else %}Not active{% endif %}</strong>
+        </div>
+        <div class="status-row">
+          <span>Plan</span>
+          <strong>{% if subscription %}{{ subscription.plan.name }}{% else %}Not selected{% endif %}</strong>
+        </div>
+        <div class="status-row">
+          <span>Onboarding</span>
+          <strong>{% if onboarding %}{{ onboarding.get_status_display }}{% else %}Not started{% endif %}</strong>
+        </div>
+      </div>
+    </aside>
+  </section>
+
+  <div class="section-head">
+    <div>
+      <h2>Available Plans</h2>
+      <p>Select the plan that matches your newsroom launch needs.</p>
+    </div>
+  </div>
+
+  {% if plans %}
+    <section class="plans-grid">
       {% for card in plans %}
-        <article class="card">
+        <article class="plan-card">
           <h3>{{ card.plan.name }}</h3>
-          <p>{{ card.monthly_display|default:"Pricing pending" }}</p>
-          {% if card.signup_price %}<a class="btn" href="{% url 'public_saas_signup' %}?price={{ card.signup_price.id }}">Choose Plan</a>{% endif %}
+          <div class="price-line">
+            {% if card.monthly_display %}
+              <strong>{{ card.monthly_display }}</strong>
+              <span>/ month</span>
+            {% else %}
+              <strong>Pricing pending</strong>
+            {% endif %}
+          </div>
+          <ul class="plan-features">
+            {% for plan_feature in card.enabled_features|slice:":4" %}
+              <li>{{ plan_feature.feature.name }}{% if plan_feature.limit_value %}: {{ plan_feature.limit_value }}{% endif %}</li>
+            {% empty %}
+              <li>Core publishing workspace</li>
+            {% endfor %}
+          </ul>
+          {% if card.signup_price %}
+            <a class="btn" href="{% url 'public_saas_signup' %}?price={{ card.signup_price.id }}">Choose Plan</a>
+          {% endif %}
         </article>
       {% endfor %}
-    </div>
-  </main>
-</body>
-</html>
+    </section>
+  {% else %}
+    <section class="empty-note">Plans are not available right now. Please check the SaaS admin plan setup.</section>
+  {% endif %}
+</main>
+{% endblock %}
