@@ -7,7 +7,7 @@ import sys
 def main():
     """Run administrative tasks."""
     if sys.version_info < (3, 14):
-        raise RuntimeError("pressnexa development requires Python 3.14 or newer.")
+        raise RuntimeError("Press Nexa development requires Python 3.14 or newer.")
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
     try:
         from django.core.management import execute_from_command_line

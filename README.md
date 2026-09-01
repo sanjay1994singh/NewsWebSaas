@@ -1,4 +1,4 @@
-# pressnexa
+# Press Nexa
 
 Production-grade multi-tenant news SaaS built with Django.
 

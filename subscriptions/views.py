@@ -167,7 +167,7 @@ def landing_page(request):
     context = _public_plan_context()
     context.update(
         {
-            'page_title': 'pressnexa News Publishing Platform',
+            'page_title': 'Press Nexa News Publishing Platform',
             'page_description': 'Launch and manage a multi-tenant news website with publishing, video, monetization, subscriptions, and optional ePaper support.',
             'canonical_url': request.build_absolute_uri('/'),
         }

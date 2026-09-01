@@ -1,6 +1,6 @@
 # Architecture
 
-pressnexa is one Django codebase serving many independent news tenants from a shared database. Tenant-owned data carries an explicit tenant foreign key and uses tenant-aware managers, forms, services, views, and API resolution.
+Press Nexa is one Django codebase serving many independent news tenants from a shared database. Tenant-owned data carries an explicit tenant foreign key and uses tenant-aware managers, forms, services, views, and API resolution.
 
 Core modules:
 

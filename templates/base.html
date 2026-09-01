@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}pressnexa{% endblock %}</title>
+  <title>{% block title %}Press Nexa{% endblock %}</title>
   {% block meta %}{% endblock %}
   <style>
     :root { --ink:#13201b; --muted:#66766e; --line:#d9e4de; --paper:#f6faf8; --brand:#15614f; --deep:#102f29; --danger:#9a3328; }
@@ -38,7 +38,7 @@
 <body>
   <nav class="site-nav">
     <div class="nav-wrap">
-      <a class="brand" href="{% url 'home' %}">pressnexa</a>
+      <a class="brand" href="{% url 'home' %}">Press Nexa</a>
       <div class="nav-links">
         <a class="hide-sm" href="{% url 'public_saas_landing' %}#pricing">Pricing</a>
         {% if user.is_authenticated %}
