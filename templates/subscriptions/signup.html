@@ -1,16 +1,83 @@
 {% extends "base.html" %}
 {% block title %}{% if is_workspace_flow %}Create Workspace{% else %}Create Account{% endif %} - InfoSaas{% endblock %}
+{% block styles %}
+.signup-shell { min-height:calc(100vh - 120px); display:grid; align-items:start; }
+.signup-card { max-width:980px; width:100%; margin:8px auto 0; padding:0; overflow:hidden; }
+.signup-head { display:grid; grid-template-columns:1.15fr .85fr; gap:24px; padding:30px 32px; background:linear-gradient(135deg,#f3fbf8 0%,#ffffff 54%,#eef7f2 100%); border-bottom:1px solid var(--line); }
+.signup-kicker { margin:0 0 8px; color:var(--brand); font-weight:900; font-size:13px; text-transform:uppercase; letter-spacing:.08em; }
+.signup-head h1 { margin:0; font-size:38px; line-height:1.05; }
+.signup-copy { margin:12px 0 0; color:var(--muted); max-width:620px; }
+.plan-chip { align-self:center; justify-self:end; width:min(100%,300px); background:#fff; border:1px solid var(--line); border-radius:8px; padding:16px; box-shadow:0 16px 40px rgba(19,32,27,.08); }
+.plan-chip span { display:block; color:var(--muted); font-size:13px; font-weight:700; }
+.plan-chip strong { display:block; margin-top:4px; font-size:18px; }
+.signup-form { padding:30px 32px 32px; }
+.form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:18px; row-gap:16px; }
+.form-field { min-width:0; }
+.form-field.full { grid-column:1 / -1; }
+.form-field label { margin:0 0 7px; font-size:14px; color:#182c25; }
+.form-field input, .form-field select, .form-field textarea { min-height:48px; background:#fbfdfc; border-color:#c7d6cf; transition:border-color .16s ease, box-shadow .16s ease, background .16s ease; }
+.form-field input:focus, .form-field select:focus, .form-field textarea:focus { outline:0; border-color:var(--brand); background:#fff; box-shadow:0 0 0 4px rgba(21,97,79,.12); }
+.field-error { margin:6px 0 0; color:var(--danger); font-size:13px; }
+.form-error-box { margin:0 0 16px; padding:12px 14px; border:1px solid #f0c5bd; background:#fff4f2; color:var(--danger); border-radius:8px; }
+.signup-actions { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:24px; padding-top:22px; border-top:1px solid var(--line); }
+.signup-actions .muted { max-width:520px; font-size:14px; }
+@media (max-width:760px) {
+  .signup-card { margin-top:0; }
+  .signup-head { grid-template-columns:1fr; padding:24px 20px; }
+  .signup-head h1 { font-size:31px; }
+  .plan-chip { justify-self:stretch; }
+  .signup-form { padding:22px 20px 24px; }
+  .form-grid { grid-template-columns:1fr; }
+  .form-field.full { grid-column:auto; }
+  .signup-actions { align-items:stretch; flex-direction:column; }
+  .signup-actions .btn { width:100%; }
+}
+{% endblock %}
 {% block content %}
-<main class="page">
-  <section class="card" style="max-width:780px;margin:0 auto">
-    <h1>{% if is_workspace_flow %}Create Workspace{% else %}Create Account{% endif %}</h1>
-    {% if is_workspace_flow %}
-      <p style="margin-top:-8px;color:#5f6f68">Your login account is already active. Add your publication details to continue with plan purchase.</p>
-    {% endif %}
-    <form method="post">
+<main class="page signup-shell">
+  <section class="card signup-card">
+    <div class="signup-head">
+      <div>
+        <p class="signup-kicker">{% if is_workspace_flow %}Tenant setup{% else %}Start publishing{% endif %}</p>
+        <h1>{% if is_workspace_flow %}Create Workspace{% else %}Create Account{% endif %}</h1>
+        <p class="signup-copy">
+          {% if is_workspace_flow %}
+            Your login account is already active. Add your publication details to continue with plan purchase.
+          {% else %}
+            Create your owner account and reserve your publication workspace before payment verification.
+          {% endif %}
+        </p>
+      </div>
+      {% if form.price_id.value %}
+        <div class="plan-chip">
+          <span>Selected plan</span>
+          <strong>Continue with your chosen plan</strong>
+        </div>
+      {% endif %}
+    </div>
+    <form class="signup-form" method="post">
       {% csrf_token %}
-      {{ form.as_p }}
-      <button class="btn" type="submit">Continue To Subscription</button>
+      {% if form.non_field_errors %}
+        <div class="form-error-box">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <div class="form-grid">
+        {% for field in form %}
+          {% if field.is_hidden %}
+            {{ field }}
+          {% else %}
+            <div class="form-field {% if field.name == 'business_name' or field.name == 'publication_name' %}full{% endif %}">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<div class="muted">{{ field.help_text }}</div>{% endif %}
+              {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+            </div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      <div class="signup-actions">
+        <p class="muted">Payment will open on the next step. Tenant workspace is created only after successful verification.</p>
+        <button class="btn" type="submit">Continue To Subscription</button>
+      </div>
     </form>
   </section>
 </main>
