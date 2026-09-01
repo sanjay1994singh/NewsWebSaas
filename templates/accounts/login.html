@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Login - InfoSaas{% endblock %}
+{% block content %}
+<main class="page">
+  <section class="card" style="max-width:520px;margin:0 auto">
+    <h1>Login</h1>
+    <form method="post">
+      {% csrf_token %}
+      {{ form.as_p }}
+      <button class="btn" type="submit">Login</button>
+    </form>
+  </section>
+</main>
+{% endblock %}

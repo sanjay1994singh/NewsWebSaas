@@ -21,6 +21,7 @@ urlpatterns = [
     path('', subscription_views.customer_home, name='home'),
     path('saas/', subscription_views.landing_page, name='public_saas_landing'),
     path('saas/signup/', subscription_views.signup, name='public_saas_signup'),
+    path('account/', include('accounts.urls')),
     path('', include('seo.urls')),
     path('', include('analytics.urls')),
     path('admin/', admin.site.urls),

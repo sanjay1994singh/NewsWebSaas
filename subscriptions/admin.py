@@ -1,4 +1,7 @@
 from django.contrib import admin
+from django.contrib import messages
+
+from .services import sync_razorpay_plan_for_price
 
 from .models import (
     AddOn,
@@ -84,12 +87,31 @@ class PlanPriceAdmin(admin.ModelAdmin):
     list_display = ('plan', 'billing_cycle', 'amount', 'currency', 'is_active')
     list_filter = ('billing_cycle', 'currency', 'is_active')
     search_fields = ('plan__name', 'plan__code', 'currency')
+    actions = ('sync_selected_to_razorpay',)
+
+    @admin.action(description='Sync selected prices to Razorpay')
+    def sync_selected_to_razorpay(self, request, queryset):
+        synced = 0
+        failed = 0
+        for price in queryset.select_related('plan'):
+            try:
+                sync_razorpay_plan_for_price(price)
+                synced += 1
+            except Exception as exc:
+                failed += 1
+                self.message_user(request, f"{price}: {exc}", level=messages.ERROR)
+        if synced:
+            self.message_user(request, f"{synced} Razorpay plan mapping(s) ready.", level=messages.SUCCESS)
+        if failed:
+            self.message_user(request, f"{failed} price(s) could not be synced.", level=messages.WARNING)
 
 
 @admin.register(RazorpayPlanMapping)
 class RazorpayPlanMappingAdmin(admin.ModelAdmin):
     list_display = ('price', 'environment', 'razorpay_plan_id', 'version', 'is_active')
     list_filter = ('environment', 'is_active')
+    search_fields = ('price__plan__name', 'price__plan__code', 'razorpay_plan_id')
+    autocomplete_fields = ('price',)
 
 
 @admin.register(TenantSubscription)

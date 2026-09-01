@@ -13,17 +13,20 @@ from django.views.decorators.http import require_POST
 from tenants.models import Tenant
 
 from .entitlements import get_effective_entitlement, get_effective_entitlements
-from .forms import CustomerSignupForm, OnboardingForm, ReviewActionForm
-from .models import AddOn, CustomerAcquisition, Feature, OnboardingReviewEvent, Plan, PlanFeature, PlanPrice, TenantAddOn, TenantOnboarding
+from .forms import CustomerSignupForm, CustomerWorkspaceForm, OnboardingForm, ReviewActionForm
+from .models import AddOn, CustomerAcquisition, Feature, OnboardingReviewEvent, Plan, PlanFeature, PlanPrice, TenantAddOn, TenantOnboarding, TenantSubscription
 from .services import (
     activate_tenant_add_on,
     apply_verified_plan_change,
     create_tenant_after_verified_subscription,
+    create_razorpay_subscription_for_acquisition,
     process_webhook,
     record_onboarding_review,
     request_plan_change,
     reserve_customer_acquisition,
+    reserve_customer_acquisition_for_user,
     submit_onboarding_for_review,
+    verify_razorpay_checkout_signature,
 )
 
 
@@ -174,6 +177,55 @@ def landing_page(request):
 @require_http_methods(['GET', 'POST'])
 def signup(request):
     initial_price_id = request.GET.get('price')
+    if request.user.is_authenticated:
+        tenant, subscription, onboarding_record = _customer_tenant_context(request.user)
+        if tenant and subscription:
+            return redirect('home')
+        selected_price = None
+        if initial_price_id:
+            selected_price = PlanPrice.objects.filter(pk=initial_price_id, is_active=True, plan__is_active=True).first()
+        if request.method == 'GET' and selected_price:
+            pending_acquisition = (
+                CustomerAcquisition.objects
+                .filter(
+                    user=request.user,
+                    plan_price=selected_price,
+                    tenant__isnull=True,
+                    status=CustomerAcquisition.Status.PAYMENT_PENDING,
+                )
+                .order_by('-created_at')
+                .first()
+            )
+            if pending_acquisition:
+                messages.info(request, 'Your workspace details are already saved. Continue the subscription payment to activate it.')
+                return redirect('subscriptions:checkout', acquisition_id=pending_acquisition.uuid)
+        if request.method == 'POST':
+            form = CustomerWorkspaceForm(request.POST, user=request.user)
+            if form.is_valid():
+                acquisition, checkout = reserve_customer_acquisition_for_user(
+                    user=request.user,
+                    business_name=form.cleaned_data['business_name'],
+                    publication_name=form.cleaned_data['publication_name'],
+                    publication_slug=form.cleaned_data['publication_slug'],
+                    email=form.cleaned_data['email'],
+                    mobile=form.cleaned_data['mobile'],
+                    plan_price=form.cleaned_data['price_id'],
+                )
+                request.session['pending_checkout'] = checkout
+                messages.success(request, 'Workspace reserved. Complete the verified subscription step to activate your tenant.')
+                return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
+        else:
+            form = CustomerWorkspaceForm(initial={'price_id': initial_price_id}, user=request.user)
+        return render(
+            request,
+            'subscriptions/signup.html',
+            {
+                'form': form,
+                'plans': _public_plan_context()['plans'],
+                'is_workspace_flow': True,
+            },
+        )
+
     if request.method == 'POST':
         form = CustomerSignupForm(request.POST)
         if form.is_valid():
@@ -190,7 +242,7 @@ def signup(request):
             login(request, acquisition.user)
             request.session['pending_checkout'] = checkout
             messages.success(request, 'Account reserved. Complete the verified subscription step to create your tenant workspace.')
-            return redirect('subscriptions:checkout', acquisition_id=acquisition.id)
+            return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
     else:
         form = CustomerSignupForm(initial={'price_id': initial_price_id})
     return render(request, 'subscriptions/signup.html', {'form': form, 'plans': _public_plan_context()['plans']})
@@ -198,19 +250,44 @@ def signup(request):
 
 @login_required
 def checkout(request, acquisition_id):
-    acquisition = get_object_or_404(CustomerAcquisition.objects.select_related('plan_price__plan'), pk=acquisition_id, user=request.user)
+    acquisition = get_object_or_404(CustomerAcquisition.objects.select_related('plan_price__plan'), uuid=acquisition_id, user=request.user)
     checkout_data = request.session.get('pending_checkout', {})
+    try:
+        checkout_is_stale = (
+            checkout_data.get('acquisition_id') != str(acquisition.id)
+            or checkout_data.get('amount') != acquisition.plan_price.amount
+            or checkout_data.get('currency') != acquisition.plan_price.currency
+        )
+        if not checkout_data.get('subscription_id') or checkout_is_stale:
+            checkout_data = create_razorpay_subscription_for_acquisition(acquisition)
+            checkout_data['acquisition_id'] = str(acquisition.id)
+            request.session['pending_checkout'] = checkout_data
+    except ValidationError as exc:
+        checkout_data['checkout_error'] = exc.message
+    except Exception:
+        checkout_data['checkout_error'] = 'Unable to initialize Razorpay checkout right now.'
     return render(request, 'subscriptions/checkout.html', {'acquisition': acquisition, 'checkout': checkout_data})
 
 
 @login_required
 @require_POST
 def verify_subscription(request, acquisition_id):
-    acquisition = get_object_or_404(CustomerAcquisition.objects.select_related('plan_price__plan'), pk=acquisition_id, user=request.user)
-    provider_subscription_id = request.POST.get('provider_subscription_id', '').strip()
-    if not provider_subscription_id:
-        messages.error(request, 'Verified Razorpay subscription reference is required.')
-        return redirect('subscriptions:checkout', acquisition_id=acquisition.id)
+    acquisition = get_object_or_404(CustomerAcquisition.objects.select_related('plan_price__plan'), uuid=acquisition_id, user=request.user)
+    provider_subscription_id = request.POST.get('razorpay_subscription_id', '').strip()
+    payment_id = request.POST.get('razorpay_payment_id', '').strip()
+    signature = request.POST.get('razorpay_signature', '').strip()
+    if not provider_subscription_id or not payment_id or not signature:
+        messages.error(request, 'Verified Razorpay payment response is required.')
+        return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
+    try:
+        verify_razorpay_checkout_signature(
+            payment_id=payment_id,
+            subscription_id=provider_subscription_id,
+            signature=signature,
+        )
+    except ValidationError:
+        messages.error(request, 'Razorpay payment signature verification failed.')
+        return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
     tenant = create_tenant_after_verified_subscription(
         acquisition=acquisition,
         provider_subscription_id=provider_subscription_id,

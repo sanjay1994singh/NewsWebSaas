@@ -1,32 +1,69 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Verify Subscription</title>
-  <style>
-    body { margin: 0; font-family: Arial, sans-serif; color: #13201b; background: #f7faf8; }
-    main { width: min(780px, calc(100% - 32px)); margin: 40px auto; background: #fff; border: 1px solid #d8e1dc; border-radius: 8px; padding: 24px; }
-    input { width: 100%; padding: 11px; border: 1px solid #bccbc4; border-radius: 6px; }
-    label { display: block; font-weight: 700; margin: 14px 0 6px; }
-    .btn { margin-top: 18px; border: 0; border-radius: 6px; background: #16614f; color: #fff; padding: 12px 18px; font-weight: 700; cursor: pointer; }
-    .summary { background: #eef6f2; border-radius: 8px; padding: 16px; }
-  </style>
-</head>
-<body>
-  <main>
-    <h1>Verify Subscription</h1>
+{% extends "base.html" %}
+{% block title %}Complete Subscription - InfoSaas{% endblock %}
+{% block styles %}
+.summary { background:#eef6f2; border-radius:8px; padding:16px; margin-bottom:16px; }
+.notice { border:1px solid var(--line); border-radius:8px; padding:16px; margin-top:16px; }
+.warning { background:#fff7ed; border-color:#e8c29a; }
+.btn:disabled { opacity:.55; cursor:not-allowed; }
+{% endblock %}
+{% block content %}
+<main class="page">
+  <section class="card" style="max-width:820px;margin:0 auto">
+    <h1>Complete Subscription</h1>
     <div class="summary">
       <p><strong>{{ acquisition.publication_name }}</strong></p>
       <p>{{ acquisition.plan_price.plan.name }} / {{ acquisition.plan_price.billing_cycle }} / {{ acquisition.plan_price.currency }} {{ acquisition.plan_price.amount }}</p>
-      <p>Razorpay Plan: {{ checkout.razorpay_plan_id }}</p>
+      {% if checkout.razorpay_plan_id %}<p>Razorpay Plan: {{ checkout.razorpay_plan_id }}</p>{% endif %}
+      {% if checkout.subscription_id %}<p>Subscription: {{ checkout.subscription_id }}</p>{% endif %}
     </div>
-    <form method="post" action="{% url 'subscriptions:verify_subscription' acquisition.id %}">
+    {% if checkout.checkout_error %}
+      <section class="notice warning">
+        <h2>Payment Setup Needs Attention</h2>
+        <p>{{ checkout.checkout_error }}</p>
+        <p class="muted">Admin should confirm Razorpay live keys and plan price configuration in SaaS admin.</p>
+      </section>
+    {% else %}
+      <section class="notice">
+        <h2>What Happens Next</h2>
+        <p>Customer pays through Razorpay. After successful payment, backend verifies the signature, creates tenant workspace, saves subscription, and starts onboarding.</p>
+      </section>
+      <button class="btn" id="pay-button" type="button">Pay And Create Workspace</button>
+    {% endif %}
+    <form id="verify-form" method="post" action="{% url 'subscriptions:verify_subscription' acquisition.uuid %}" hidden>
       {% csrf_token %}
-      <label for="provider_subscription_id">Verified Razorpay Subscription ID</label>
-      <input id="provider_subscription_id" name="provider_subscription_id" required>
-      <button class="btn" type="submit">Create Tenant Workspace</button>
+      <input name="razorpay_payment_id" id="razorpay_payment_id">
+      <input name="razorpay_subscription_id" id="razorpay_subscription_id">
+      <input name="razorpay_signature" id="razorpay_signature">
     </form>
-  </main>
-</body>
-</html>
+  </section>
+</main>
+{% if not checkout.checkout_error %}
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <script>
+    const button = document.getElementById('pay-button');
+    const options = {
+      key: "{{ checkout.key_id }}",
+      subscription_id: "{{ checkout.subscription_id }}",
+      name: "{{ checkout.name }}",
+      description: "{{ checkout.description }}",
+      prefill: {
+        name: "{{ checkout.prefill.name }}",
+        email: "{{ checkout.prefill.email }}",
+        contact: "{{ checkout.prefill.contact }}"
+      },
+      handler: function (response) {
+        document.getElementById('razorpay_payment_id').value = response.razorpay_payment_id || '';
+        document.getElementById('razorpay_subscription_id').value = response.razorpay_subscription_id || '';
+        document.getElementById('razorpay_signature').value = response.razorpay_signature || '';
+        document.getElementById('verify-form').submit();
+      },
+      modal: { ondismiss: function () { button.disabled = false; } },
+      theme: { color: "#16614f" }
+    };
+    button.addEventListener('click', function () {
+      button.disabled = true;
+      new Razorpay(options).open();
+    });
+  </script>
+{% endif %}
+{% endblock %}

@@ -52,6 +52,45 @@ class CustomerSignupForm(forms.Form):
         return cleaned_data
 
 
+class CustomerWorkspaceForm(forms.Form):
+    business_name = forms.CharField(max_length=255)
+    publication_name = forms.CharField(max_length=255)
+    email = forms.EmailField(required=False)
+    mobile = forms.CharField(max_length=32, required=False)
+    price_id = forms.IntegerField(widget=forms.HiddenInput)
+
+    def __init__(self, *args, user=None, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+        if user and user.email:
+            self.fields['email'].initial = user.email
+
+    def clean_price_id(self):
+        price_id = self.cleaned_data['price_id']
+        try:
+            return PlanPrice.objects.select_related('plan').get(pk=price_id, is_active=True, plan__is_active=True)
+        except PlanPrice.DoesNotExist as exc:
+            raise forms.ValidationError('Selected plan price is not available.') from exc
+
+    def clean_email(self):
+        email = self.cleaned_data.get('email')
+        if email:
+            return email
+        if self.user and self.user.email:
+            return self.user.email
+        return ''
+
+    def clean(self):
+        cleaned_data = super().clean()
+        publication_name = cleaned_data.get('publication_name')
+        if publication_name:
+            slug = slugify(publication_name)[:160]
+            if Tenant.objects.filter(slug=slug).exists() or CustomerAcquisition.objects.filter(publication_slug=slug).exists():
+                self.add_error('publication_name', 'A publication with this name is already reserved.')
+            cleaned_data['publication_slug'] = slug
+        return cleaned_data
+
+
 class OnboardingForm(forms.ModelForm):
     class Meta:
         model = TenantOnboarding

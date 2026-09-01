@@ -2,6 +2,7 @@ import hmac
 import json
 from hashlib import sha256
 
+import razorpay
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -35,6 +36,111 @@ def get_active_mapping(price, environment):
     return RazorpayPlanMapping.objects.get(price=price, environment=environment, is_active=True)
 
 
+def get_optional_active_mapping(price, environment):
+    try:
+        return get_active_mapping(price, environment)
+    except RazorpayPlanMapping.DoesNotExist:
+        return None
+
+
+def get_razorpay_client():
+    if not settings.RAZORPAY_KEY_ID or not settings.RAZORPAY_KEY_SECRET:
+        raise ValidationError("Razorpay live keys are not configured.")
+    return razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+
+
+def sync_razorpay_plan_for_price(price, environment=None):
+    environment = environment or settings.RAZORPAY_ENVIRONMENT
+    if environment == 'live' and price.amount < 1000:
+        raise ValidationError("Live Razorpay subscriptions require a valid plan amount. Update the SaaS plan price before checkout.")
+    mapping = get_optional_active_mapping(price, environment)
+    if mapping:
+        try:
+            razorpay_plan = get_razorpay_client().plan.fetch(mapping.razorpay_plan_id)
+            mapped_amount = razorpay_plan.get('item', {}).get('amount')
+        except Exception:
+            mapped_amount = price.amount
+        if mapped_amount == price.amount:
+            return mapping
+        mapping.is_active = False
+        mapping.save(update_fields=['is_active', 'updated_at'])
+    mapping = get_optional_active_mapping(price, environment)
+    if mapping:
+        return mapping
+
+    period = 'monthly' if price.billing_cycle == PlanPrice.BillingCycle.MONTHLY else 'yearly'
+    client = get_razorpay_client()
+    razorpay_plan = client.plan.create(
+        {
+            'period': period,
+            'interval': 1,
+            'item': {
+                'name': f"{price.plan.name} - {price.get_billing_cycle_display()}",
+                'amount': price.amount,
+                'currency': price.currency,
+                'description': f"InfoSaas {price.plan.name} {price.get_billing_cycle_display()} subscription",
+            },
+            'notes': {
+                'plan_code': price.plan.code,
+                'plan_version': str(price.plan.version),
+                'plan_price_id': str(price.id),
+                'environment': environment,
+            },
+        }
+    )
+    return RazorpayPlanMapping.objects.create(
+        price=price,
+        environment=environment,
+        razorpay_plan_id=razorpay_plan['id'],
+        version=price.plan.version,
+        is_active=True,
+    )
+
+
+def create_razorpay_subscription_for_acquisition(acquisition):
+    price = acquisition.plan_price
+    mapping = sync_razorpay_plan_for_price(price, settings.RAZORPAY_ENVIRONMENT)
+    total_count = 120 if price.billing_cycle == PlanPrice.BillingCycle.MONTHLY else 10
+    client = get_razorpay_client()
+    subscription = client.subscription.create(
+        {
+            'plan_id': mapping.razorpay_plan_id,
+            'total_count': total_count,
+            'quantity': 1,
+            'customer_notify': 1,
+            'notes': {
+                'acquisition_uuid': str(acquisition.uuid),
+                'publication_slug': acquisition.publication_slug,
+                'plan_price_id': str(price.id),
+            },
+        }
+    )
+    acquisition.provider_subscription_id = subscription['id']
+    acquisition.save(update_fields=['provider_subscription_id', 'updated_at'])
+    return {
+        'key_id': settings.RAZORPAY_KEY_ID,
+        'subscription_id': subscription['id'],
+        'razorpay_plan_id': mapping.razorpay_plan_id,
+        'amount': price.amount,
+        'currency': price.currency,
+        'name': 'InfoSaas',
+        'description': f"{price.plan.name} - {price.get_billing_cycle_display()}",
+        'prefill': {
+            'name': acquisition.publication_name,
+            'email': acquisition.email,
+            'contact': acquisition.mobile,
+        },
+    }
+
+
+def verify_razorpay_checkout_signature(*, payment_id, subscription_id, signature):
+    message = f"{payment_id}|{subscription_id}".encode('utf-8')
+    expected = hmac.new(settings.RAZORPAY_KEY_SECRET.encode('utf-8'), message, sha256).hexdigest()
+    if not hmac.compare_digest(expected, signature or ''):
+        raise ValidationError("Invalid Razorpay checkout signature.")
+    return True
+
+
 def create_subscription_checkout(*, tenant, price_id, quantity=1):
     price = PlanPrice.objects.select_related('plan').get(pk=price_id, is_active=True, plan__is_active=True)
     mapping = get_active_mapping(price, settings.RAZORPAY_ENVIRONMENT)
@@ -64,14 +170,35 @@ def reserve_customer_acquisition(*, username, password, business_name, publicati
         mobile=mobile,
         status=CustomerAcquisition.Status.PAYMENT_PENDING,
     )
-    mapping = get_active_mapping(plan_price, settings.RAZORPAY_ENVIRONMENT)
     checkout = {
-        'acquisition_id': acquisition.id,
+        'acquisition_id': str(acquisition.id),
         'plan_id': plan_price.plan_id,
         'billing_cycle': plan_price.billing_cycle,
         'amount': plan_price.amount,
         'currency': plan_price.currency,
-        'razorpay_plan_id': mapping.razorpay_plan_id,
+        'environment': settings.RAZORPAY_ENVIRONMENT,
+    }
+    return acquisition, checkout
+
+
+@transaction.atomic
+def reserve_customer_acquisition_for_user(*, user, business_name, publication_name, publication_slug, email, mobile, plan_price):
+    acquisition = CustomerAcquisition.objects.create(
+        user=user,
+        plan_price=plan_price,
+        business_name=business_name,
+        publication_name=publication_name,
+        publication_slug=publication_slug,
+        email=email or user.email,
+        mobile=mobile,
+        status=CustomerAcquisition.Status.PAYMENT_PENDING,
+    )
+    checkout = {
+        'acquisition_id': str(acquisition.id),
+        'plan_id': plan_price.plan_id,
+        'billing_cycle': plan_price.billing_cycle,
+        'amount': plan_price.amount,
+        'currency': plan_price.currency,
         'environment': settings.RAZORPAY_ENVIRONMENT,
     }
     return acquisition, checkout

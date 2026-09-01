@@ -37,7 +37,12 @@
       {% endfor %}
       <a href="{% url 'subscriptions:onboarding' %}">Onboarding</a>
       <a href="{% url 'subscriptions:billing_dashboard' %}">Billing</a>
+      <a href="{% url 'accounts:profile' %}">Profile</a>
       <a href="{% url 'tenants:tenant_settings' tenant.uuid %}">Settings</a>
+      <form method="post" action="{% url 'accounts:logout' %}" style="margin-top:14px">
+        {% csrf_token %}
+        <button type="submit" style="width:100%;border:1px solid rgba(255,255,255,.2);border-radius:6px;background:transparent;color:#fff;padding:10px;text-align:left;cursor:pointer">Logout</button>
+      </form>
     </aside>
     <main>
       <section class="top">
