@@ -13,10 +13,14 @@
 .signup-form { padding:30px 32px 32px; }
 .form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:18px; row-gap:16px; }
 .form-field { min-width:0; }
-.form-field.full { grid-column:1 / -1; }
 .form-field label { margin:0 0 7px; font-size:14px; color:#182c25; }
 .form-field input, .form-field select, .form-field textarea { min-height:48px; background:#fbfdfc; border-color:#c7d6cf; transition:border-color .16s ease, box-shadow .16s ease, background .16s ease; }
 .form-field input:focus, .form-field select:focus, .form-field textarea:focus { outline:0; border-color:var(--brand); background:#fff; box-shadow:0 0 0 4px rgba(21,97,79,.12); }
+.form-field.has-error input, .form-field.has-error select, .form-field.has-error textarea { border-color:var(--danger); background:#fff8f7; }
+.password-wrap { position:relative; }
+.password-wrap input { padding-right:82px; }
+.password-toggle { position:absolute; right:8px; top:50%; transform:translateY(-50%); min-height:34px; padding:0 10px; border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--brand); font-weight:800; cursor:pointer; }
+.password-toggle:hover { background:#eef6f2; }
 .field-error { margin:6px 0 0; color:var(--danger); font-size:13px; }
 .form-error-box { margin:0 0 16px; padding:12px 14px; border:1px solid #f0c5bd; background:#fff4f2; color:var(--danger); border-radius:8px; }
 .signup-actions { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:24px; padding-top:22px; border-top:1px solid var(--line); }
@@ -28,7 +32,6 @@
   .plan-chip { justify-self:stretch; }
   .signup-form { padding:22px 20px 24px; }
   .form-grid { grid-template-columns:1fr; }
-  .form-field.full { grid-column:auto; }
   .signup-actions { align-items:stretch; flex-direction:column; }
   .signup-actions .btn { width:100%; }
 }
@@ -65,9 +68,16 @@
           {% if field.is_hidden %}
             {{ field }}
           {% else %}
-            <div class="form-field {% if field.name == 'business_name' or field.name == 'publication_name' %}full{% endif %}">
+            <div class="form-field {% if field.errors %}has-error{% endif %}">
               <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-              {{ field }}
+              {% if field.name == 'password' %}
+                <div class="password-wrap">
+                  {{ field }}
+                  <button class="password-toggle" type="button" data-password-toggle aria-controls="{{ field.id_for_label }}">Show</button>
+                </div>
+              {% else %}
+                {{ field }}
+              {% endif %}
               {% if field.help_text %}<div class="muted">{{ field.help_text }}</div>{% endif %}
               {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
             </div>
@@ -81,4 +91,15 @@
     </form>
   </section>
 </main>
+<script>
+  document.querySelectorAll('[data-password-toggle]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      const input = document.getElementById(button.getAttribute('aria-controls'));
+      if (!input) return;
+      const isHidden = input.type === 'password';
+      input.type = isHidden ? 'text' : 'password';
+      button.textContent = isHidden ? 'Hide' : 'Show';
+    });
+  });
+</script>
 {% endblock %}

@@ -27,6 +27,31 @@ class CustomerSignupForm(forms.Form):
     mobile = forms.CharField(max_length=32, required=False)
     price_id = forms.IntegerField(widget=forms.HiddenInput)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        placeholders = {
+            'username': 'Choose a login username',
+            'password': 'Minimum 8 characters',
+            'business_name': 'Registered business or publisher name',
+            'publication_name': 'News publication name',
+            'email': 'owner@example.com',
+            'mobile': 'Mobile number',
+        }
+        autocomplete = {
+            'username': 'username',
+            'password': 'new-password',
+            'business_name': 'organization',
+            'publication_name': 'organization-title',
+            'email': 'email',
+            'mobile': 'tel',
+        }
+        for name, field in self.fields.items():
+            if name in placeholders:
+                field.widget.attrs.update({
+                    'placeholder': placeholders[name],
+                    'autocomplete': autocomplete[name],
+                })
+
     def clean_username(self):
         username = self.cleaned_data['username']
         User = get_user_model()
@@ -64,6 +89,24 @@ class CustomerWorkspaceForm(forms.Form):
         super().__init__(*args, **kwargs)
         if user and user.email:
             self.fields['email'].initial = user.email
+        placeholders = {
+            'business_name': 'Registered business or publisher name',
+            'publication_name': 'News publication name',
+            'email': 'owner@example.com',
+            'mobile': 'Mobile number',
+        }
+        autocomplete = {
+            'business_name': 'organization',
+            'publication_name': 'organization-title',
+            'email': 'email',
+            'mobile': 'tel',
+        }
+        for name, field in self.fields.items():
+            if name in placeholders:
+                field.widget.attrs.update({
+                    'placeholder': placeholders[name],
+                    'autocomplete': autocomplete[name],
+                })
 
     def clean_price_id(self):
         price_id = self.cleaned_data['price_id']
