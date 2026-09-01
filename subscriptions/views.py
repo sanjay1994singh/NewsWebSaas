@@ -26,6 +26,7 @@ from .services import (
     reserve_customer_acquisition,
     reserve_customer_acquisition_for_user,
     submit_onboarding_for_review,
+    update_pending_customer_acquisition,
     verify_razorpay_checkout_signature,
 )
 
@@ -202,17 +203,29 @@ def signup(request):
         if request.method == 'POST':
             form = CustomerWorkspaceForm(request.POST, user=request.user)
             if form.is_valid():
-                acquisition, checkout = reserve_customer_acquisition_for_user(
-                    user=request.user,
-                    business_name=form.cleaned_data['business_name'],
-                    publication_name=form.cleaned_data['publication_name'],
-                    publication_slug=form.cleaned_data['publication_slug'],
-                    email=form.cleaned_data['email'],
-                    mobile=form.cleaned_data['mobile'],
-                    plan_price=form.cleaned_data['price_id'],
-                )
+                if form.existing_acquisition:
+                    acquisition, checkout = update_pending_customer_acquisition(
+                        acquisition=form.existing_acquisition,
+                        business_name=form.cleaned_data['business_name'],
+                        publication_name=form.cleaned_data['publication_name'],
+                        publication_slug=form.cleaned_data['publication_slug'],
+                        email=form.cleaned_data['email'],
+                        mobile=form.cleaned_data['mobile'],
+                        plan_price=form.cleaned_data['price_id'],
+                    )
+                    messages.info(request, 'Your saved workspace details were updated. Continue payment to activate it.')
+                else:
+                    acquisition, checkout = reserve_customer_acquisition_for_user(
+                        user=request.user,
+                        business_name=form.cleaned_data['business_name'],
+                        publication_name=form.cleaned_data['publication_name'],
+                        publication_slug=form.cleaned_data['publication_slug'],
+                        email=form.cleaned_data['email'],
+                        mobile=form.cleaned_data['mobile'],
+                        plan_price=form.cleaned_data['price_id'],
+                    )
+                    messages.success(request, 'Workspace reserved. Complete the verified subscription step to activate your tenant.')
                 request.session['pending_checkout'] = checkout
-                messages.success(request, 'Workspace reserved. Complete the verified subscription step to activate your tenant.')
                 return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
         else:
             form = CustomerWorkspaceForm(initial={'price_id': initial_price_id}, user=request.user)

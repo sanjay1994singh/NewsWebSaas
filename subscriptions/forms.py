@@ -86,6 +86,7 @@ class CustomerWorkspaceForm(forms.Form):
 
     def __init__(self, *args, user=None, **kwargs):
         self.user = user
+        self.existing_acquisition = None
         super().__init__(*args, **kwargs)
         if user and user.email:
             self.fields['email'].initial = user.email
@@ -128,7 +129,20 @@ class CustomerWorkspaceForm(forms.Form):
         publication_name = cleaned_data.get('publication_name')
         if publication_name:
             slug = slugify(publication_name)[:160]
-            if Tenant.objects.filter(slug=slug).exists() or CustomerAcquisition.objects.filter(publication_slug=slug).exists():
+            existing_acquisition = (
+                CustomerAcquisition.objects
+                .filter(
+                    publication_slug=slug,
+                    user=self.user,
+                    tenant__isnull=True,
+                    status=CustomerAcquisition.Status.PAYMENT_PENDING,
+                )
+                .order_by('-created_at')
+                .first()
+            )
+            if existing_acquisition:
+                self.existing_acquisition = existing_acquisition
+            elif Tenant.objects.filter(slug=slug).exists() or CustomerAcquisition.objects.filter(publication_slug=slug).exists():
                 self.add_error('publication_name', 'A publication with this name is already reserved.')
             cleaned_data['publication_slug'] = slug
         return cleaned_data

@@ -205,6 +205,41 @@ def reserve_customer_acquisition_for_user(*, user, business_name, publication_na
 
 
 @transaction.atomic
+def update_pending_customer_acquisition(*, acquisition, business_name, publication_name, publication_slug, email, mobile, plan_price):
+    acquisition = CustomerAcquisition.objects.select_for_update().get(pk=acquisition.pk)
+    if acquisition.tenant_id or acquisition.status != CustomerAcquisition.Status.PAYMENT_PENDING:
+        raise ValidationError("This workspace reservation can no longer be changed.")
+    acquisition.plan_price = plan_price
+    acquisition.business_name = business_name
+    acquisition.publication_name = publication_name
+    acquisition.publication_slug = publication_slug
+    acquisition.email = email or acquisition.user.email
+    acquisition.mobile = mobile
+    acquisition.provider_subscription_id = ''
+    acquisition.save(
+        update_fields=[
+            'plan_price',
+            'business_name',
+            'publication_name',
+            'publication_slug',
+            'email',
+            'mobile',
+            'provider_subscription_id',
+            'updated_at',
+        ]
+    )
+    checkout = {
+        'acquisition_id': str(acquisition.id),
+        'plan_id': plan_price.plan_id,
+        'billing_cycle': plan_price.billing_cycle,
+        'amount': plan_price.amount,
+        'currency': plan_price.currency,
+        'environment': settings.RAZORPAY_ENVIRONMENT,
+    }
+    return acquisition, checkout
+
+
+@transaction.atomic
 def create_tenant_after_verified_subscription(*, acquisition, provider_subscription_id):
     acquisition = CustomerAcquisition.objects.select_for_update().select_related('user', 'plan_price__plan').get(pk=acquisition.pk)
     if acquisition.tenant_id:
