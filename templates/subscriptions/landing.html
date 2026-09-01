@@ -95,10 +95,10 @@
     <div class="wrap nav-inner">
       <a class="brand" href="/">Press Nexa</a>
       <div class="nav-links">
-        <a href="#benefits">Benefits</a>
-        <a href="#pricing">Pricing</a>
-        <a href="#comparison">Compare</a>
-        <a href="#faq">FAQ</a>
+        <a href="{% url 'public_saas_landing' %}">Benefits</a>
+        <a href="{% url 'public_saas_landing' %}">Pricing</a>
+        <a href="{% url 'public_saas_landing' %}">Compare</a>
+        <a href="{% url 'public_saas_landing' %}">FAQ</a>
       </div>
       <div class="account-menu">
         <button class="account-toggle" type="button">{% if user.is_authenticated %}{{ user.username }}{% else %}Account{% endif %}</button>
@@ -115,7 +115,7 @@
             </form>
           {% else %}
             <a href="{% url 'accounts:login' %}">Login</a>
-            <a href="#pricing">Choose Plan</a>
+            <a href="{% url 'public_saas_landing' %}">Choose Plan</a>
           {% endif %}
         </div>
       </div>
@@ -130,8 +130,8 @@
           <h1>Launch Your Digital News Platform</h1>
           <p class="lead">Press Nexa helps publishers run websites, video, ads, analytics, custom domains, mobile-ready distribution, and ePaper access from one subscription-driven CMS.</p>
           <div class="hero-actions">
-            <a class="btn" href="#pricing">View Plans</a>
-            <a class="btn secondary" href="#comparison">Compare Features</a>
+            <a class="btn" href="{% url 'public_saas_landing' %}">View Plans</a>
+            <a class="btn secondary" href="{% url 'public_saas_landing' %}">Compare Features</a>
           </div>
         </div>
         <div class="console">
@@ -191,7 +191,7 @@
               {% if card.signup_price %}
                 <a class="btn" href="{% url 'public_saas_signup' %}?price={{ card.signup_price.id }}">Get Started</a>
               {% else %}
-                <a class="btn secondary" href="#faq">Contact Sales</a>
+                <a class="btn secondary" href="{% url 'public_saas_landing' %}">Contact Sales</a>
               {% endif %}
             </article>
           {% empty %}
