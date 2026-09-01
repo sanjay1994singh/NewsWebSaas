@@ -1,14 +1,82 @@
 {% extends "base.html" %}
 {% block title %}Login - InfoSaas{% endblock %}
+{% block styles %}
+.login-shell { min-height:calc(100vh - 120px); display:grid; align-items:start; }
+.login-card { max-width:560px; width:100%; margin:8px auto 0; padding:0; overflow:hidden; }
+.login-head { padding:30px 32px 22px; background:linear-gradient(135deg,#f3fbf8 0%,#ffffff 62%,#eef7f2 100%); border-bottom:1px solid var(--line); }
+.login-kicker { margin:0 0 8px; color:var(--brand); font-weight:900; font-size:13px; text-transform:uppercase; letter-spacing:.08em; }
+.login-head h1 { margin:0; font-size:38px; line-height:1.05; }
+.login-copy { margin:12px 0 0; color:var(--muted); }
+.login-form { padding:28px 32px 32px; }
+.form-field { margin-bottom:16px; }
+.form-field label { margin:0 0 7px; font-size:14px; color:#182c25; }
+.form-field input { min-height:48px; background:#fbfdfc; border-color:#c7d6cf; transition:border-color .16s ease, box-shadow .16s ease, background .16s ease; }
+.form-field input:focus { outline:0; border-color:var(--brand); background:#fff; box-shadow:0 0 0 4px rgba(21,97,79,.12); }
+.form-field.has-error input { border-color:var(--danger); background:#fff8f7; }
+.password-wrap { position:relative; }
+.password-wrap input { padding-right:82px; }
+.password-toggle { position:absolute; right:8px; top:50%; transform:translateY(-50%); min-height:34px; padding:0 10px; border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--brand); font-weight:800; cursor:pointer; }
+.password-toggle:hover { background:#eef6f2; }
+.field-error { margin:6px 0 0; color:var(--danger); font-size:13px; }
+.form-error-box { margin:0 0 16px; padding:12px 14px; border:1px solid #f0c5bd; background:#fff4f2; color:var(--danger); border-radius:8px; }
+.login-actions { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:22px; padding-top:20px; border-top:1px solid var(--line); }
+.login-actions a { color:var(--brand); font-weight:800; text-decoration:none; }
+@media (max-width:760px) {
+  .login-card { margin-top:0; }
+  .login-head { padding:24px 20px 20px; }
+  .login-head h1 { font-size:31px; }
+  .login-form { padding:22px 20px 24px; }
+  .login-actions { align-items:stretch; flex-direction:column; }
+  .login-actions .btn { width:100%; }
+}
+{% endblock %}
 {% block content %}
-<main class="page">
-  <section class="card" style="max-width:520px;margin:0 auto">
-    <h1>Login</h1>
-    <form method="post">
+<main class="page login-shell">
+  <section class="card login-card">
+    <div class="login-head">
+      <p class="login-kicker">Account access</p>
+      <h1>Login</h1>
+      <p class="login-copy">Continue to your publication workspace, billing, and onboarding tools.</p>
+    </div>
+    <form class="login-form" method="post">
       {% csrf_token %}
-      {{ form.as_p }}
-      <button class="btn" type="submit">Login</button>
+      {% if form.non_field_errors %}
+        <div class="form-error-box">{{ form.non_field_errors }}</div>
+      {% endif %}
+      {% for field in form %}
+        {% if field.is_hidden %}
+          {{ field }}
+        {% else %}
+          <div class="form-field {% if field.errors %}has-error{% endif %}">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {% if field.name == 'password' %}
+              <div class="password-wrap">
+                {{ field }}
+                <button class="password-toggle" type="button" data-password-toggle aria-controls="{{ field.id_for_label }}">Show</button>
+              </div>
+            {% else %}
+              {{ field }}
+            {% endif %}
+            {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+          </div>
+        {% endif %}
+      {% endfor %}
+      <div class="login-actions">
+        <button class="btn" type="submit">Login</button>
+        <a href="{% url 'public_saas_landing' %}#pricing">Choose a plan</a>
+      </div>
     </form>
   </section>
 </main>
+<script>
+  document.querySelectorAll('[data-password-toggle]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      const input = document.getElementById(button.getAttribute('aria-controls'));
+      if (!input) return;
+      const isHidden = input.type === 'password';
+      input.type = isHidden ? 'text' : 'password';
+      button.textContent = isHidden ? 'Hide' : 'Show';
+    });
+  });
+</script>
 {% endblock %}
