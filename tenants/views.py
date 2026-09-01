@@ -1,12 +1,13 @@
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import PermissionDenied
-from django.shortcuts import get_object_or_404, render
+from django.contrib import messages
+from django.shortcuts import get_object_or_404, redirect, render
 
 from core.models import user_can_access_tenant
 from domains.models import TenantDomain
 from news.models import NewsArticle
 from subscriptions.entitlements import get_effective_entitlements
-from subscriptions.models import TenantOnboarding, TenantSubscription
+from subscriptions.models import CustomerAcquisition, TenantOnboarding, TenantSubscription
 
 from .forms import TenantSettingsForm
 from .models import Tenant, TenantMembership
@@ -35,6 +36,22 @@ def tenant_dashboard(request):
             .first()
         )
         tenant = membership.tenant if membership else Tenant.objects.filter(owner=request.user).first()
+    if tenant is None:
+        pending_acquisition = (
+            CustomerAcquisition.objects
+            .filter(
+                user=request.user,
+                tenant__isnull=True,
+                status=CustomerAcquisition.Status.PAYMENT_PENDING,
+            )
+            .order_by('-created_at')
+            .first()
+        )
+        if pending_acquisition:
+            messages.info(request, 'Your workspace details are saved. Complete payment to unlock your dashboard.')
+            return redirect('subscriptions:checkout', acquisition_id=pending_acquisition.uuid)
+        messages.info(request, 'Choose a plan to create your publication workspace before opening the dashboard.')
+        return redirect('subscriptions:account_status')
     if not user_can_access_tenant(request.user, tenant):
         raise PermissionDenied("You do not have access to this tenant.")
 
