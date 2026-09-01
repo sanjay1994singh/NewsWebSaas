@@ -62,7 +62,7 @@ class DomainWorkflowTests(TestCase):
         self.assertEqual(domain.domain, 'example.com')
         self.assertFalse(domain.is_verified)
         self.assertEqual(domain.status, TenantDomain.Status.INACTIVE)
-        self.assertEqual(domain.dns_txt_name, '_infosaas-verify.example.com')
+        self.assertEqual(domain.dns_txt_name, '_pressnexa-verify.example.com')
         self.assertIn(domain.verification_token, domain.expected_txt_value)
 
     def test_duplicate_domain_is_rejected_globally(self):

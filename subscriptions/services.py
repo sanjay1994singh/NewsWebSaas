@@ -78,7 +78,7 @@ def sync_razorpay_plan_for_price(price, environment=None):
                 'name': f"{price.plan.name} - {price.get_billing_cycle_display()}",
                 'amount': price.amount,
                 'currency': price.currency,
-                'description': f"InfoSaas {price.plan.name} {price.get_billing_cycle_display()} subscription",
+                'description': f"pressnexa {price.plan.name} {price.get_billing_cycle_display()} subscription",
             },
             'notes': {
                 'plan_code': price.plan.code,
@@ -123,7 +123,7 @@ def create_razorpay_subscription_for_acquisition(acquisition):
         'razorpay_plan_id': mapping.razorpay_plan_id,
         'amount': price.amount,
         'currency': price.currency,
-        'name': 'InfoSaas',
+        'name': 'pressnexa',
         'description': f"{price.plan.name} - {price.get_billing_cycle_display()}",
         'prefill': {
             'name': acquisition.publication_name,

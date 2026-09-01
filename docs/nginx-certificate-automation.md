@@ -5,7 +5,7 @@ Phase 4 prepares the application side of custom domains. Certificate issuance mu
 Recommended production architecture:
 
 1. Tenant adds a domain in the dashboard.
-2. The app generates a DNS TXT token at `_infosaas-verify.<domain>`.
+2. The app generates a DNS TXT token at `_pressnexa-verify.<domain>`.
 3. The tenant publishes the TXT record.
 4. The app verifies only the TXT record, never ownership by A-record alone.
 5. A Celery task queues certificate provisioning and sets SSL status to `provisioning`.

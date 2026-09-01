@@ -1,4 +1,4 @@
-# InfoSaas
+# pressnexa
 
 Production-grade multi-tenant news SaaS built with Django.
 

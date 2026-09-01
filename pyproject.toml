@@ -1,5 +1,5 @@
 [project]
-name = "infosaas"
+name = "pressnexa"
 version = "0.1.0"
 description = "Production-grade multi-tenant news SaaS built with Django."
 requires-python = ">=3.14"

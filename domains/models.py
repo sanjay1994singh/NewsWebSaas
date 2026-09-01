@@ -68,11 +68,11 @@ class TenantDomain(UUIDModel, TimeStampedModel):
 
     @property
     def dns_txt_name(self):
-        return f"_infosaas-verify.{self.domain}"
+        return f"_pressnexa-verify.{self.domain}"
 
     @property
     def expected_txt_value(self):
-        return f"infosaas-domain-verification={self.verification_token}"
+        return f"pressnexa-domain-verification={self.verification_token}"
 
     def __str__(self):
         return self.domain
