@@ -118,6 +118,41 @@ class SubscriptionTests(TestCase):
         self.assertEqual(acquisition.tenant.subscription.status, TenantSubscription.Status.ACTIVE)
 
     @override_settings(RAZORPAY_WEBHOOK_SECRET='secret', RAZORPAY_ENVIRONMENT='test')
+    def test_order_webhook_creates_reserved_tenant(self):
+        acquisition = CustomerAcquisition.objects.create(
+            user=self.user,
+            plan_price=self.price,
+            business_name='Order Media',
+            publication_name='Order News',
+            publication_slug='order-news',
+            email='order@example.com',
+            mobile='9999999999',
+            status=CustomerAcquisition.Status.PAYMENT_PENDING,
+            provider_subscription_id='order_test_123',
+        )
+        body = json.dumps(
+            {
+                'id': 'evt_order_paid',
+                'event': 'order.paid',
+                'payload': {
+                    'order': {
+                        'entity': {
+                            'id': 'order_test_123',
+                            'notes': {'acquisition_uuid': str(acquisition.uuid)},
+                        }
+                    }
+                },
+            }
+        ).encode('utf-8')
+        signature = hmac.new(b'secret', body, sha256).hexdigest()
+
+        process_webhook(body=body, signature=signature)
+
+        acquisition.refresh_from_db()
+        self.assertIsNotNone(acquisition.tenant_id)
+        self.assertEqual(acquisition.tenant.subscription.razorpay_subscription_id, 'order_test_123')
+
+    @override_settings(RAZORPAY_WEBHOOK_SECRET='secret', RAZORPAY_ENVIRONMENT='test')
     def test_failed_payment_webhook_marks_existing_subscription_issue(self):
         tenant_subscription = TenantSubscription.objects.create(
             tenant=self.tenant,

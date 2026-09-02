@@ -46,7 +46,7 @@ def get_optional_active_mapping(price, environment):
 
 def get_razorpay_client():
     if not settings.RAZORPAY_KEY_ID or not settings.RAZORPAY_KEY_SECRET:
-        raise ValidationError("Razorpay live keys are not configured.")
+        raise ValidationError("Razorpay keys are not configured.")
     return razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
 
@@ -134,8 +134,44 @@ def create_razorpay_subscription_for_acquisition(acquisition):
     }
 
 
-def verify_razorpay_checkout_signature(*, payment_id, subscription_id, signature):
-    message = f"{payment_id}|{subscription_id}".encode('utf-8')
+def create_razorpay_order_for_acquisition(acquisition):
+    price = acquisition.plan_price
+    client = get_razorpay_client()
+    receipt = f"tenant_{acquisition.user_id}_{acquisition.uuid.hex[:24]}"
+    order = client.order.create(
+        {
+            'amount': price.amount,
+            'currency': price.currency,
+            'receipt': receipt,
+            'payment_capture': 1,
+            'notes': {
+                'acquisition_uuid': str(acquisition.uuid),
+                'publication_slug': acquisition.publication_slug,
+                'plan_price_id': str(price.id),
+                'plan_code': price.plan.code,
+                'billing_cycle': price.billing_cycle,
+            },
+        }
+    )
+    acquisition.provider_subscription_id = order['id']
+    acquisition.save(update_fields=['provider_subscription_id', 'updated_at'])
+    return {
+        'key_id': settings.RAZORPAY_KEY_ID,
+        'order_id': order['id'],
+        'amount': order['amount'],
+        'currency': order['currency'],
+        'name': 'Press Nexa',
+        'description': f"{price.plan.name} - {price.get_billing_cycle_display()}",
+        'prefill': {
+            'name': acquisition.publication_name,
+            'email': acquisition.email,
+            'contact': acquisition.mobile,
+        },
+    }
+
+
+def verify_razorpay_checkout_signature(*, payment_id, order_id, signature):
+    message = f"{order_id}|{payment_id}".encode('utf-8')
     expected = hmac.new(settings.RAZORPAY_KEY_SECRET.encode('utf-8'), message, sha256).hexdigest()
     if not hmac.compare_digest(expected, signature or ''):
         raise ValidationError("Invalid Razorpay checkout signature.")
@@ -162,8 +198,14 @@ def _subscription_id_from_webhook(payload):
     return subscription.get('id') or payment.get('subscription_id') or invoice.get('subscription_id') or ''
 
 
+def _order_id_from_webhook(payload):
+    payment = _razorpay_entity(payload, 'payment')
+    order = _razorpay_entity(payload, 'order')
+    return payment.get('order_id') or order.get('id') or ''
+
+
 def _acquisition_uuid_from_webhook(payload):
-    for entity_name in ('subscription', 'payment', 'invoice'):
+    for entity_name in ('subscription', 'payment', 'order', 'invoice'):
         notes = _razorpay_entity(payload, entity_name).get('notes') or {}
         acquisition_uuid = notes.get('acquisition_uuid')
         if acquisition_uuid:
@@ -175,6 +217,18 @@ def _acquisition_for_webhook(payload, subscription_id):
     queryset = CustomerAcquisition.objects.select_related('plan_price__plan', 'user')
     if subscription_id:
         acquisition = queryset.filter(provider_subscription_id=subscription_id).order_by('-created_at').first()
+        if acquisition:
+            return acquisition
+    acquisition_uuid = _acquisition_uuid_from_webhook(payload)
+    if acquisition_uuid:
+        return queryset.filter(uuid=acquisition_uuid).first()
+    return None
+
+
+def _acquisition_for_order_webhook(payload, order_id):
+    queryset = CustomerAcquisition.objects.select_related('plan_price__plan', 'user')
+    if order_id:
+        acquisition = queryset.filter(provider_subscription_id=order_id).order_by('-created_at').first()
         if acquisition:
             return acquisition
     acquisition_uuid = _acquisition_uuid_from_webhook(payload)
@@ -209,6 +263,20 @@ def _status_for_webhook(event_type, provider_status):
 
 
 def _sync_subscription_from_webhook(*, payload, event_type):
+    order_id = _order_id_from_webhook(payload)
+    order_acquisition = _acquisition_for_order_webhook(payload, order_id)
+    if order_acquisition:
+        if event_type in ('payment.captured', 'order.paid') and order_id:
+            create_tenant_after_verified_subscription(
+                acquisition=order_acquisition,
+                provider_subscription_id=order_id,
+            )
+            return True
+        if event_type == 'payment.failed':
+            order_acquisition.status = CustomerAcquisition.Status.FAILED
+            order_acquisition.save(update_fields=['status', 'updated_at'])
+            return True
+
     subscription_id = _subscription_id_from_webhook(payload)
     acquisition = _acquisition_for_webhook(payload, subscription_id)
     subscription_entity = _razorpay_entity(payload, 'subscription')

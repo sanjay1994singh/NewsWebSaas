@@ -81,13 +81,13 @@
         <section class="notice warning">
           <h2>Payment Setup Needs Attention</h2>
           <p>{{ checkout.checkout_error }}</p>
-          <p class="muted">Admin should confirm Razorpay live keys, subscription availability, and plan price configuration in SaaS admin.</p>
+          <p class="muted">Admin should confirm Razorpay keys and plan price configuration in SaaS admin.</p>
         </section>
       {% else %}
         <section class="notice">
           <h2>What Happens Next</h2>
           <ul class="step-list">
-            <li><b>1</b><span><strong>Pay securely</strong>Razorpay opens a protected checkout window for the subscription authentication.</span></li>
+            <li><b>1</b><span><strong>Pay securely</strong>Razorpay opens a protected checkout window for this plan payment.</span></li>
             <li><b>2</b><span><strong>Verify payment</strong>Press Nexa verifies the payment signature before activating anything.</span></li>
             <li><b>3</b><span><strong>Create workspace</strong>Your tenant dashboard and onboarding workflow become available after verification.</span></li>
           </ul>
@@ -97,8 +97,7 @@
           </div>
           <details class="technical">
             <summary>Payment reference</summary>
-            {% if checkout.razorpay_plan_id %}<p>Razorpay Plan: {{ checkout.razorpay_plan_id }}</p>{% endif %}
-            {% if checkout.subscription_id %}<p>Subscription: {{ checkout.subscription_id }}</p>{% endif %}
+            {% if checkout.order_id %}<p>Order: {{ checkout.order_id }}</p>{% endif %}
           </details>
         </section>
       {% endif %}
@@ -106,7 +105,7 @@
     <form id="verify-form" method="post" action="{% url 'subscriptions:verify_subscription' acquisition.uuid %}" hidden>
       {% csrf_token %}
       <input name="razorpay_payment_id" id="razorpay_payment_id">
-      <input name="razorpay_subscription_id" id="razorpay_subscription_id">
+      <input name="razorpay_order_id" id="razorpay_order_id">
       <input name="razorpay_signature" id="razorpay_signature">
     </form>
   </section>
@@ -117,7 +116,9 @@
     const button = document.getElementById('pay-button');
     const options = {
       key: "{{ checkout.key_id }}",
-      subscription_id: "{{ checkout.subscription_id }}",
+      amount: "{{ checkout.amount }}",
+      currency: "{{ checkout.currency }}",
+      order_id: "{{ checkout.order_id }}",
       name: "{{ checkout.name }}",
       description: "{{ checkout.description }}",
       prefill: {
@@ -127,7 +128,7 @@
       },
       handler: function (response) {
         document.getElementById('razorpay_payment_id').value = response.razorpay_payment_id || '';
-        document.getElementById('razorpay_subscription_id').value = response.razorpay_subscription_id || '';
+        document.getElementById('razorpay_order_id').value = response.razorpay_order_id || '';
         document.getElementById('razorpay_signature').value = response.razorpay_signature || '';
         document.getElementById('verify-form').submit();
       },

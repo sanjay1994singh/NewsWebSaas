@@ -19,7 +19,7 @@ from .services import (
     activate_tenant_add_on,
     apply_verified_plan_change,
     create_tenant_after_verified_subscription,
-    create_razorpay_subscription_for_acquisition,
+    create_razorpay_order_for_acquisition,
     process_webhook,
     record_onboarding_review,
     request_plan_change,
@@ -271,8 +271,8 @@ def checkout(request, acquisition_id):
             or checkout_data.get('amount') != acquisition.plan_price.amount
             or checkout_data.get('currency') != acquisition.plan_price.currency
         )
-        if not checkout_data.get('subscription_id') or checkout_is_stale:
-            checkout_data = create_razorpay_subscription_for_acquisition(acquisition)
+        if not checkout_data.get('order_id') or checkout_is_stale:
+            checkout_data = create_razorpay_order_for_acquisition(acquisition)
             checkout_data['acquisition_id'] = str(acquisition.id)
             request.session['pending_checkout'] = checkout_data
     except ValidationError as exc:
@@ -286,16 +286,16 @@ def checkout(request, acquisition_id):
 @require_POST
 def verify_subscription(request, acquisition_id):
     acquisition = get_object_or_404(CustomerAcquisition.objects.select_related('plan_price__plan'), uuid=acquisition_id, user=request.user)
-    provider_subscription_id = request.POST.get('razorpay_subscription_id', '').strip()
+    order_id = request.POST.get('razorpay_order_id', '').strip()
     payment_id = request.POST.get('razorpay_payment_id', '').strip()
     signature = request.POST.get('razorpay_signature', '').strip()
-    if not provider_subscription_id or not payment_id or not signature:
+    if not order_id or not payment_id or not signature:
         messages.error(request, 'Verified Razorpay payment response is required.')
         return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
     try:
         verify_razorpay_checkout_signature(
             payment_id=payment_id,
-            subscription_id=provider_subscription_id,
+            order_id=order_id,
             signature=signature,
         )
     except ValidationError:
@@ -303,7 +303,7 @@ def verify_subscription(request, acquisition_id):
         return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
     tenant = create_tenant_after_verified_subscription(
         acquisition=acquisition,
-        provider_subscription_id=provider_subscription_id,
+        provider_subscription_id=order_id,
     )
     messages.success(request, 'Subscription verified. Your tenant workspace is ready for onboarding.')
     return redirect('subscriptions:onboarding')
