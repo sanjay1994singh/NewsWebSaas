@@ -1,5 +1,6 @@
 import hmac
 import json
+from datetime import datetime
 from hashlib import sha256
 
 import razorpay
@@ -138,6 +139,134 @@ def verify_razorpay_checkout_signature(*, payment_id, subscription_id, signature
     expected = hmac.new(settings.RAZORPAY_KEY_SECRET.encode('utf-8'), message, sha256).hexdigest()
     if not hmac.compare_digest(expected, signature or ''):
         raise ValidationError("Invalid Razorpay checkout signature.")
+    return True
+
+
+def _timestamp_from_razorpay(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromtimestamp(int(value), tz=timezone.get_current_timezone())
+    except (TypeError, ValueError, OSError):
+        return None
+
+
+def _razorpay_entity(payload, entity_name):
+    return payload.get('payload', {}).get(entity_name, {}).get('entity', {}) or {}
+
+
+def _subscription_id_from_webhook(payload):
+    subscription = _razorpay_entity(payload, 'subscription')
+    payment = _razorpay_entity(payload, 'payment')
+    invoice = _razorpay_entity(payload, 'invoice')
+    return subscription.get('id') or payment.get('subscription_id') or invoice.get('subscription_id') or ''
+
+
+def _acquisition_uuid_from_webhook(payload):
+    for entity_name in ('subscription', 'payment', 'invoice'):
+        notes = _razorpay_entity(payload, entity_name).get('notes') or {}
+        acquisition_uuid = notes.get('acquisition_uuid')
+        if acquisition_uuid:
+            return acquisition_uuid
+    return ''
+
+
+def _acquisition_for_webhook(payload, subscription_id):
+    queryset = CustomerAcquisition.objects.select_related('plan_price__plan', 'user')
+    if subscription_id:
+        acquisition = queryset.filter(provider_subscription_id=subscription_id).order_by('-created_at').first()
+        if acquisition:
+            return acquisition
+    acquisition_uuid = _acquisition_uuid_from_webhook(payload)
+    if acquisition_uuid:
+        return queryset.filter(uuid=acquisition_uuid).first()
+    return None
+
+
+def _status_for_webhook(event_type, provider_status):
+    event_status_map = {
+        'subscription.authenticated': TenantSubscription.Status.ACTIVE,
+        'subscription.activated': TenantSubscription.Status.ACTIVE,
+        'subscription.charged': TenantSubscription.Status.ACTIVE,
+        'subscription.resumed': TenantSubscription.Status.ACTIVE,
+        'subscription.completed': TenantSubscription.Status.COMPLETED,
+        'subscription.cancelled': TenantSubscription.Status.CANCELLED,
+        'subscription.pending': TenantSubscription.Status.PAYMENT_ISSUE,
+        'subscription.halted': TenantSubscription.Status.PAYMENT_ISSUE,
+        'subscription.paused': TenantSubscription.Status.RESTRICTED,
+        'payment.captured': TenantSubscription.Status.ACTIVE,
+        'payment.failed': TenantSubscription.Status.PAYMENT_ISSUE,
+    }
+    provider_status_map = {
+        'authenticated': TenantSubscription.Status.ACTIVE,
+        'active': TenantSubscription.Status.ACTIVE,
+        'completed': TenantSubscription.Status.COMPLETED,
+        'cancelled': TenantSubscription.Status.CANCELLED,
+        'halted': TenantSubscription.Status.PAYMENT_ISSUE,
+        'paused': TenantSubscription.Status.RESTRICTED,
+    }
+    return event_status_map.get(event_type) or provider_status_map.get(provider_status)
+
+
+def _sync_subscription_from_webhook(*, payload, event_type):
+    subscription_id = _subscription_id_from_webhook(payload)
+    acquisition = _acquisition_for_webhook(payload, subscription_id)
+    subscription_entity = _razorpay_entity(payload, 'subscription')
+    provider_status = subscription_entity.get('status')
+    next_status = _status_for_webhook(event_type, provider_status)
+    activation_events = {
+        'subscription.authenticated',
+        'subscription.activated',
+        'subscription.charged',
+        'subscription.resumed',
+        'payment.captured',
+    }
+
+    if acquisition and not acquisition.tenant_id and event_type in activation_events and subscription_id:
+        create_tenant_after_verified_subscription(
+            acquisition=acquisition,
+            provider_subscription_id=subscription_id,
+        )
+        acquisition.refresh_from_db()
+
+    tenant_subscription = None
+    if acquisition and acquisition.tenant_id:
+        tenant_subscription = TenantSubscription.objects.select_for_update().filter(tenant=acquisition.tenant).first()
+    if tenant_subscription is None and subscription_id:
+        tenant_subscription = TenantSubscription.objects.select_for_update().filter(
+            razorpay_subscription_id=subscription_id
+        ).first()
+    if tenant_subscription is None:
+        if acquisition and event_type == 'payment.failed':
+            acquisition.status = CustomerAcquisition.Status.FAILED
+            acquisition.save(update_fields=['status', 'updated_at'])
+        return False
+
+    update_fields = ['updated_at']
+    if subscription_id and tenant_subscription.razorpay_subscription_id != subscription_id:
+        tenant_subscription.razorpay_subscription_id = subscription_id
+        update_fields.append('razorpay_subscription_id')
+    if next_status and tenant_subscription.status != next_status:
+        tenant_subscription.status = next_status
+        update_fields.append('status')
+
+    date_fields = {
+        'start_at': 'start_at',
+        'current_period_start': 'current_start',
+        'current_period_end': 'current_end',
+        'charge_at': 'charge_at',
+        'ended_at': 'ended_at',
+    }
+    if event_type == 'subscription.cancelled':
+        date_fields['cancelled_at'] = 'ended_at'
+    for model_field, provider_field in date_fields.items():
+        value = _timestamp_from_razorpay(subscription_entity.get(provider_field))
+        if value and getattr(tenant_subscription, model_field) != value:
+            setattr(tenant_subscription, model_field, value)
+            update_fields.append(model_field)
+
+    if len(update_fields) > 1:
+        tenant_subscription.save(update_fields=update_fields)
     return True
 
 
@@ -391,6 +520,7 @@ def process_webhook(*, body, signature, environment=None):
     )
     if not created:
         return event
+    _sync_subscription_from_webhook(payload=payload, event_type=event_type)
     event.processed_at = timezone.now()
     event.save(update_fields=['processed_at', 'updated_at'])
     return event

@@ -12,6 +12,7 @@ from tenants.models import Tenant
 from .entitlements import get_feature_limit, tenant_has_feature, tenant_feature_limit
 from .models import (
     AddOn,
+    CustomerAcquisition,
     Feature,
     Plan,
     PlanFeature,
@@ -79,6 +80,65 @@ class SubscriptionTests(TestCase):
         with self.assertRaises(ValidationError):
             process_webhook(body=body, signature='bad')
         self.assertEqual(WebhookEvent.objects.count(), 0)
+
+    @override_settings(RAZORPAY_WEBHOOK_SECRET='secret', RAZORPAY_ENVIRONMENT='test')
+    def test_subscription_webhook_creates_reserved_tenant(self):
+        acquisition = CustomerAcquisition.objects.create(
+            user=self.user,
+            plan_price=self.price,
+            business_name='Webhook Media',
+            publication_name='Webhook News',
+            publication_slug='webhook-news',
+            email='webhook@example.com',
+            mobile='9999999999',
+            status=CustomerAcquisition.Status.PAYMENT_PENDING,
+            provider_subscription_id='sub_test_123',
+        )
+        body = json.dumps(
+            {
+                'id': 'evt_subscription_active',
+                'event': 'subscription.activated',
+                'payload': {
+                    'subscription': {
+                        'entity': {
+                            'id': 'sub_test_123',
+                            'status': 'active',
+                            'notes': {'acquisition_uuid': str(acquisition.uuid)},
+                        }
+                    }
+                },
+            }
+        ).encode('utf-8')
+        signature = hmac.new(b'secret', body, sha256).hexdigest()
+
+        process_webhook(body=body, signature=signature)
+
+        acquisition.refresh_from_db()
+        self.assertIsNotNone(acquisition.tenant_id)
+        self.assertEqual(acquisition.tenant.subscription.status, TenantSubscription.Status.ACTIVE)
+
+    @override_settings(RAZORPAY_WEBHOOK_SECRET='secret', RAZORPAY_ENVIRONMENT='test')
+    def test_failed_payment_webhook_marks_existing_subscription_issue(self):
+        tenant_subscription = TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            razorpay_subscription_id='sub_test_failed',
+            status=TenantSubscription.Status.ACTIVE,
+        )
+        body = json.dumps(
+            {
+                'id': 'evt_payment_failed',
+                'event': 'payment.failed',
+                'payload': {'payment': {'entity': {'subscription_id': 'sub_test_failed'}}},
+            }
+        ).encode('utf-8')
+        signature = hmac.new(b'secret', body, sha256).hexdigest()
+
+        process_webhook(body=body, signature=signature)
+
+        tenant_subscription.refresh_from_db()
+        self.assertEqual(tenant_subscription.status, TenantSubscription.Status.PAYMENT_ISSUE)
 
 
 class DynamicEntitlementTests(TestCase):
