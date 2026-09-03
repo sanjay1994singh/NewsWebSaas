@@ -50,6 +50,7 @@ COMPANY_PROFILE = {
     'incorporated_on': '17 August 2026',
     'registered_office': '101 Govind Kund Tila, Radha Niwas, Vrindaban, Mathura, Mathura - 281121, Uttar Pradesh, India',
     'support_email': 'srbc500@gmail.com',
+    'whatsapp_number': '8279408396',
     'business_hours': 'Monday to Saturday, 10:00 AM to 6:00 PM IST',
 }
 
