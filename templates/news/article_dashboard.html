@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+
+{% block title %}News Publishing - {{ tenant.publication_name }}{% endblock %}
+
+{% block styles %}
+  .cms-shell { display:grid; gap:18px; }
+  .cms-hero { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; }
+  .cms-hero h1 { margin:0; font-size:36px; }
+  .cms-actions { display:flex; flex-wrap:wrap; gap:10px; }
+  .stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+  .stat { background:#fff; border:1px solid var(--line); border-radius:8px; padding:16px; }
+  .metric { font-size:30px; font-weight:900; line-height:1; }
+  .article-table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .article-table th, .article-table td { padding:12px; border-bottom:1px solid var(--line); text-align:left; }
+  .article-table th { background:#eef6f2; color:var(--deep); font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
+  .article-table tr:last-child td { border-bottom:0; }
+  .empty-state { min-height:220px; display:grid; place-items:center; text-align:center; }
+  .empty-state h2 { margin:0 0 8px; }
+  @media (max-width:760px) { .cms-hero { display:grid; } .stats { grid-template-columns:repeat(2,minmax(0,1fr)); } .article-table { display:block; overflow-x:auto; } }
+{% endblock %}
+
+{% block content %}
+  <main class="page cms-shell">
+    <section class="card cms-hero">
+      <div>
+        <p class="muted">Publishing desk</p>
+        <h1>News Publishing</h1>
+        <p class="muted">Manage articles for {{ tenant.publication_name }} from one workspace.</p>
+      </div>
+      <div class="cms-actions">
+        <a class="btn secondary" href="{% url 'tenants:tenant_dashboard' %}">Dashboard</a>
+        <a class="btn" href="{% url 'tenants:tenant_dashboard' %}">Dashboard</a>
+      </div>
+    </section>
+
+    <section class="stats">
+      <article class="stat"><div class="metric">{{ stats.total }}</div><p class="muted">Total articles</p></article>
+      <article class="stat"><div class="metric">{{ stats.published }}</div><p class="muted">Published</p></article>
+      <article class="stat"><div class="metric">{{ stats.draft }}</div><p class="muted">Drafts</p></article>
+      <article class="stat"><div class="metric">{{ stats.review }}</div><p class="muted">In review</p></article>
+    </section>
+
+    {% if articles %}
+      <section>
+        <table class="article-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Updated</th>
+              <th>Open</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for article in articles %}
+              <tr>
+                <td><strong>{{ article.title }}</strong></td>
+                <td>{{ article.category.name }}</td>
+                <td>{{ article.get_status_display }}</td>
+                <td>{{ article.updated_at|date:"d M Y" }}</td>
+                <td><a class="btn secondary" href="{% url 'news:article_detail' article.uuid %}">View</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+    {% else %}
+      <section class="card empty-state">
+        <div>
+          <h2>No articles yet</h2>
+          <p class="muted">The article editor is not enabled yet. Your dashboard is ready, and this page will hold all article tools as they are added.</p>
+          <div class="cms-actions" style="justify-content:center">
+            <a class="btn" href="{% url 'tenants:tenant_dashboard' %}">Back to Dashboard</a>
+          </div>
+        </div>
+      </section>
+    {% endif %}
+  </main>
+{% endblock %}

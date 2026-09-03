@@ -95,6 +95,14 @@ class TenantNewsCMSTests(TestCase):
                 content='duplicate',
             )
 
+    def test_cms_root_opens_article_dashboard(self):
+        self.client.force_login(self.user_a)
+        response = self.client.get(reverse('news:article_dashboard'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'News Publishing')
+        self.assertContains(response, 'Shared headline')
+
     def test_article_rejects_cross_tenant_category_and_author(self):
         article = NewsArticle(
             tenant=self.tenant_a,
