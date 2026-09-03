@@ -60,7 +60,7 @@
       <h2>Add-ons</h2>
       <div class="billing-grid">
         {% for add_on in add_ons %}
-          <form class="card billing-card" method="post" action="{% url 'subscriptions:activate_add_on' add_on.id %}">
+          <form class="card billing-card" method="post" action="{% url 'subscriptions:activate_add_on' add_on.uuid %}">
             {% csrf_token %}
             <h3>{{ add_on.name }}</h3>
             <p class="muted">{{ add_on.currency }} {{ add_on.monthly_price }} monthly / {{ add_on.yearly_price }} yearly</p>

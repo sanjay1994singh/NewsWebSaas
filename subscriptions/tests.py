@@ -160,6 +160,27 @@ class SubscriptionTests(TestCase):
 
         self.assertRedirects(response, reverse('home'), fetch_redirect_response=False)
 
+    def test_billing_dashboard_renders_add_on_actions_with_uuid_urls(self):
+        TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            status=TenantSubscription.Status.ACTIVE,
+        )
+        feature = Feature.objects.create(code='video_uploads', name='Video Uploads', category='video')
+        add_on = AddOn.objects.create(
+            feature=feature,
+            name='Extra Video Pack',
+            monthly_price=99900,
+            yearly_price=999000,
+        )
+
+        self.client.login(username='owner', password='testpass123')
+        response = self.client.get(reverse('subscriptions:billing_dashboard'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, reverse('subscriptions:activate_add_on', kwargs={'add_on_id': add_on.uuid}))
+
 
 class DynamicEntitlementTests(TestCase):
     def setUp(self):
