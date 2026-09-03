@@ -393,11 +393,11 @@ def verify_subscription(request, acquisition_id):
         acquisition=acquisition,
         tenant=tenant,
         payment_reference=payment_id,
-        onboarding_url=request.build_absolute_uri('/billing/onboarding/'),
+        dashboard_url=request.build_absolute_uri('/dashboard/'),
         profile_url=request.build_absolute_uri('/account/profile/'),
     )
-    messages.success(request, 'Subscription verified. Your tenant workspace is ready for onboarding.')
-    return redirect('subscriptions:onboarding')
+    messages.success(request, 'Subscription verified. Your dashboard is ready. Complete setup details from the dashboard.')
+    return redirect('tenants:tenant_dashboard')
 
 
 @login_required

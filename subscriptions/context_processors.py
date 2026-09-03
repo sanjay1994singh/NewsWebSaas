@@ -71,6 +71,7 @@ def customer_navigation(request):
         TenantOnboarding.Status.CHANGES_REQUESTED,
     }):
         stage = 'onboarding'
+        links.append({'label': 'Dashboard', 'url': reverse('tenants:tenant_dashboard')})
         links.append({'label': 'Setup', 'url': reverse('subscriptions:onboarding')})
         links.append({'label': 'Billing', 'url': reverse('subscriptions:billing_dashboard')})
     elif tenant and subscription and onboarding.status in {
@@ -78,6 +79,7 @@ def customer_navigation(request):
         TenantOnboarding.Status.UNDER_REVIEW,
     }:
         stage = 'review'
+        links.append({'label': 'Dashboard', 'url': reverse('tenants:tenant_dashboard')})
         links.append({'label': 'Review Status', 'url': reverse('subscriptions:review_status')})
         links.append({'label': 'Billing', 'url': reverse('subscriptions:billing_dashboard')})
     elif tenant and subscription and onboarding.status in {
@@ -85,6 +87,7 @@ def customer_navigation(request):
         TenantOnboarding.Status.READY_TO_PUBLISH,
     }:
         stage = 'ready'
+        links.append({'label': 'Dashboard', 'url': reverse('tenants:tenant_dashboard')})
         links.append({'label': 'Publish Status', 'url': reverse('subscriptions:ready_to_publish')})
         links.append({'label': 'Billing', 'url': reverse('subscriptions:billing_dashboard')})
     elif pending_acquisition:

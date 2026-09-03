@@ -163,7 +163,7 @@ def money_text(price):
     return f'{price.currency} {amount_text}'
 
 
-def notify_payment_success(*, acquisition, tenant, payment_reference, onboarding_url, profile_url):
+def notify_payment_success(*, acquisition, tenant, payment_reference, dashboard_url, profile_url):
     return send_template_message(
         to=acquisition.mobile,
         template_name=settings.WHATSAPP_PAYMENT_SUCCESS_TEMPLATE,
@@ -174,7 +174,7 @@ def notify_payment_success(*, acquisition, tenant, payment_reference, onboarding
             money_text(acquisition.plan_price),
             payment_reference,
             tenant.slug,
-            onboarding_url,
+            dashboard_url,
             profile_url,
         ],
     )
