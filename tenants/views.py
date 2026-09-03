@@ -6,9 +6,11 @@ from django.shortcuts import get_object_or_404, redirect, render
 from core.models import user_can_access_tenant
 from domains.models import TenantDomain
 from news.models import NewsArticle
+from pages.builder import get_or_create_layout
+from pages.models import HomepageLayout
 from subscriptions.entitlements import get_effective_entitlements
 from subscriptions.models import CustomerAcquisition, TenantOnboarding, TenantSubscription
-from subscriptions.services import ensure_platform_domain_for_tenant
+from subscriptions.services import tenant_public_site_url
 
 from .forms import TenantSettingsForm
 from .models import Tenant, TenantMembership
@@ -67,9 +69,7 @@ def tenant_dashboard(request):
 
     entitlements = get_effective_entitlements(tenant)
     primary_domain = TenantDomain.objects.filter(tenant=tenant, is_primary=True).first()
-    if primary_domain is None:
-        primary_domain = ensure_platform_domain_for_tenant(tenant)
-    site_url = f'https://{primary_domain.domain}/' if primary_domain else ''
+    site_url = tenant_public_site_url(tenant)
     article_queryset = NewsArticle.objects.filter(tenant=tenant)
     news_stats = {
         'total': article_queryset.count(),
@@ -113,6 +113,22 @@ def tenant_dashboard(request):
             'news_stats': news_stats,
         },
     )
+
+
+def public_tenant_site(request, tenant_slug):
+    tenant = get_object_or_404(
+        Tenant.objects.select_related('owner'),
+        slug=tenant_slug,
+        status__in=[Tenant.Status.TRIAL, Tenant.Status.ACTIVE],
+    )
+    request.tenant = tenant
+    layout = get_or_create_layout(tenant, HomepageLayout.Status.PUBLISHED)
+    return render(request, 'themes/theme_classic/homepage.html', {
+        'layout': layout,
+        'blocks': layout.blocks.filter(is_enabled=True).select_related('category'),
+        'tenant': tenant,
+        'preview': False,
+    })
 
 
 @login_required

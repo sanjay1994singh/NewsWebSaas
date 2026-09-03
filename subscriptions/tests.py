@@ -10,7 +10,6 @@ from django.urls import reverse
 from django.utils import timezone
 
 from categories.models import Category
-from domains.models import TenantDomain
 from news.models import AuthorProfile
 from pages.models import HomepageLayout, Menu, Page
 from tenants.models import Tenant, TenantMembership
@@ -172,9 +171,6 @@ class SubscriptionTests(TestCase):
         self.assertIsNotNone(subscription.current_period_end)
         self.assertIsNotNone(subscription.charge_at)
         self.assertGreater(subscription.current_period_end, subscription.current_period_start)
-        domain = TenantDomain.objects.get(tenant=tenant, is_primary=True)
-        self.assertEqual(domain.domain, 'checkout-media.live-app.in')
-        self.assertEqual(domain.domain_type, TenantDomain.DomainType.PLATFORM_SUBDOMAIN)
 
     def test_subscription_period_calculation_respects_billing_cycle(self):
         start = timezone.datetime(2026, 9, 3, 9, 0, tzinfo=timezone.get_current_timezone())

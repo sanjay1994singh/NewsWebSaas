@@ -43,6 +43,7 @@
     .site-url-card { display:grid; grid-template-columns:1fr auto; gap:12px; align-items:center; margin-bottom:18px; background:#fff; border:1px solid var(--line); border-radius:8px; padding:16px; }
     .site-url-card p { margin:0; color:var(--muted); }
     .site-url-card a { color:var(--brand); font-weight:900; overflow-wrap:anywhere; }
+    .site-url-actions { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
     .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
     .btn { display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:10px 15px; border-radius:6px; border:1px solid var(--brand); background:var(--brand); color:#fff; text-decoration:none; font-weight:900; cursor:pointer; }
     .btn.secondary { background:#fff; color:var(--brand); }
@@ -144,12 +145,15 @@
 
       {% if site_url %}
         <section class="site-url-card">
-          <div>
-            <strong>Site URL</strong>
-            <p><a href="{{ site_url }}" target="_blank" rel="noopener">{{ site_url }}</a></p>
+        <div>
+          <strong>Site URL</strong>
+          <p><a href="{{ site_url }}" target="_blank" rel="noopener">{{ site_url }}</a></p>
+        </div>
+          <div class="site-url-actions">
+            <a class="btn secondary" href="{% url 'domains:domain_list' %}">Custom Domain</a>
+            <button class="btn secondary" type="button" data-copy-url="{{ site_url }}">Copy URL</button>
           </div>
-          <button class="btn secondary" type="button" data-copy-url="{{ site_url }}">Copy URL</button>
-        </section>
+      </section>
       {% endif %}
 
       <section class="quick-grid">

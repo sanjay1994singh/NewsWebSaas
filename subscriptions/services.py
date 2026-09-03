@@ -71,6 +71,10 @@ def platform_domain_for_name(name):
     return f'{subdomain}.{root_domain}'
 
 
+def tenant_public_site_url(tenant):
+    return f"{settings.SITE_BASE_URL}/site/{tenant.slug}/"
+
+
 def ensure_platform_domain_for_tenant(tenant):
     primary = TenantDomain.objects.filter(tenant=tenant, is_primary=True).first()
     if primary:
@@ -567,7 +571,6 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
             'joined_at': timezone.now(),
         },
     )
-    ensure_platform_domain_for_tenant(tenant)
     period_start, period_end, charge_at = subscription_period_for_cycle(timezone.now(), acquisition.plan_price.billing_cycle)
     subscription, _ = TenantSubscription.objects.update_or_create(
         tenant=tenant,

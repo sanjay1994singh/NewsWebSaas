@@ -106,3 +106,8 @@ class TenantIsolationTests(TestCase):
         request = factory.get('/', HTTP_HOST='unknown.platformdomain.com')
         TenantResolutionMiddleware(lambda req: None)(request)
         self.assertIsNone(request.tenant)
+
+    def test_public_site_path_opens_without_custom_ssl_domain(self):
+        response = self.client.get(reverse('tenants:public_tenant_site', args=[self.tenant_a.slug]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.tenant_a.publication_name)
