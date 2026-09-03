@@ -395,6 +395,18 @@ def onboarding(request):
         tenant=tenant,
         defaults={'status': TenantOnboarding.Status.ONBOARDING},
     )
+    if onboarding_record.status in {
+        TenantOnboarding.Status.SUBMITTED_FOR_REVIEW,
+        TenantOnboarding.Status.UNDER_REVIEW,
+    }:
+        return redirect('subscriptions:review_status')
+    if onboarding_record.status in {
+        TenantOnboarding.Status.APPROVED,
+        TenantOnboarding.Status.READY_TO_PUBLISH,
+    }:
+        return redirect('subscriptions:ready_to_publish')
+    if onboarding_record.status == TenantOnboarding.Status.PUBLISHED and tenant.status == Tenant.Status.ACTIVE:
+        return redirect('tenants:tenant_dashboard')
     if request.method == 'POST':
         form = OnboardingForm(request.POST, request.FILES, instance=onboarding_record)
         if form.is_valid():
@@ -421,6 +433,13 @@ def review_status(request):
     if tenant is None:
         return redirect('subscriptions:account_status')
     onboarding_record, _ = TenantOnboarding.objects.get_or_create(tenant=tenant)
+    if onboarding_record.status in {
+        TenantOnboarding.Status.APPROVED,
+        TenantOnboarding.Status.READY_TO_PUBLISH,
+    }:
+        return redirect('subscriptions:ready_to_publish')
+    if onboarding_record.status == TenantOnboarding.Status.PUBLISHED and tenant.status == Tenant.Status.ACTIVE:
+        return redirect('tenants:tenant_dashboard')
     return render(
         request,
         'subscriptions/review_status.html',
@@ -434,6 +453,8 @@ def ready_to_publish(request):
     if tenant is None:
         return redirect('subscriptions:account_status')
     onboarding_record, _ = TenantOnboarding.objects.get_or_create(tenant=tenant)
+    if onboarding_record.status == TenantOnboarding.Status.PUBLISHED and tenant.status == Tenant.Status.ACTIVE:
+        return redirect('tenants:tenant_dashboard')
     entitlements = get_effective_entitlements(tenant)
     return render(
         request,
