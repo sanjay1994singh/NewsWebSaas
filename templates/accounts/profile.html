@@ -1,24 +1,115 @@
 {% extends "base.html" %}
 {% block title %}Profile - Press Nexa{% endblock %}
+{% block styles %}
+.profile-shell { display:grid; gap:18px; }
+.profile-grid { display:grid; grid-template-columns:1.05fr .95fr; gap:18px; align-items:start; }
+.profile-card h1, .profile-card h2 { margin-top:0; }
+.form-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px 16px; }
+.form-field { min-width:0; }
+.form-field.full { grid-column:1 / -1; }
+.form-field label { margin:0 0 6px; font-size:14px; }
+.form-field input { min-height:46px; background:#fbfdfc; border-color:#c7d6cf; }
+.password-wrap { position:relative; }
+.password-wrap input { padding-right:82px; }
+.password-toggle { position:absolute; right:8px; top:50%; transform:translateY(-50%); min-height:32px; padding:0 10px; border:1px solid var(--line); border-radius:6px; background:#fff; color:var(--brand); font-weight:800; cursor:pointer; }
+.field-help { margin:5px 0 0; color:var(--muted); font-size:12px; }
+.field-error { margin:5px 0 0; color:var(--danger); font-size:13px; }
+.context-list { display:grid; gap:10px; margin-top:14px; }
+.context-row { display:flex; justify-content:space-between; gap:18px; padding-top:10px; border-top:1px solid var(--line); }
+.context-row span { color:var(--muted); }
+.context-row strong { text-align:right; }
+.password-actions { margin-top:18px; padding-top:18px; border-top:1px solid var(--line); }
+@media (max-width:820px) {
+  .profile-grid, .form-grid { grid-template-columns:1fr; }
+  .form-field.full { grid-column:auto; }
+  .context-row { display:grid; gap:3px; }
+  .context-row strong { text-align:left; }
+}
+{% endblock %}
 {% block content %}
-<main class="page">
-  <section class="card" style="max-width:720px">
+<main class="page profile-shell">
+  <section class="card profile-card">
+    <p class="muted">Account</p>
     <h1>Profile</h1>
-    <form method="post">
+    <p class="muted">Update your account details and password from one place.</p>
+  </section>
+
+  <div class="profile-grid">
+    <section class="card profile-card">
+      <h2>Profile Details</h2>
+      <form method="post" autocomplete="off">
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="form-error-box">{{ form.non_field_errors }}</div>{% endif %}
+        <div class="form-grid">
+          {% for field in form %}
+            <div class="form-field {% if field.name == 'email' %}full{% endif %} {% if field.errors %}has-error{% endif %}">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<p class="field-help">{{ field.help_text }}</p>{% endif %}
+              {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+            </div>
+          {% endfor %}
+        </div>
+        <div class="password-actions">
+          <button class="btn" type="submit" name="save_profile">Save Profile</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card profile-card">
+      <h2>Account Context</h2>
+      {% if tenant %}
+        <div class="context-list">
+          <div class="context-row"><span>Channel / Paper</span><strong>{{ tenant.business_name }}</strong></div>
+          <div class="context-row"><span>Publication</span><strong>{{ tenant.publication_name }}</strong></div>
+          <div class="context-row"><span>Email</span><strong>{{ tenant.email|default:user.email }}</strong></div>
+          <div class="context-row"><span>Mobile</span><strong>{{ tenant.mobile|default:"Not added" }}</strong></div>
+          {% if subscription %}<div class="context-row"><span>Plan</span><strong>{{ subscription.plan.name }} / {{ subscription.get_status_display }}</strong></div>{% endif %}
+          {% if onboarding %}<div class="context-row"><span>Setup</span><strong>{{ onboarding.get_status_display }}</strong></div>{% endif %}
+        </div>
+      {% else %}
+        <p class="muted">No tenant workspace is linked yet.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <section class="card profile-card">
+    <h2>Change Password</h2>
+    <form method="post" autocomplete="off">
       {% csrf_token %}
-      {{ form.as_p }}
-      <button class="btn" type="submit">Save Profile</button>
+      {% if password_form.non_field_errors %}<div class="form-error-box">{{ password_form.non_field_errors }}</div>{% endif %}
+      <div class="form-grid">
+        {% for field in password_form %}
+          <div class="form-field {% if field.errors %}has-error{% endif %}">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {% if field.name == 'old_password' or field.name == 'new_password1' or field.name == 'new_password2' %}
+              <div class="password-wrap">
+                {{ field }}
+                <button class="password-toggle" type="button" data-password-toggle aria-controls="{{ field.id_for_label }}">Show</button>
+              </div>
+            {% else %}
+              {{ field }}
+            {% endif %}
+            {% if field.help_text %}<p class="field-help">{{ field.help_text }}</p>{% endif %}
+            {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="password-actions">
+        <button class="btn" type="submit" name="change_password">Update Password</button>
+      </div>
     </form>
   </section>
-  <section class="card" style="max-width:720px;margin-top:16px">
-    <h2>Account Context</h2>
-    {% if tenant %}
-      <p><strong>Publication:</strong> {{ tenant.publication_name }}</p>
-      {% if subscription %}<p><strong>Plan:</strong> {{ subscription.plan.name }} / {{ subscription.get_status_display }}</p>{% endif %}
-      {% if onboarding %}<p><strong>Onboarding:</strong> {{ onboarding.get_status_display }}</p>{% endif %}
-    {% else %}
-      <p class="muted">No tenant workspace is linked yet.</p>
-    {% endif %}
-  </section>
 </main>
+<script>
+  document.querySelectorAll('[data-password-toggle]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      const input = document.getElementById(button.getAttribute('aria-controls'));
+      if (!input) return;
+      const isHidden = input.type === 'password';
+      input.type = isHidden ? 'text' : 'password';
+      button.textContent = isHidden ? 'Hide' : 'Show';
+    });
+  });
+</script>
 {% endblock %}

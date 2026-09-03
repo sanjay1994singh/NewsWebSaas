@@ -6,6 +6,20 @@ from tenants.models import Tenant
 from .models import CustomerAcquisition, PlanPrice, TenantOnboarding
 
 
+def disable_autofill(fields):
+    for name, field in fields.items():
+        field.widget.attrs.update({
+            'autocomplete': 'off',
+            'autocapitalize': 'off',
+            'spellcheck': 'false',
+            'data-lpignore': 'true',
+            'data-form-type': 'other',
+        })
+        if not isinstance(field.widget, (forms.FileInput, forms.HiddenInput, forms.Select, forms.Textarea)):
+            field.widget.attrs.setdefault('readonly', 'readonly')
+            field.widget.attrs.setdefault('onfocus', "this.removeAttribute('readonly')")
+
+
 class PlanSelectionForm(forms.Form):
     price_id = forms.IntegerField(widget=forms.HiddenInput)
 
@@ -51,11 +65,12 @@ class CustomerSignupForm(forms.Form):
             'password': 'new-password',
             'confirm_password': 'new-password',
         }
+        disable_autofill(self.fields)
         for name, field in self.fields.items():
             if name in placeholders:
                 field.widget.attrs.update({
                     'placeholder': placeholders[name],
-                    'autocomplete': autocomplete[name],
+                    'autocomplete': 'off',
                 })
 
     def clean_price_id(self):
@@ -105,11 +120,12 @@ class CustomerWorkspaceForm(forms.Form):
             'email': 'email',
             'mobile': 'tel',
         }
+        disable_autofill(self.fields)
         for name, field in self.fields.items():
             if name in placeholders:
                 field.widget.attrs.update({
                     'placeholder': placeholders[name],
-                    'autocomplete': autocomplete[name],
+                    'autocomplete': 'off',
                 })
 
     def clean_price_id(self):
@@ -154,9 +170,38 @@ class CustomerWorkspaceForm(forms.Form):
 class OnboardingForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        labels = {
+            'tagline': 'Tagline',
+            'address': 'Office address',
+            'logo': 'Logo',
+            'primary_color': 'Primary color',
+            'secondary_color': 'Secondary color',
+            'site_title': 'Website title',
+            'meta_description': 'Website description',
+        }
+        placeholders = {
+            'tagline': 'Example: Fast, reliable digital news for every reader',
+            'address': 'Example: 101 Govind Kund Tila, Vrindaban, Mathura, Uttar Pradesh, India',
+            'primary_color': 'Example: #0F5331',
+            'secondary_color': 'Example: #D71920',
+            'site_title': 'Example: The UP Media',
+            'meta_description': 'Example: The UP Media covers breaking news, local updates, videos, ePaper, and digital stories.',
+        }
+        help_texts = {
+            'logo': 'Optional. You can upload or change it later from the dashboard.',
+            'primary_color': 'Optional. Use a hex color code.',
+            'secondary_color': 'Optional. Use a hex color code.',
+        }
+        disable_autofill(self.fields)
         for field in self.fields.values():
             field.required = False
             field.widget.attrs.pop('required', None)
+        for name, label in labels.items():
+            self.fields[name].label = label
+        for name, placeholder in placeholders.items():
+            self.fields[name].widget.attrs['placeholder'] = placeholder
+        for name, help_text in help_texts.items():
+            self.fields[name].help_text = help_text
 
     class Meta:
         model = TenantOnboarding
@@ -164,20 +209,15 @@ class OnboardingForm(forms.ModelForm):
             'tagline',
             'address',
             'logo',
-            'header_logo',
-            'favicon',
             'primary_color',
             'secondary_color',
-            'facebook_url',
-            'instagram_url',
-            'twitter_url',
-            'youtube_channel_url',
-            'live_tv_url',
             'site_title',
             'meta_description',
-            'organization_name',
-            'legal_notes',
         )
+        widgets = {
+            'address': forms.Textarea(attrs={'rows': 3}),
+            'meta_description': forms.Textarea(attrs={'rows': 3}),
+        }
 
 
 class ReviewActionForm(forms.Form):

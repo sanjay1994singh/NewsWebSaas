@@ -1,18 +1,34 @@
 {% extends "base.html" %}
-{% load subscription_extras %}
 
 {% block title %}Onboarding - Press Nexa{% endblock %}
 
 {% block styles %}
-  .onboarding-shell { display:grid; gap:18px; }
-  .onboarding-header { display:flex; justify-content:space-between; gap:18px; align-items:flex-start; }
+  .onboarding-shell { display:grid; gap:16px; margin-top:22px; }
+  .onboarding-header { display:flex; justify-content:space-between; gap:18px; align-items:flex-start; padding:22px 24px; }
+  .onboarding-header h1 { margin:8px 0; font-size:32px; line-height:1.12; }
+  .onboarding-header p { margin:0; }
   .status-pill { display:inline-flex; align-items:center; min-height:38px; padding:8px 12px; border:1px solid var(--line); border-radius:999px; background:#eef6f2; color:var(--brand); font-weight:800; }
-  .onboarding-form { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px 18px; }
-  .onboarding-form p { margin:0; }
-  .onboarding-form p:has(textarea), .onboarding-actions, .onboarding-note { grid-column:1 / -1; }
-  .onboarding-form textarea { min-height:110px; resize:vertical; }
-  .onboarding-actions { display:flex; flex-wrap:wrap; gap:10px; padding-top:8px; }
-  @media (max-width:760px) { .onboarding-header, .onboarding-form { grid-template-columns:1fr; display:grid; } .onboarding-form p:has(textarea), .onboarding-actions, .onboarding-note { grid-column:auto; } }
+  .onboarding-form { padding:22px 24px; }
+  .form-section { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px 18px; padding-top:14px; }
+  .form-section + .form-section { margin-top:18px; padding-top:18px; border-top:1px solid var(--line); }
+  .section-title { grid-column:1 / -1; margin:0; font-size:19px; line-height:1.25; }
+  .form-field { min-width:0; }
+  .form-field.full { grid-column:1 / -1; }
+  .form-field label { margin:0 0 6px; font-size:14px; }
+  .form-field input, .form-field textarea { min-height:46px; background:#fbfdfc; border-color:#c7d6cf; }
+  .form-field textarea { min-height:88px; resize:vertical; }
+  .field-help { margin:5px 0 0; color:var(--muted); font-size:12px; }
+  .field-error { margin:5px 0 0; color:var(--danger); font-size:13px; }
+  .onboarding-note { margin-top:14px; font-size:13px; }
+  .onboarding-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; padding-top:18px; border-top:1px solid var(--line); }
+  @media (max-width:760px) {
+    .onboarding-header { display:grid; padding:20px; }
+    .onboarding-header h1 { font-size:27px; }
+    .onboarding-form { padding:20px; }
+    .form-section { grid-template-columns:1fr; }
+    .form-field.full, .section-title { grid-column:auto; }
+    .onboarding-actions .btn { width:100%; }
+  }
 {% endblock %}
 
 {% block content %}
@@ -21,7 +37,7 @@
       <div>
         <p class="muted">Tenant setup</p>
         <h1>{{ tenant.publication_name }} Onboarding</h1>
-        <p class="muted">Update only the details you have ready. Every field is optional.</p>
+        <p class="muted">Fill the basic launch details now. You can complete logos, social links, videos, and legal pages later from the dashboard.</p>
       </div>
       <span class="status-pill">{{ onboarding.get_status_display }}</span>
     </section>
@@ -35,12 +51,47 @@
 
     <form class="card onboarding-form" method="post" enctype="multipart/form-data">
       {% csrf_token %}
-      {{ form.as_p }}
+      {% if form.non_field_errors %}
+        <div class="form-error-box">{{ form.non_field_errors }}</div>
+      {% endif %}
+      <section class="form-section">
+        <h2 class="section-title">Basic publication details</h2>
+        {% for field in form %}
+          {% if field.name == 'tagline' or field.name == 'site_title' %}
+            <div class="form-field {% if field.errors %}has-error{% endif %}">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<p class="field-help">{{ field.help_text }}</p>{% endif %}
+              {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+            </div>
+          {% endif %}
+        {% endfor %}
+        {% for field in form %}
+          {% if field.name == 'address' or field.name == 'meta_description' %}
+            <div class="form-field full {% if field.errors %}has-error{% endif %}">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<p class="field-help">{{ field.help_text }}</p>{% endif %}
+              {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+            </div>
+          {% endif %}
+        {% endfor %}
+      </section>
+      <section class="form-section">
+        <h2 class="section-title">Branding</h2>
+        {% for field in form %}
+          {% if field.name == 'logo' or field.name == 'primary_color' or field.name == 'secondary_color' %}
+            <div class="form-field {% if field.errors %}has-error{% endif %}">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<p class="field-help">{{ field.help_text }}</p>{% endif %}
+              {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+            </div>
+          {% endif %}
+        {% endfor %}
+      </section>
       <div class="onboarding-note">
-        {% with youtube=entitlements|get_item:"youtube_videos" live=entitlements|get_item:"live_tv" %}
-          {% if not youtube.is_enabled %}<p class="muted">YouTube fields are stored but visible features unlock only when enabled.</p>{% endif %}
-          {% if not live.is_enabled %}<p class="muted">Live TV stays restricted until entitlement is enabled.</p>{% endif %}
-        {% endwith %}
+        <p class="muted">Only these details are needed for the first setup. More branding, menu, social, YouTube, Live TV, and pages can be updated after login from the dashboard.</p>
       </div>
       <div class="onboarding-actions">
         <button class="btn" type="submit" name="save">Save</button>

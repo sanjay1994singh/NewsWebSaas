@@ -24,6 +24,7 @@
     .small { color:var(--muted); font-size:13px; padding:8px 12px; }
     .messages { width:min(1160px, calc(100% - 32px)); margin:14px auto 0; }
     .message { background:#eef6f2; border:1px solid var(--line); border-radius:8px; padding:10px 12px; margin-bottom:8px; }
+    .form-error-box { margin:0 0 16px; padding:12px 14px; border:1px solid #f0c5bd; background:#fff4f2; color:var(--danger); border-radius:8px; }
     .app-overlay { position:fixed; inset:0; z-index:1000; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(16,47,41,.34); backdrop-filter:blur(3px); }
     .app-overlay.is-visible { display:flex; }
     .app-dialog { width:min(420px, 100%); background:#fff; border:1px solid var(--line); border-radius:8px; padding:22px; box-shadow:0 24px 70px rgba(19,32,27,.22); text-align:center; }
@@ -134,7 +135,16 @@
       }
 
       document.querySelectorAll('form').forEach(function (form) {
+        form.setAttribute('autocomplete', 'off');
+        form.querySelectorAll('input, textarea, select').forEach(function (field) {
+          field.setAttribute('autocomplete', 'off');
+          field.setAttribute('data-lpignore', 'true');
+          field.setAttribute('data-form-type', 'other');
+        });
         form.addEventListener('submit', function (event) {
+          form.querySelectorAll('input:not([type="password"]):not([type="file"]):not([type="hidden"]), textarea').forEach(function (field) {
+            field.value = field.value.trim();
+          });
           if (form.dataset.noLoader === 'true') return;
           if (form.dataset.submitting === 'true') {
             event.preventDefault();
