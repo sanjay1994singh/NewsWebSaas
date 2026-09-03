@@ -416,7 +416,7 @@ def reserve_customer_acquisition(*, business_name, publication_name, publication
         'currency': plan_price.currency,
         'environment': settings.RAZORPAY_ENVIRONMENT,
     }
-    return acquisition, checkout, {'username': username, 'temporary_password': password}
+    return acquisition, checkout
 
 
 @transaction.atomic

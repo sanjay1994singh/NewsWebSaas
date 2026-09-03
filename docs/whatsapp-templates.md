@@ -32,15 +32,15 @@ Body:
 Hello, your Press Nexa account has been created for {{1}}.
 
 Username: {{2}}
-Temporary password: {{3}}
 
-Selected plan: {{4}}
-Amount: {{5}}
+Selected plan: {{3}}
+Amount: {{4}}
 
+Login: {{5}}
 Update your profile: {{6}}
 Complete payment: {{7}}
 
-For security, please change your password after first login.
+Use the login page to access your account. If you need password help, contact Press Nexa support.
 ```
 
 Variables:
@@ -48,9 +48,9 @@ Variables:
 ```text
 {{1}} Publication name
 {{2}} Auto-generated username
-{{3}} Temporary password
-{{4}} Selected plan name
-{{5}} Amount with currency
+{{3}} Selected plan name
+{{4}} Amount with currency
+{{5}} Login URL
 {{6}} Profile URL
 {{7}} Checkout URL
 ```

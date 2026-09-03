@@ -292,7 +292,7 @@ def signup(request):
     if request.method == 'POST':
         form = CustomerSignupForm(request.POST)
         if form.is_valid():
-            acquisition, checkout, credentials = reserve_customer_acquisition(
+            acquisition, checkout = reserve_customer_acquisition(
                 business_name=form.cleaned_data['business_name'],
                 publication_name=form.cleaned_data['publication_name'],
                 publication_slug=form.cleaned_data['publication_slug'],
@@ -304,7 +304,7 @@ def signup(request):
             request.session['pending_checkout'] = checkout
             notify_account_created(
                 acquisition=acquisition,
-                temporary_password=credentials['temporary_password'],
+                login_url=request.build_absolute_uri('/account/login/'),
                 profile_url=request.build_absolute_uri('/account/profile/'),
                 checkout_url=request.build_absolute_uri(f'/billing/saas/checkout/{acquisition.uuid}/'),
             )
