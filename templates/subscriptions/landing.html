@@ -113,17 +113,17 @@
         <div class="account-panel">
           {% if user.is_authenticated %}
             <div class="account-small">{{ user.email|default:user.username }}</div>
-            <a href="{% url 'accounts:profile' %}">Profile</a>
-            <a href="{% url 'tenants:tenant_dashboard' %}">Dashboard</a>
-            <a href="{% url 'subscriptions:billing_dashboard' %}">Billing</a>
-            {% if user.is_staff %}<a href="{% url 'admin:index' %}">Admin</a>{% endif %}
+            {% for link in customer_nav_links %}
+              <a href="{{ link.url }}">{{ link.label }}</a>
+            {% endfor %}
             <form method="post" action="{% url 'accounts:logout' %}">
               {% csrf_token %}
               <button type="submit">Logout</button>
             </form>
           {% else %}
-            <a href="{% url 'accounts:login' %}">Login</a>
-            <a href="{% url 'public_saas_landing' %}">Choose Plan</a>
+            {% for link in customer_nav_links %}
+              <a href="{{ link.url }}">{{ link.label }}</a>
+            {% endfor %}
           {% endif %}
         </div>
       </div>
