@@ -61,7 +61,9 @@
     .card { border: 1px solid var(--line); border-radius: 8px; padding: 20px; background: #fff; }
     .band { background: var(--paper); }
     .plans { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); align-items: stretch; }
-    .plan { display: flex; flex-direction: column; gap: 14px; }
+    .plan { display: flex; flex-direction: column; gap: 14px; min-height: 100%; }
+    .plan ul { flex: 1; }
+    .plan .btn { width: 100%; margin-top: auto; }
     .price { font-size: 32px; font-weight: 900; }
     .price small { display: block; color: var(--muted); font-size: 13px; font-weight: 700; }
     ul { margin: 0; padding-left: 20px; color: var(--muted); }
