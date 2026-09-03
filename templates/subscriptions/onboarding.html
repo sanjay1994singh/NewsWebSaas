@@ -1,37 +1,51 @@
-<!doctype html>
+{% extends "base.html" %}
 {% load subscription_extras %}
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Onboarding</title>
-  <style>
-    body { margin: 0; font-family: Arial, sans-serif; color: #13201b; background: #f7faf8; }
-    main { width: min(960px, calc(100% - 32px)); margin: 32px auto; }
-    form, .panel { background: #fff; border: 1px solid #d8e1dc; border-radius: 8px; padding: 22px; margin-bottom: 18px; }
-    label { display: block; font-weight: 700; margin: 14px 0 6px; }
-    input, textarea { width: 100%; padding: 10px; border: 1px solid #bccbc4; border-radius: 6px; }
-    .btn { border: 0; border-radius: 6px; background: #16614f; color: #fff; padding: 11px 16px; font-weight: 700; cursor: pointer; margin-right: 8px; }
-    .muted { color: #5f6f67; }
-  </style>
-</head>
-<body>
-  <main>
-    <h1>{{ tenant.publication_name }} Onboarding</h1>
-    <div class="panel">
-      <strong>Status:</strong> {{ onboarding.get_status_display }}
-      {% if onboarding.reviewer_notes %}<p class="muted">{{ onboarding.reviewer_notes }}</p>{% endif %}
-    </div>
-    <form method="post" enctype="multipart/form-data">
+
+{% block title %}Onboarding - Press Nexa{% endblock %}
+
+{% block styles %}
+  .onboarding-shell { display:grid; gap:18px; }
+  .onboarding-header { display:flex; justify-content:space-between; gap:18px; align-items:flex-start; }
+  .status-pill { display:inline-flex; align-items:center; min-height:38px; padding:8px 12px; border:1px solid var(--line); border-radius:999px; background:#eef6f2; color:var(--brand); font-weight:800; }
+  .onboarding-form { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px 18px; }
+  .onboarding-form p { margin:0; }
+  .onboarding-form p:has(textarea), .onboarding-actions, .onboarding-note { grid-column:1 / -1; }
+  .onboarding-form textarea { min-height:110px; resize:vertical; }
+  .onboarding-actions { display:flex; flex-wrap:wrap; gap:10px; padding-top:8px; }
+  @media (max-width:760px) { .onboarding-header, .onboarding-form { grid-template-columns:1fr; display:grid; } .onboarding-form p:has(textarea), .onboarding-actions, .onboarding-note { grid-column:auto; } }
+{% endblock %}
+
+{% block content %}
+  <main class="page onboarding-shell">
+    <section class="card onboarding-header">
+      <div>
+        <p class="muted">Tenant setup</p>
+        <h1>{{ tenant.publication_name }} Onboarding</h1>
+        <p class="muted">Update only the details you have ready. Every field is optional.</p>
+      </div>
+      <span class="status-pill">{{ onboarding.get_status_display }}</span>
+    </section>
+
+    {% if onboarding.reviewer_notes %}
+      <section class="card">
+        <strong>Review note</strong>
+        <p class="muted">{{ onboarding.reviewer_notes }}</p>
+      </section>
+    {% endif %}
+
+    <form class="card onboarding-form" method="post" enctype="multipart/form-data">
       {% csrf_token %}
       {{ form.as_p }}
-      {% with youtube=entitlements|get_item:"youtube_videos" live=entitlements|get_item:"live_tv" %}
-        {% if not youtube.is_enabled %}<p class="muted">YouTube fields are stored but visible features unlock only when enabled.</p>{% endif %}
-        {% if not live.is_enabled %}<p class="muted">Live TV stays restricted until entitlement is enabled.</p>{% endif %}
-      {% endwith %}
-      <button class="btn" type="submit" name="save">Save</button>
-      <button class="btn" type="submit" name="submit_for_review">Submit For Review</button>
+      <div class="onboarding-note">
+        {% with youtube=entitlements|get_item:"youtube_videos" live=entitlements|get_item:"live_tv" %}
+          {% if not youtube.is_enabled %}<p class="muted">YouTube fields are stored but visible features unlock only when enabled.</p>{% endif %}
+          {% if not live.is_enabled %}<p class="muted">Live TV stays restricted until entitlement is enabled.</p>{% endif %}
+        {% endwith %}
+      </div>
+      <div class="onboarding-actions">
+        <button class="btn" type="submit" name="save">Save</button>
+        <button class="btn secondary" type="submit" name="submit_for_review">Submit For Review</button>
+      </div>
     </form>
   </main>
-</body>
-</html>
+{% endblock %}
