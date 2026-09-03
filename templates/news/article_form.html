@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - {{ tenant.publication_name }}{% endblock %}
+
+{% block styles %}
+  .editor-shell { display:grid; gap:18px; }
+  .editor-head { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+  .editor-head h1 { margin:0; font-size:34px; }
+  .editor-form { display:grid; grid-template-columns:minmax(0, 1fr) 320px; gap:18px; align-items:start; }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
+  .field.full { grid-column:1 / -1; }
+  .field-help { margin-top:4px; color:var(--muted); font-size:13px; }
+  .check-row { display:flex; align-items:center; gap:8px; margin:12px 0; }
+  .check-row input { width:auto; }
+  .side-card { position:sticky; top:86px; }
+  .form-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
+  .errorlist { color:var(--danger); margin:6px 0 0; padding-left:18px; }
+  @media (max-width:900px) { .editor-form { grid-template-columns:1fr; } .side-card { position:static; } }
+  @media (max-width:640px) { .editor-head, .form-grid { display:block; } }
+{% endblock %}
+
+{% block content %}
+  <main class="page editor-shell">
+    <section class="card editor-head">
+      <div>
+        <p class="muted">Publishing desk</p>
+        <h1>{{ title }}</h1>
+        <p class="muted">Write, save, review, and publish news for {{ tenant.publication_name }}.</p>
+      </div>
+      <a class="btn secondary" href="{% url 'news:article_dashboard' %}">Back to Articles</a>
+    </section>
+
+    <form class="editor-form" method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      <section class="card">
+        {{ form.non_field_errors }}
+        <div class="form-grid">
+          <div class="field full">
+            {{ form.title.label_tag }}
+            {{ form.title }}
+            {{ form.title.errors }}
+          </div>
+          <div class="field">
+            {{ form.slug.label_tag }}
+            {{ form.slug }}
+            {{ form.slug.errors }}
+            <div class="field-help">Blank chhodne par title se slug ban jayega.</div>
+          </div>
+          <div class="field">
+            {{ form.category.label_tag }}
+            {{ form.category }}
+            {{ form.category.errors }}
+          </div>
+          <div class="field">
+            {{ form.author.label_tag }}
+            {{ form.author }}
+            {{ form.author.errors }}
+          </div>
+          <div class="field">
+            {{ form.city.label_tag }}
+            {{ form.city }}
+            {{ form.city.errors }}
+          </div>
+          <div class="field full">
+            {{ form.short_description.label_tag }}
+            {{ form.short_description }}
+            {{ form.short_description.errors }}
+          </div>
+          <div class="field full">
+            {{ form.content.label_tag }}
+            {{ form.content }}
+            {{ form.content.errors }}
+          </div>
+          <div class="field full">
+            {{ form.featured_image.label_tag }}
+            {{ form.featured_image }}
+            {{ form.featured_image.errors }}
+          </div>
+          <div class="field">
+            {{ form.image_caption.label_tag }}
+            {{ form.image_caption }}
+            {{ form.image_caption.errors }}
+          </div>
+          <div class="field">
+            {{ form.image_alt.label_tag }}
+            {{ form.image_alt }}
+            {{ form.image_alt.errors }}
+          </div>
+        </div>
+      </section>
+
+      <aside class="card side-card">
+        <h2>Publish Settings</h2>
+        {{ form.status.label_tag }}
+        {{ form.status }}
+        {{ form.status.errors }}
+
+        {{ form.published_at.label_tag }}
+        {{ form.published_at }}
+        {{ form.published_at.errors }}
+
+        {{ form.scheduled_at.label_tag }}
+        {{ form.scheduled_at }}
+        {{ form.scheduled_at.errors }}
+
+        <label class="check-row">{{ form.is_breaking }} Breaking news</label>
+        <label class="check-row">{{ form.is_featured }} Featured</label>
+        <label class="check-row">{{ form.is_trending }} Trending</label>
+        <label class="check-row">{{ form.is_editor_pick }} Editor pick</label>
+        <label class="check-row">{{ form.allow_comments }} Allow comments</label>
+
+        <details>
+          <summary>SEO and source</summary>
+          {{ form.seo_title.label_tag }}
+          {{ form.seo_title }}
+          {{ form.meta_description.label_tag }}
+          {{ form.meta_description }}
+          {{ form.focus_keyword.label_tag }}
+          {{ form.focus_keyword }}
+          {{ form.source_name.label_tag }}
+          {{ form.source_name }}
+          {{ form.source_url.label_tag }}
+          {{ form.source_url }}
+          {{ form.canonical_override.label_tag }}
+          {{ form.canonical_override }}
+          <label class="check-row">{{ form.robots_index }} Allow search indexing</label>
+          <label class="check-row">{{ form.robots_follow }} Follow links</label>
+        </details>
+
+        <div class="form-actions">
+          <button class="btn" type="submit">Save Article</button>
+          <a class="btn secondary" href="{% url 'news:article_dashboard' %}">Cancel</a>
+        </div>
+      </aside>
+    </form>
+  </main>
+{% endblock %}

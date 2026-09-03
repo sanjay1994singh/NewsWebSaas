@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Article - {{ tenant.publication_name }}{% endblock %}
+
+{% block styles %}
+  .delete-box { max-width:680px; }
+  .delete-box h1 { margin-top:0; }
+  .actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:18px; }
+  .btn.danger { border-color:var(--danger); background:var(--danger); }
+{% endblock %}
+
+{% block content %}
+  <main class="page">
+    <section class="card delete-box">
+      <p class="muted">Publishing desk</p>
+      <h1>Delete Article</h1>
+      <p>Are you sure you want to delete <strong>{{ article.title }}</strong>?</p>
+      <p class="muted">This action will remove the article from your workspace.</p>
+      <form method="post">
+        {% csrf_token %}
+        <div class="actions">
+          <button class="btn danger" type="submit">Delete Article</button>
+          <a class="btn secondary" href="{% url 'news:article_dashboard' %}">Cancel</a>
+        </div>
+      </form>
+    </section>
+  </main>
+{% endblock %}

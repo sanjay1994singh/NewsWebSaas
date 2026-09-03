@@ -65,7 +65,10 @@ class TenantScopedFormMixin:
         cleaned_data = super().clean()
         for field_name in self.tenant_scoped_fields:
             value = cleaned_data.get(field_name)
-            if value is not None and self.tenant is not None and value.tenant_id != self.tenant.id:
+            if value is None or self.tenant is None:
+                continue
+            values = value if hasattr(value, '__iter__') and not hasattr(value, 'tenant_id') else [value]
+            if any(item.tenant_id != self.tenant.id for item in values):
                 self.add_error(field_name, "Selected object is not available for this tenant.")
         return cleaned_data
 

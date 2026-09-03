@@ -1,10 +1,48 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><title>{{ article.title }}</title></head>
-<body>
-  <main>
-    <h1>{{ article.title }}</h1>
-    <article>{{ article.content|safe }}</article>
+{% extends "base.html" %}
+
+{% block title %}{{ article.title }} - {{ article.tenant.publication_name }}{% endblock %}
+
+{% block styles %}
+  .article-view { display:grid; gap:18px; }
+  .article-head { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; }
+  .article-head h1 { margin:0; font-size:36px; }
+  .article-actions { display:flex; flex-wrap:wrap; gap:10px; }
+  .article-meta { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+  .pill { display:inline-flex; border:1px solid var(--line); border-radius:999px; padding:5px 10px; font-size:12px; font-weight:800; background:#fff; }
+  .story-body { font-size:17px; }
+  .story-body img { max-width:100%; height:auto; border-radius:8px; }
+  @media (max-width:760px) { .article-head { display:grid; } }
+{% endblock %}
+
+{% block content %}
+  <main class="page article-view">
+    <section class="card article-head">
+      <div>
+        <p class="muted">{{ article.category.name }}{% if article.city %} / {{ article.city }}{% endif %}</p>
+        <h1>{{ article.title }}</h1>
+        <div class="article-meta">
+          <span class="pill">{{ article.get_status_display }}</span>
+          <span class="pill">{{ article.author.display_name }}</span>
+          <span class="pill">Updated {{ article.updated_at|date:"d M Y" }}</span>
+        </div>
+      </div>
+      <div class="article-actions">
+        <a class="btn secondary" href="{% url 'news:article_dashboard' %}">Articles</a>
+        <a class="btn" href="{% url 'news:article_update' article.uuid %}">Edit</a>
+        <a class="btn secondary" href="{% url 'news:article_delete' article.uuid %}">Delete</a>
+      </div>
+    </section>
+
+    {% if article.featured_image %}
+      <section class="card">
+        <img src="{{ article.featured_image.url }}" alt="{{ article.image_alt|default:article.title }}" style="width:100%; max-height:420px; object-fit:cover; border-radius:8px;">
+        {% if article.image_caption %}<p class="muted">{{ article.image_caption }}</p>{% endif %}
+      </section>
+    {% endif %}
+
+    <section class="card story-body">
+      {% if article.short_description %}<p><strong>{{ article.short_description }}</strong></p>{% endif %}
+      {{ article.content|safe }}
+    </section>
   </main>
-</body>
-</html>
+{% endblock %}

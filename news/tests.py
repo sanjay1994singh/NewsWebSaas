@@ -102,6 +102,56 @@ class TenantNewsCMSTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'News Publishing')
         self.assertContains(response, 'Shared headline')
+        self.assertContains(response, 'Add News')
+        self.assertContains(response, 'Edit')
+        self.assertContains(response, 'Delete')
+
+    def test_owner_can_create_update_and_delete_article_from_cms(self):
+        self.client.force_login(self.user_a)
+
+        create_response = self.client.post(
+            reverse('news:article_create'),
+            {
+                'category': self.category_a.pk,
+                'author': self.author_a.pk,
+                'title': 'Fresh city update',
+                'slug': '',
+                'content': '<p>Fresh body</p>',
+                'status': NewsArticle.Status.DRAFT,
+                'allow_comments': 'on',
+                'robots_index': 'on',
+                'robots_follow': 'on',
+            },
+        )
+
+        self.assertRedirects(create_response, reverse('news:article_dashboard'))
+        article = NewsArticle.objects.get(tenant=self.tenant_a, slug='fresh-city-update')
+        self.assertEqual(article.title, 'Fresh city update')
+
+        update_response = self.client.post(
+            reverse('news:article_update', args=[article.uuid]),
+            {
+                'category': self.category_a.pk,
+                'author': self.author_a.pk,
+                'title': 'Fresh city update published',
+                'slug': article.slug,
+                'content': '<p>Fresh body updated</p>',
+                'status': NewsArticle.Status.PUBLISHED,
+                'allow_comments': 'on',
+                'robots_index': 'on',
+                'robots_follow': 'on',
+            },
+        )
+
+        self.assertRedirects(update_response, reverse('news:article_dashboard'))
+        article.refresh_from_db()
+        self.assertEqual(article.title, 'Fresh city update published')
+        self.assertEqual(article.status, NewsArticle.Status.PUBLISHED)
+        self.assertIsNotNone(article.published_at)
+
+        delete_response = self.client.post(reverse('news:article_delete', args=[article.uuid]))
+        self.assertRedirects(delete_response, reverse('news:article_dashboard'))
+        self.assertFalse(NewsArticle.objects.filter(pk=article.pk).exists())
 
     def test_article_rejects_cross_tenant_category_and_author(self):
         article = NewsArticle(

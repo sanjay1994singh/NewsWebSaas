@@ -1,4 +1,5 @@
 from django import forms
+from django.utils.text import slugify
 
 from core.models import TenantScopedFormMixin
 
@@ -19,6 +20,24 @@ class NewsArticleForm(TenantScopedFormMixin, forms.ModelForm):
             'allow_comments', 'seo_title', 'meta_description', 'focus_keyword',
             'canonical_override', 'robots_index', 'robots_follow',
         ]
+        widgets = {
+            'short_description': forms.Textarea(attrs={'rows': 3}),
+            'content': forms.Textarea(attrs={'rows': 12}),
+            'meta_description': forms.Textarea(attrs={'rows': 3}),
+            'published_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'scheduled_at': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
+            'reporters': forms.CheckboxSelectMultiple,
+            'tags': forms.CheckboxSelectMultiple,
+        }
+
+    def clean_slug(self):
+        slug = self.cleaned_data.get('slug')
+        title = self.cleaned_data.get('title')
+        return slugify(slug or title or '')[:280]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['slug'].required = False
 
 
 class BreakingNewsForm(TenantScopedFormMixin, forms.ModelForm):

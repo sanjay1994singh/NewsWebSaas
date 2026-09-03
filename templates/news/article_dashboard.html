@@ -14,6 +14,7 @@
   .article-table th, .article-table td { padding:12px; border-bottom:1px solid var(--line); text-align:left; }
   .article-table th { background:#eef6f2; color:var(--deep); font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
   .article-table tr:last-child td { border-bottom:0; }
+  .status-pill { display:inline-flex; border:1px solid var(--line); border-radius:999px; padding:4px 10px; font-size:12px; font-weight:800; color:var(--deep); background:#f8fbfa; }
   .empty-state { min-height:220px; display:grid; place-items:center; text-align:center; }
   .empty-state h2 { margin:0 0 8px; }
   @media (max-width:760px) { .cms-hero { display:grid; } .stats { grid-template-columns:repeat(2,minmax(0,1fr)); } .article-table { display:block; overflow-x:auto; } }
@@ -28,7 +29,7 @@
         <p class="muted">Manage articles for {{ tenant.publication_name }} from one workspace.</p>
       </div>
       <div class="cms-actions">
-        <a class="btn secondary" href="{% url 'tenants:tenant_dashboard' %}">Dashboard</a>
+        <a class="btn" href="{% url 'news:article_create' %}">Add News</a>
         <a class="btn" href="{% url 'tenants:tenant_dashboard' %}">Dashboard</a>
       </div>
     </section>
@@ -49,17 +50,26 @@
               <th>Category</th>
               <th>Status</th>
               <th>Updated</th>
-              <th>Open</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {% for article in articles %}
               <tr>
-                <td><strong>{{ article.title }}</strong></td>
+                <td>
+                  <strong>{{ article.title }}</strong>
+                  <div class="muted">{{ article.slug }}</div>
+                </td>
                 <td>{{ article.category.name }}</td>
-                <td>{{ article.get_status_display }}</td>
+                <td><span class="status-pill">{{ article.get_status_display }}</span></td>
                 <td>{{ article.updated_at|date:"d M Y" }}</td>
-                <td><a class="btn secondary" href="{% url 'news:article_detail' article.uuid %}">View</a></td>
+                <td>
+                  <div class="cms-actions">
+                    <a class="btn secondary" href="{% url 'news:article_detail' article.uuid %}">View</a>
+                    <a class="btn secondary" href="{% url 'news:article_update' article.uuid %}">Edit</a>
+                    <a class="btn secondary" href="{% url 'news:article_delete' article.uuid %}">Delete</a>
+                  </div>
+                </td>
               </tr>
             {% endfor %}
           </tbody>
@@ -69,9 +79,10 @@
       <section class="card empty-state">
         <div>
           <h2>No articles yet</h2>
-          <p class="muted">The article editor is not enabled yet. Your dashboard is ready, and this page will hold all article tools as they are added.</p>
+          <p class="muted">Start with your first article. You can save it as draft, send it for review, or publish it directly.</p>
           <div class="cms-actions" style="justify-content:center">
-            <a class="btn" href="{% url 'tenants:tenant_dashboard' %}">Back to Dashboard</a>
+            <a class="btn" href="{% url 'news:article_create' %}">Add News</a>
+            <a class="btn secondary" href="{% url 'tenants:tenant_dashboard' %}">Back to Dashboard</a>
           </div>
         </div>
       </section>
