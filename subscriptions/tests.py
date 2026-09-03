@@ -17,6 +17,7 @@ from .models import (
     Plan,
     PlanFeature,
     PlanPrice,
+    TenantOnboarding,
     TenantAddOn,
     TenantFeatureOverride,
     TenantSubscription,
@@ -133,6 +134,31 @@ class SubscriptionTests(TestCase):
 
         acquisition.refresh_from_db()
         self.assertEqual(acquisition.status, CustomerAcquisition.Status.FAILED)
+
+    def test_checkout_redirects_when_workspace_is_already_active(self):
+        TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            status=TenantSubscription.Status.ACTIVE,
+        )
+        TenantOnboarding.objects.create(tenant=self.tenant, status=TenantOnboarding.Status.PUBLISHED)
+        acquisition = CustomerAcquisition.objects.create(
+            user=self.user,
+            plan_price=self.price,
+            business_name='Second Media',
+            publication_name='Second News',
+            publication_slug='second-news',
+            email='second@example.com',
+            mobile='9999999999',
+            status=CustomerAcquisition.Status.PAYMENT_PENDING,
+            provider_order_id='order_stale',
+        )
+
+        self.client.login(username='owner', password='testpass123')
+        response = self.client.get(reverse('subscriptions:checkout', kwargs={'acquisition_id': acquisition.uuid}))
+
+        self.assertRedirects(response, reverse('home'), fetch_redirect_response=False)
 
 
 class DynamicEntitlementTests(TestCase):

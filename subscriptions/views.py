@@ -320,7 +320,27 @@ def signup(request):
 
 @login_required
 def checkout(request, acquisition_id):
-    acquisition = get_object_or_404(CustomerAcquisition.objects.select_related('plan_price__plan'), uuid=acquisition_id, user=request.user)
+    acquisition = get_object_or_404(
+        CustomerAcquisition.objects.select_related('plan_price__plan', 'tenant'),
+        uuid=acquisition_id,
+        user=request.user,
+    )
+    tenant, subscription, onboarding_record = _customer_tenant_context(request.user)
+    if acquisition.tenant_id or acquisition.status == CustomerAcquisition.Status.TENANT_CREATED:
+        messages.info(request, 'This payment is already verified. Continue from your workspace.')
+        return redirect('home')
+    if tenant and subscription and subscription.status in {
+        TenantSubscription.Status.TRIAL,
+        TenantSubscription.Status.ACTIVE,
+        TenantSubscription.Status.GRACE_PERIOD,
+    }:
+        if onboarding_record and onboarding_record.status == TenantOnboarding.Status.PUBLISHED:
+            _activate_published_tenant(tenant)
+        messages.info(request, 'Your workspace is already active. Continue from your account.')
+        return redirect('home')
+    if acquisition.status != CustomerAcquisition.Status.PAYMENT_PENDING:
+        messages.info(request, 'This payment request is no longer active. Choose a plan to continue.')
+        return redirect('subscriptions:account_status')
     checkout_data = request.session.get('pending_checkout', {})
     try:
         checkout_is_stale = (
