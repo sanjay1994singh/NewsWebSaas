@@ -3,6 +3,114 @@
 from django.db import migrations, models
 
 
+def _table_columns(connection, table_name):
+    with connection.cursor() as cursor:
+        return {
+            column.name
+            for column in connection.introspection.get_table_description(cursor, table_name)
+        }
+
+
+def _constraints(connection, table_name):
+    with connection.cursor() as cursor:
+        return connection.introspection.get_constraints(cursor, table_name)
+
+
+def _drop_column_if_exists(schema_editor, table_name, column_name):
+    if column_name not in _table_columns(schema_editor.connection, table_name):
+        return
+    schema_editor.execute(
+        f"ALTER TABLE {schema_editor.quote_name(table_name)} "
+        f"DROP COLUMN {schema_editor.quote_name(column_name)}"
+    )
+
+
+def _drop_index_if_exists(schema_editor, table_name, index_name):
+    constraints = _constraints(schema_editor.connection, table_name)
+    if index_name not in constraints:
+        return
+    if schema_editor.connection.vendor == 'mysql':
+        schema_editor.execute(
+            f"DROP INDEX {schema_editor.quote_name(index_name)} "
+            f"ON {schema_editor.quote_name(table_name)}"
+        )
+        return
+    schema_editor.execute(f"DROP INDEX {schema_editor.quote_name(index_name)}")
+
+
+def _rename_column_if_needed(schema_editor, table_name, old_name, new_name):
+    columns = _table_columns(schema_editor.connection, table_name)
+    if new_name in columns:
+        return
+    if old_name not in columns:
+        return
+    schema_editor.execute(
+        f"ALTER TABLE {schema_editor.quote_name(table_name)} "
+        f"RENAME COLUMN {schema_editor.quote_name(old_name)} TO {schema_editor.quote_name(new_name)}"
+    )
+
+
+def _create_index_if_missing(schema_editor, table_name, index_name, column_name):
+    constraints = _constraints(schema_editor.connection, table_name)
+    if index_name in constraints:
+        return
+    if column_name not in _table_columns(schema_editor.connection, table_name):
+        return
+    schema_editor.execute(
+        f"CREATE INDEX {schema_editor.quote_name(index_name)} "
+        f"ON {schema_editor.quote_name(table_name)} ({schema_editor.quote_name(column_name)})"
+    )
+
+
+def clean_recurring_billing_schema(apps, schema_editor):
+    connection = schema_editor.connection
+    existing_tables = connection.introspection.table_names()
+
+    if 'subscriptions_addon' in existing_tables:
+        _drop_column_if_exists(schema_editor, 'subscriptions_addon', 'razorpay_monthly_plan_id')
+        _drop_column_if_exists(schema_editor, 'subscriptions_addon', 'razorpay_yearly_plan_id')
+
+    if 'subscriptions_tenantaddon' in existing_tables:
+        _rename_column_if_needed(
+            schema_editor,
+            'subscriptions_tenantaddon',
+            'provider_subscription_id',
+            'provider_payment_reference',
+        )
+
+    if 'subscriptions_tenantsubscription' in existing_tables:
+        _rename_column_if_needed(
+            schema_editor,
+            'subscriptions_tenantsubscription',
+            'razorpay_subscription_id',
+            'razorpay_payment_reference',
+        )
+
+    if 'subscriptions_customeracquisition' in existing_tables:
+        _drop_index_if_exists(
+            schema_editor,
+            'subscriptions_customeracquisition',
+            'subscriptio_provide_d407ba_idx',
+        )
+        _rename_column_if_needed(
+            schema_editor,
+            'subscriptions_customeracquisition',
+            'provider_subscription_id',
+            'provider_order_id',
+        )
+        _create_index_if_missing(
+            schema_editor,
+            'subscriptions_customeracquisition',
+            'subscriptio_provide_e6ee97_idx',
+            'provider_order_id',
+        )
+
+    if 'subscriptions_razorpayplanmapping' in existing_tables:
+        schema_editor.execute(
+            f"DROP TABLE {schema_editor.quote_name('subscriptions_razorpayplanmapping')}"
+        )
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -10,43 +118,50 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        migrations.RemoveField(
-            model_name='addon',
-            name='razorpay_monthly_plan_id',
-        ),
-        migrations.RemoveField(
-            model_name='addon',
-            name='razorpay_yearly_plan_id',
-        ),
-        migrations.RenameField(
-            model_name='tenantaddon',
-            old_name='provider_subscription_id',
-            new_name='provider_payment_reference',
-        ),
-        migrations.RenameField(
-            model_name='tenantsubscription',
-            old_name='razorpay_subscription_id',
-            new_name='razorpay_payment_reference',
-        ),
-        migrations.RenameField(
-            model_name='customeracquisition',
-            old_name='provider_subscription_id',
-            new_name='provider_order_id',
-        ),
-        migrations.RemoveIndex(
-            model_name='customeracquisition',
-            name='subscriptio_provide_d407ba_idx',
-        ),
-        migrations.AddIndex(
-            model_name='customeracquisition',
-            index=models.Index(fields=['provider_order_id'], name='subscriptio_provide_e6ee97_idx'),
-        ),
-        migrations.AlterField(
-            model_name='webhookevent',
-            name='environment',
-            field=models.CharField(choices=[('test', 'Test'), ('live', 'Live')], max_length=10),
-        ),
-        migrations.DeleteModel(
-            name='RazorpayPlanMapping',
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunPython(clean_recurring_billing_schema, migrations.RunPython.noop),
+            ],
+            state_operations=[
+                migrations.RemoveField(
+                    model_name='addon',
+                    name='razorpay_monthly_plan_id',
+                ),
+                migrations.RemoveField(
+                    model_name='addon',
+                    name='razorpay_yearly_plan_id',
+                ),
+                migrations.RenameField(
+                    model_name='tenantaddon',
+                    old_name='provider_subscription_id',
+                    new_name='provider_payment_reference',
+                ),
+                migrations.RenameField(
+                    model_name='tenantsubscription',
+                    old_name='razorpay_subscription_id',
+                    new_name='razorpay_payment_reference',
+                ),
+                migrations.RemoveIndex(
+                    model_name='customeracquisition',
+                    name='subscriptio_provide_d407ba_idx',
+                ),
+                migrations.RenameField(
+                    model_name='customeracquisition',
+                    old_name='provider_subscription_id',
+                    new_name='provider_order_id',
+                ),
+                migrations.AddIndex(
+                    model_name='customeracquisition',
+                    index=models.Index(fields=['provider_order_id'], name='subscriptio_provide_e6ee97_idx'),
+                ),
+                migrations.AlterField(
+                    model_name='webhookevent',
+                    name='environment',
+                    field=models.CharField(choices=[('test', 'Test'), ('live', 'Live')], max_length=10),
+                ),
+                migrations.DeleteModel(
+                    name='RazorpayPlanMapping',
+                ),
+            ],
         ),
     ]
