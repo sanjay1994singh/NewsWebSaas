@@ -62,6 +62,9 @@ def _send_fast2sms_simple_template(*, to, template_name, values, api_key, phone_
 
 
 def send_template_message(*, to, template_name, values):
+    if not settings.WHATSAPP_NOTIFICATIONS_ENABLED:
+        logger.info('WhatsApp template skipped because notifications are disabled.')
+        return False
     phone_number_id = settings.WHATSAPP_PHONE_NUMBER_ID
     recipient = normalize_whatsapp_number(to)
     provider = settings.WHATSAPP_PROVIDER.lower()
@@ -121,6 +124,9 @@ def send_template_message(*, to, template_name, values):
 
 
 def send_session_document(*, to, document_url, filename='invoice.pdf'):
+    if not settings.WHATSAPP_NOTIFICATIONS_ENABLED:
+        logger.info('WhatsApp document skipped because notifications are disabled.')
+        return False
     phone_number_id = settings.WHATSAPP_PHONE_NUMBER_ID
     api_key = settings.WHATSAPP_FAST2SMS_API_KEY
     recipient = normalize_whatsapp_number(to)
