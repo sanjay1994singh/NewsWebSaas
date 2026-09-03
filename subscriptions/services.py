@@ -32,6 +32,21 @@ from .models import (
 from .whatsapp import notify_payment_failed
 
 
+def _add_months(value, months):
+    month = value.month - 1 + months
+    year = value.year + month // 12
+    month = month % 12 + 1
+    days_in_month = [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+    day = min(value.day, days_in_month[month - 1])
+    return value.replace(year=year, month=month, day=day)
+
+
+def subscription_period_for_cycle(start_at, billing_cycle):
+    months = 12 if billing_cycle == PlanPrice.BillingCycle.YEARLY else 1
+    end_at = _add_months(start_at, months)
+    return start_at, end_at, end_at
+
+
 def verify_razorpay_signature(*, body, signature, secret):
     expected = hmac.new(secret.encode('utf-8'), body, sha256).hexdigest()
     if not hmac.compare_digest(expected, signature or ''):
@@ -331,6 +346,7 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
             'joined_at': timezone.now(),
         },
     )
+    period_start, period_end, charge_at = subscription_period_for_cycle(timezone.now(), acquisition.plan_price.billing_cycle)
     subscription, _ = TenantSubscription.objects.update_or_create(
         tenant=tenant,
         defaults={
@@ -338,8 +354,10 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
             'billing_cycle': acquisition.plan_price.billing_cycle,
             'razorpay_payment_reference': payment_reference or provider_order_id,
             'status': TenantSubscription.Status.ACTIVE,
-            'start_at': timezone.now(),
-            'current_period_start': timezone.now(),
+            'start_at': period_start,
+            'current_period_start': period_start,
+            'current_period_end': period_end,
+            'charge_at': charge_at,
         },
     )
     BillingRecord.objects.update_or_create(

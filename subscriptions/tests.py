@@ -30,6 +30,7 @@ from .services import (
     auto_publish_paid_onboardings,
     create_tenant_after_verified_subscription,
     process_webhook,
+    subscription_period_for_cycle,
     verify_razorpay_signature,
 )
 
@@ -161,6 +162,21 @@ class SubscriptionTests(TestCase):
         self.assertEqual(billing_record.razorpay_order_id, 'order_checkout_123')
         self.assertEqual(billing_record.razorpay_signature, 'sig_checkout_123')
         self.assertEqual(billing_record.payload['provider_payment_id'], 'pay_checkout_123')
+        subscription = tenant.subscription
+        self.assertIsNotNone(subscription.current_period_end)
+        self.assertIsNotNone(subscription.charge_at)
+        self.assertGreater(subscription.current_period_end, subscription.current_period_start)
+
+    def test_subscription_period_calculation_respects_billing_cycle(self):
+        start = timezone.datetime(2026, 9, 3, 9, 0, tzinfo=timezone.get_current_timezone())
+
+        _, monthly_end, monthly_charge = subscription_period_for_cycle(start, PlanPrice.BillingCycle.MONTHLY)
+        _, yearly_end, yearly_charge = subscription_period_for_cycle(start, PlanPrice.BillingCycle.YEARLY)
+
+        self.assertEqual(monthly_end.date(), timezone.datetime(2026, 10, 3).date())
+        self.assertEqual(monthly_charge, monthly_end)
+        self.assertEqual(yearly_end.date(), timezone.datetime(2027, 9, 3).date())
+        self.assertEqual(yearly_charge, yearly_end)
 
     @override_settings(RAZORPAY_WEBHOOK_SECRET='secret', RAZORPAY_ENVIRONMENT='test')
     def test_failed_payment_webhook_marks_acquisition_failed(self):
@@ -351,6 +367,24 @@ class SubscriptionTests(TestCase):
         call_command('auto_publish_paid_onboardings', minutes=30, stdout=out)
 
         self.assertIn('Auto-published 0 onboarding record(s).', out.value)
+
+    def test_backfill_subscription_periods_command_fills_missing_dates(self):
+        subscription = TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            status=TenantSubscription.Status.ACTIVE,
+            start_at=timezone.datetime(2026, 9, 3, 9, 0, tzinfo=timezone.get_current_timezone()),
+            current_period_start=timezone.datetime(2026, 9, 3, 9, 0, tzinfo=timezone.get_current_timezone()),
+        )
+
+        out = type('Stream', (), {'write': lambda self, value: setattr(self, 'value', value)})()
+        call_command('backfill_subscription_periods', tenant_slug=self.tenant.slug, stdout=out)
+
+        subscription.refresh_from_db()
+        self.assertIn('Backfilled 1 subscription period(s).', out.value)
+        self.assertEqual(subscription.current_period_end.date(), timezone.datetime(2026, 10, 3).date())
+        self.assertEqual(subscription.charge_at, subscription.current_period_end)
 
 
 class DynamicEntitlementTests(TestCase):
