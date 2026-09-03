@@ -490,17 +490,24 @@ def onboarding_review(request, onboarding_id):
 
 @login_required
 def billing_dashboard(request):
-    tenant = _owned_tenant_for_user(request.user)
+    tenant, subscription, onboarding_record = _customer_tenant_context(request.user)
     if tenant is None:
         messages.error(request, 'No tenant workspace is linked with this account yet.')
-        return redirect('subscriptions:landing')
+        return redirect('subscriptions:account_status')
     plans = Plan.objects.filter(is_active=True, is_current_version=True).prefetch_related('prices')
     add_ons = AddOn.objects.filter(is_active=True).select_related('feature').order_by('display_order', 'name')
     entitlements = get_effective_entitlements(tenant)
     return render(
         request,
         'subscriptions/billing_dashboard.html',
-        {'tenant': tenant, 'plans': plans, 'add_ons': add_ons, 'entitlements': entitlements},
+        {
+            'tenant': tenant,
+            'subscription': subscription,
+            'onboarding': onboarding_record,
+            'plans': plans,
+            'add_ons': add_ons,
+            'entitlements': entitlements,
+        },
     )
 
 

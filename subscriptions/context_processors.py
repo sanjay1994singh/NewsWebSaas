@@ -1,4 +1,5 @@
 from django.urls import reverse
+from django.db import DatabaseError, OperationalError, ProgrammingError
 
 from tenants.models import Tenant
 
@@ -31,6 +32,10 @@ def _customer_tenant_context(user):
 
 def customer_navigation(request):
     user = request.user
+    fallback_links = [
+        {'label': 'Pricing', 'url': reverse('public_saas_landing')},
+        {'label': 'Profile', 'url': reverse('accounts:profile') if user.is_authenticated else reverse('accounts:login')},
+    ]
     if not user.is_authenticated:
         return {
             'customer_nav_stage': 'guest',
@@ -42,13 +47,19 @@ def customer_navigation(request):
 
     links = []
     stage = 'account'
-    pending_acquisition = (
-        CustomerAcquisition.objects
-        .filter(user=user, tenant__isnull=True, status=CustomerAcquisition.Status.PAYMENT_PENDING)
-        .order_by('-created_at')
-        .first()
-    )
-    tenant, subscription, onboarding = _customer_tenant_context(user)
+    try:
+        pending_acquisition = (
+            CustomerAcquisition.objects
+            .filter(user=user, tenant__isnull=True, status=CustomerAcquisition.Status.PAYMENT_PENDING)
+            .order_by('-created_at')
+            .first()
+        )
+        tenant, subscription, onboarding = _customer_tenant_context(user)
+    except (DatabaseError, OperationalError, ProgrammingError):
+        return {
+            'customer_nav_stage': 'account',
+            'customer_nav_links': fallback_links,
+        }
 
     if pending_acquisition:
         stage = 'payment_pending'

@@ -1,60 +1,92 @@
-<!doctype html>
+{% extends "base.html" %}
 {% load subscription_extras %}
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Billing</title>
-  <style>
-    body { margin: 0; font-family: Arial, sans-serif; color: #13201b; background: #f7faf8; }
-    main { width: min(1100px, calc(100% - 32px)); margin: 32px auto; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
-    .card { background: #fff; border: 1px solid #d8e1dc; border-radius: 8px; padding: 18px; }
-    .btn { border: 0; border-radius: 6px; background: #16614f; color: #fff; padding: 10px 14px; font-weight: 700; cursor: pointer; }
-    input { width: 100%; padding: 9px; border: 1px solid #bccbc4; border-radius: 6px; margin: 8px 0; }
-  </style>
-</head>
-<body>
-  <main>
-    <h1>Billing</h1>
-    <section class="card">
-      <h2>{{ tenant.publication_name }}</h2>
-      {% if tenant.subscription %}
-        <p>Current Plan: {{ tenant.subscription.plan.name }}</p>
-        <p>Status: {{ tenant.subscription.get_status_display }}</p>
-        <p>Cycle: {{ tenant.subscription.billing_cycle }}</p>
+
+{% block title %}Billing - Press Nexa{% endblock %}
+
+{% block styles %}
+  .billing-shell { display:grid; gap:20px; }
+  .billing-hero { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; }
+  .status-pill { display:inline-flex; align-items:center; min-height:38px; padding:8px 12px; border:1px solid var(--line); border-radius:999px; background:#eef6f2; color:var(--brand); font-weight:800; }
+  .billing-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px; }
+  .billing-card { display:grid; gap:10px; }
+  .detail-row { display:flex; justify-content:space-between; gap:12px; border-top:1px solid var(--line); padding-top:10px; }
+  .feature-card { padding:14px; }
+  .field-note { font-size:13px; color:var(--muted); margin:0; }
+  @media (max-width:760px) { .billing-hero, .detail-row { display:grid; } }
+{% endblock %}
+
+{% block content %}
+  <main class="page billing-shell">
+    <section class="card billing-hero">
+      <div>
+        <p class="muted">Billing center</p>
+        <h1>{{ tenant.publication_name }}</h1>
+        <p class="muted">Manage plan, add-ons, and enabled features for this workspace.</p>
+      </div>
+      <span class="status-pill">{% if subscription %}{{ subscription.get_status_display }}{% else %}No active subscription{% endif %}</span>
+    </section>
+
+    <section class="card billing-card">
+      <h2>Current Plan</h2>
+      {% if subscription %}
+        <div class="detail-row"><span>Plan</span><strong>{{ subscription.plan.name }}</strong></div>
+        <div class="detail-row"><span>Cycle</span><strong>{{ subscription.get_billing_cycle_display }}</strong></div>
+        <div class="detail-row"><span>Payment reference</span><strong>{{ subscription.razorpay_payment_reference|default:"-" }}</strong></div>
+        {% if onboarding %}<div class="detail-row"><span>Setup status</span><strong>{{ onboarding.get_status_display }}</strong></div>{% endif %}
+      {% else %}
+        <p class="muted">No active subscription record is linked yet. Choose a plan or contact support if payment is already complete.</p>
+        <a class="btn" href="{% url 'public_saas_landing' %}">Choose Plan</a>
       {% endif %}
     </section>
-    <h2>Change Plan</h2>
-    <div class="grid">
-      {% for plan in plans %}
-        <form class="card" method="post" action="{% url 'subscriptions:change_plan' %}">
-          {% csrf_token %}
-          <h3>{{ plan.name }}</h3>
-          <input type="hidden" name="plan_id" value="{{ plan.id }}">
-          <input name="provider_reference" placeholder="Verified provider reference">
-          <button class="btn" type="submit">Request Plan Change</button>
-        </form>
-      {% endfor %}
-    </div>
-    <h2>Add-ons</h2>
-    <div class="grid">
-      {% for add_on in add_ons %}
-        <form class="card" method="post" action="{% url 'subscriptions:activate_add_on' add_on.id %}">
-          {% csrf_token %}
-          <h3>{{ add_on.name }}</h3>
-          <p>{{ add_on.currency }} {{ add_on.monthly_price }} monthly / {{ add_on.yearly_price }} yearly</p>
-          <input name="provider_payment_reference" placeholder="Verified add-on payment reference">
-          <button class="btn" type="submit">Activate Add-on</button>
-        </form>
-      {% endfor %}
-    </div>
-    <h2>Effective Features</h2>
-    <div class="grid">
-      {% for code, entitlement in entitlements.items %}
-        <div class="card"><strong>{{ code }}</strong><p>{{ entitlement.source }} / {{ entitlement.is_enabled }}</p></div>
-      {% endfor %}
-    </div>
+
+    <section>
+      <h2>Change Plan</h2>
+      <div class="billing-grid">
+        {% for plan in plans %}
+          <form class="card billing-card" method="post" action="{% url 'subscriptions:change_plan' %}">
+            {% csrf_token %}
+            <h3>{{ plan.name }}</h3>
+            <input type="hidden" name="plan_id" value="{{ plan.id }}">
+            <label for="provider_reference_{{ plan.id }}">Payment reference</label>
+            <input id="provider_reference_{{ plan.id }}" name="provider_reference" placeholder="Optional verified payment reference">
+            <p class="field-note">Leave blank to send a plan-change request for admin verification.</p>
+            <button class="btn" type="submit">Request Plan Change</button>
+          </form>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section>
+      <h2>Add-ons</h2>
+      <div class="billing-grid">
+        {% for add_on in add_ons %}
+          <form class="card billing-card" method="post" action="{% url 'subscriptions:activate_add_on' add_on.id %}">
+            {% csrf_token %}
+            <h3>{{ add_on.name }}</h3>
+            <p class="muted">{{ add_on.currency }} {{ add_on.monthly_price }} monthly / {{ add_on.yearly_price }} yearly</p>
+            <label for="provider_payment_reference_{{ add_on.id }}">Payment reference</label>
+            <input id="provider_payment_reference_{{ add_on.id }}" name="provider_payment_reference" placeholder="Optional verified payment reference">
+            <p class="field-note">Leave blank to keep this add-on pending until admin verifies payment.</p>
+            <button class="btn" type="submit">Request Add-on</button>
+          </form>
+        {% empty %}
+          <div class="card"><p class="muted">No add-ons are available right now.</p></div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section>
+      <h2>Effective Features</h2>
+      <div class="billing-grid">
+        {% for code, entitlement in entitlements.items %}
+          <div class="card feature-card">
+            <strong>{{ code }}</strong>
+            <p class="muted">{{ entitlement.source }} / {% if entitlement.is_enabled %}Enabled{% else %}Disabled{% endif %}</p>
+          </div>
+        {% empty %}
+          <div class="card"><p class="muted">Features will appear after a plan is active.</p></div>
+        {% endfor %}
+      </div>
+    </section>
   </main>
-</body>
-</html>
+{% endblock %}
