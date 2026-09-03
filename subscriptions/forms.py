@@ -18,7 +18,7 @@ class PlanSelectionForm(forms.Form):
 
 
 class CustomerSignupForm(forms.Form):
-    business_name = forms.CharField(max_length=255)
+    business_name = forms.CharField(max_length=255, label='Channel name / Paper name')
     publication_name = forms.CharField(max_length=255)
     email = forms.EmailField()
     mobile = forms.CharField(max_length=32)
@@ -27,7 +27,7 @@ class CustomerSignupForm(forms.Form):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         placeholders = {
-            'business_name': 'Registered business or publisher name',
+            'business_name': 'Channel or newspaper name',
             'publication_name': 'News publication name',
             'email': 'owner@example.com',
             'mobile': 'WhatsApp mobile number',
@@ -64,7 +64,7 @@ class CustomerSignupForm(forms.Form):
 
 
 class CustomerWorkspaceForm(forms.Form):
-    business_name = forms.CharField(max_length=255)
+    business_name = forms.CharField(max_length=255, label='Channel name / Paper name')
     publication_name = forms.CharField(max_length=255)
     email = forms.EmailField(required=False)
     mobile = forms.CharField(max_length=32)
@@ -77,7 +77,7 @@ class CustomerWorkspaceForm(forms.Form):
         if user and user.email:
             self.fields['email'].initial = user.email
         placeholders = {
-            'business_name': 'Registered business or publisher name',
+            'business_name': 'Channel or newspaper name',
             'publication_name': 'News publication name',
             'email': 'owner@example.com',
             'mobile': 'WhatsApp mobile number',

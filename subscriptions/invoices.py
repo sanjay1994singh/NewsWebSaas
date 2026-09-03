@@ -102,7 +102,7 @@ def _invoice_pdf(data):
         _text(331, 620, 9, 'PAYMENT DETAILS', bold=True),
         '0 0 0 rg',
         _text(60, 596, 13, _short(data['publication'], 34), bold=True),
-        _compact_label_value(60, 575, 'Business', _short(data['business_name'], 34)),
+        _compact_label_value(60, 575, 'Channel / Paper', _short(data['business_name'], 34)),
         _compact_label_value(60, 557, 'Email', _short(data['email'], 38)),
         _compact_label_value(60, 539, 'Mobile', _short(data['mobile'], 24)),
         _label_value(331, 596, 'Payment reference', _short(data['payment_reference'], 32)),

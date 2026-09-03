@@ -30,7 +30,7 @@ POLICIES = {
 <h2>Information We Collect</h2>
 <ul>
   <li>Account details such as name, username, email address, mobile number, and login information.</li>
-  <li>Tenant and publication details such as business name, publication name, logo, branding, domain, content settings, onboarding details, and reviewer comments.</li>
+  <li>Tenant and publication details such as channel name, paper name, publication name, logo, branding, domain, content settings, onboarding details, and reviewer comments.</li>
   <li>Billing records such as selected plan, amount, currency, payment status, Razorpay order ID, payment ID, and transaction references.</li>
   <li>Usage and security data such as IP address, browser details, request logs, feature access, and support interactions.</li>
 </ul>
