@@ -12,7 +12,7 @@ POLICIES = {
 <ul>
   <li><strong>Registered office:</strong> 101 Govind Kund Tila, Radha Niwas, Vrindaban, Mathura, Mathura - 281121, Uttar Pradesh, India</li>
   <li><strong>Support email:</strong> srbc500@gmail.com</li>
-  <li><strong>WhatsApp support:</strong> <a href="https://wa.me/918279408396" target="_blank" rel="noopener">8279408396</a></li>
+  <li><strong>WhatsApp support:</strong> 8279408396 <a class="chat-btn" href="https://wa.me/918279408396" target="_blank" rel="noopener">Chat</a></li>
   <li><strong>Business hours:</strong> Monday to Saturday, 10:00 AM to 6:00 PM IST</li>
   <li><strong>Website:</strong> https://pressnexa.live-app.in/</li>
 </ul>
@@ -47,7 +47,7 @@ POLICIES = {
 <h2>Security and Retention</h2>
 <p>We use reasonable technical and administrative safeguards to protect data. Records are retained as long as required for service delivery, legal compliance, accounting, dispute resolution, and security.</p>
 <h2>Customer Requests</h2>
-<p>For privacy requests, corrections, or account questions, contact srbc500@gmail.com or WhatsApp <a href="https://wa.me/918279408396" target="_blank" rel="noopener">8279408396</a>.</p>
+<p>For privacy requests, corrections, or account questions, contact srbc500@gmail.com or WhatsApp 8279408396 <a class="chat-btn" href="https://wa.me/918279408396" target="_blank" rel="noopener">Chat</a>.</p>
 """,
     },
     PlatformPolicy.PolicyType.TERMS: {
@@ -87,7 +87,7 @@ POLICIES = {
 <h2>Cancellation</h2>
 <p>Customers can request cancellation by contacting support. Cancellation stops future service access according to the current billing period and plan rules. Data retention and export support may be handled according to platform policy and technical feasibility.</p>
 <h2>Refund Process</h2>
-<p>To request a refund, email srbc500@gmail.com or WhatsApp <a href="https://wa.me/918279408396" target="_blank" rel="noopener">8279408396</a> with your account email, payment ID, order ID, amount, and reason. Approved refunds are processed through Razorpay or the original payment method. Bank and payment gateway timelines may vary.</p>
+<p>To request a refund, email srbc500@gmail.com or WhatsApp 8279408396 <a class="chat-btn" href="https://wa.me/918279408396" target="_blank" rel="noopener">Chat</a> with your account email, payment ID, order ID, amount, and reason. Approved refunds are processed through Razorpay or the original payment method. Bank and payment gateway timelines may vary.</p>
 """,
     },
     PlatformPolicy.PolicyType.BILLING: {
@@ -111,7 +111,7 @@ POLICIES = {
         'title': 'Support and Grievance Information',
         'content': """
 <h2>Support Contact</h2>
-<p>For account, billing, payment, onboarding, tenant setup, or platform issues, contact Press Nexa support at srbc500@gmail.com or WhatsApp <a href="https://wa.me/918279408396" target="_blank" rel="noopener">8279408396</a>.</p>
+<p>For account, billing, payment, onboarding, tenant setup, or platform issues, contact Press Nexa support at srbc500@gmail.com or WhatsApp 8279408396 <a class="chat-btn" href="https://wa.me/918279408396" target="_blank" rel="noopener">Chat</a>.</p>
 <h2>Grievance Details</h2>
 <p>Press Nexa is operated by SHRI INFOWAVE PRIVATE LIMITED, CIN U62012UW2026PTC257361, with registered office at 101 Govind Kund Tila, Radha Niwas, Vrindaban, Mathura, Mathura - 281121, Uttar Pradesh, India.</p>
 <h2>Required Information</h2>

@@ -18,6 +18,7 @@
 .legal-card h2 { margin:0 0 10px; font-size:22px; }
 .legal-card p { color:var(--muted); margin:0; }
 .address-band { margin-top:28px; background:#edf7f2; border:1px solid var(--line); border-radius:8px; padding:24px; }
+.chat-btn { display:inline-flex; align-items:center; justify-content:center; min-height:36px; padding:8px 14px; margin-left:8px; border-radius:6px; background:var(--brand); color:#fff; text-decoration:none; font-weight:900; }
 @media (max-width:860px) { .legal-hero, .legal-grid { grid-template-columns:1fr; } .identity-row { display:block; } .identity-row strong { display:block; text-align:left; margin-top:4px; } }
 {% endblock %}
 
@@ -55,7 +56,7 @@
   <section class="address-band">
     <div class="eyebrow">Registered Office</div>
     <h2>{{ company.registered_office }}</h2>
-    <p class="muted">Support: {{ company.support_email }} | WhatsApp: <a href="{{ company.whatsapp_url }}" target="_blank" rel="noopener">{{ company.whatsapp_number }}</a> | {{ company.business_hours }}</p>
+    <p class="muted">Support: {{ company.support_email }} | WhatsApp: {{ company.whatsapp_number }} <a class="chat-btn" href="{{ company.whatsapp_url }}" target="_blank" rel="noopener">Chat</a> | {{ company.business_hours }}</p>
   </section>
 </main>
 {% endblock %}

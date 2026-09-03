@@ -17,6 +17,7 @@
 .policy-body p, .policy-body li { color:#31423a; }
 .policy-body ul { padding-left:20px; }
 .policy-body a { color:var(--brand); font-weight:800; }
+.chat-btn { display:inline-flex; align-items:center; justify-content:center; min-height:34px; padding:7px 13px; margin-left:6px; border-radius:6px; background:var(--brand); color:#fff !important; text-decoration:none; font-weight:900; }
 @media (max-width:820px) { .policy-hero { grid-template-columns:1fr; } .policy-body { padding:22px; } }
 {% endblock %}
 
@@ -34,7 +35,7 @@
       <p>PAN: {{ company.pan }}</p>
       <p>{{ company.registered_office }}</p>
       <p>Support: {{ company.support_email }}</p>
-      <p>WhatsApp: <a href="{{ company.whatsapp_url }}" target="_blank" rel="noopener">{{ company.whatsapp_number }}</a></p>
+      <p>WhatsApp: {{ company.whatsapp_number }} <a class="chat-btn" href="{{ company.whatsapp_url }}" target="_blank" rel="noopener">Chat</a></p>
     </aside>
   </section>
   <article class="policy-body">
