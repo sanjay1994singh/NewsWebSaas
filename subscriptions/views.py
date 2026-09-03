@@ -41,6 +41,7 @@ from .services import (
     update_pending_customer_acquisition,
     verify_razorpay_checkout_signature,
 )
+from .whatsapp import notify_account_created, notify_payment_failed, notify_payment_success
 
 COMPANY_PROFILE = {
     'brand_name': 'Press Nexa',
@@ -291,9 +292,7 @@ def signup(request):
     if request.method == 'POST':
         form = CustomerSignupForm(request.POST)
         if form.is_valid():
-            acquisition, checkout = reserve_customer_acquisition(
-                username=form.cleaned_data['username'],
-                password=form.cleaned_data['password'],
+            acquisition, checkout, credentials = reserve_customer_acquisition(
                 business_name=form.cleaned_data['business_name'],
                 publication_name=form.cleaned_data['publication_name'],
                 publication_slug=form.cleaned_data['publication_slug'],
@@ -303,6 +302,12 @@ def signup(request):
             )
             login(request, acquisition.user)
             request.session['pending_checkout'] = checkout
+            notify_account_created(
+                acquisition=acquisition,
+                temporary_password=credentials['temporary_password'],
+                profile_url=request.build_absolute_uri('/account/profile/'),
+                checkout_url=request.build_absolute_uri(f'/billing/saas/checkout/{acquisition.uuid}/'),
+            )
             messages.success(request, 'Account reserved. Complete the verified subscription step to create your tenant workspace.')
             return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
     else:
@@ -354,8 +359,28 @@ def verify_subscription(request, acquisition_id):
         acquisition=acquisition,
         provider_subscription_id=order_id,
     )
+    notify_payment_success(
+        acquisition=acquisition,
+        tenant=tenant,
+        payment_reference=payment_id,
+        onboarding_url=request.build_absolute_uri('/billing/onboarding/'),
+        profile_url=request.build_absolute_uri('/account/profile/'),
+    )
     messages.success(request, 'Subscription verified. Your tenant workspace is ready for onboarding.')
     return redirect('subscriptions:onboarding')
+
+
+@login_required
+@require_POST
+def payment_failed(request, acquisition_id):
+    acquisition = get_object_or_404(CustomerAcquisition.objects.select_related('plan_price__plan', 'user'), uuid=acquisition_id, user=request.user)
+    payment_reference = request.POST.get('razorpay_payment_id', '').strip() or request.POST.get('razorpay_order_id', '').strip() or acquisition.provider_subscription_id
+    notify_payment_failed(
+        acquisition=acquisition,
+        payment_reference=payment_reference,
+        checkout_url=request.build_absolute_uri(f'/billing/saas/checkout/{acquisition.uuid}/'),
+    )
+    return JsonResponse({'ok': True})
 
 
 def _owned_tenant_for_user(user):

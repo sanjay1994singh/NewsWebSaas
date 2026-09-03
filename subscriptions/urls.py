@@ -9,6 +9,7 @@ urlpatterns = [
     path('saas/signup/', views.signup, name='signup'),
     path('saas/checkout/<uuid:acquisition_id>/', views.checkout, name='checkout'),
     path('saas/checkout/<uuid:acquisition_id>/verify/', views.verify_subscription, name='verify_subscription'),
+    path('saas/checkout/<uuid:acquisition_id>/failed/', views.payment_failed, name='payment_failed'),
     path('onboarding/', views.onboarding, name='onboarding'),
     path('onboarding/review-status/', views.review_status, name='review_status'),
     path('onboarding/ready-to-publish/', views.ready_to_publish, name='ready_to_publish'),

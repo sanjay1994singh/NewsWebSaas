@@ -1,5 +1,8 @@
 import hmac
 import json
+import re
+import secrets
+import string
 from datetime import datetime
 from hashlib import sha256
 
@@ -9,6 +12,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
+from django.utils.text import slugify
 
 from tenants.models import Tenant, TenantMembership
 
@@ -24,6 +28,7 @@ from .models import (
     TenantSubscription,
     WebhookEvent,
 )
+from .whatsapp import notify_payment_failed
 
 
 def verify_razorpay_signature(*, body, signature, secret):
@@ -237,6 +242,12 @@ def _acquisition_for_order_webhook(payload, order_id):
     return None
 
 
+def _payment_reference_from_webhook(payload):
+    payment = _razorpay_entity(payload, 'payment')
+    order = _razorpay_entity(payload, 'order')
+    return payment.get('id') or payment.get('order_id') or order.get('id') or ''
+
+
 def _status_for_webhook(event_type, provider_status):
     event_status_map = {
         'subscription.authenticated': TenantSubscription.Status.ACTIVE,
@@ -273,8 +284,11 @@ def _sync_subscription_from_webhook(*, payload, event_type):
             )
             return True
         if event_type == 'payment.failed':
-            order_acquisition.status = CustomerAcquisition.Status.FAILED
-            order_acquisition.save(update_fields=['status', 'updated_at'])
+            notify_payment_failed(
+                acquisition=order_acquisition,
+                payment_reference=_payment_reference_from_webhook(payload) or order_id,
+                checkout_url=f"{settings.SITE_BASE_URL}/billing/saas/checkout/{order_acquisition.uuid}/",
+            )
             return True
 
     subscription_id = _subscription_id_from_webhook(payload)
@@ -352,10 +366,37 @@ def create_subscription_checkout(*, tenant, price_id, quantity=1):
         'environment': settings.RAZORPAY_ENVIRONMENT,
     }
 
+def _mobile_suffix(mobile):
+    digits = re.sub(r'\D+', '', mobile or '')
+    return digits[-4:] if digits else ''
+
+
+def generate_customer_username(*, publication_name, mobile):
+    User = get_user_model()
+    base = slugify(publication_name).replace('-', '_')[:120] or 'pressnexa_user'
+    suffix = _mobile_suffix(mobile)
+    candidate = f'{base}_{suffix}' if suffix else base
+    candidate = candidate[:150]
+    if not User.objects.filter(username=candidate).exists():
+        return candidate
+    for index in range(2, 1000):
+        reserve = f'_{index}'
+        unique_candidate = f'{candidate[:150 - len(reserve)]}{reserve}'
+        if not User.objects.filter(username=unique_candidate).exists():
+            return unique_candidate
+    return f'user_{secrets.token_hex(8)}'
+
+
+def generate_temporary_password(length=12):
+    alphabet = string.ascii_letters + string.digits
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
 
 @transaction.atomic
-def reserve_customer_acquisition(*, username, password, business_name, publication_name, publication_slug, email, mobile, plan_price):
+def reserve_customer_acquisition(*, business_name, publication_name, publication_slug, email, mobile, plan_price):
     User = get_user_model()
+    username = generate_customer_username(publication_name=publication_name, mobile=mobile)
+    password = generate_temporary_password()
     user = User.objects.create_user(username=username, email=email, password=password)
     acquisition = CustomerAcquisition.objects.create(
         user=user,
@@ -375,7 +416,7 @@ def reserve_customer_acquisition(*, username, password, business_name, publicati
         'currency': plan_price.currency,
         'environment': settings.RAZORPAY_ENVIRONMENT,
     }
-    return acquisition, checkout
+    return acquisition, checkout, {'username': username, 'temporary_password': password}
 
 
 @transaction.atomic

@@ -108,6 +108,11 @@
       <input name="razorpay_order_id" id="razorpay_order_id">
       <input name="razorpay_signature" id="razorpay_signature">
     </form>
+    <form id="failed-form" method="post" action="{% url 'subscriptions:payment_failed' acquisition.uuid %}" hidden>
+      {% csrf_token %}
+      <input name="razorpay_payment_id" id="failed_razorpay_payment_id">
+      <input name="razorpay_order_id" id="failed_razorpay_order_id">
+    </form>
   </section>
 </main>
 {% if not checkout.checkout_error %}
@@ -135,9 +140,27 @@
       modal: { ondismiss: function () { button.disabled = false; } },
       theme: { color: "#16614f" }
     };
+    function notifyPaymentFailed(response) {
+      const form = document.getElementById('failed-form');
+      const data = new FormData(form);
+      const metadata = response && response.error && response.error.metadata ? response.error.metadata : {};
+      data.set('razorpay_payment_id', metadata.payment_id || '');
+      data.set('razorpay_order_id', metadata.order_id || options.order_id || '');
+      fetch(form.action, {
+        method: 'POST',
+        body: data,
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      }).catch(function () {});
+    }
     button.addEventListener('click', function () {
       button.disabled = true;
-      new Razorpay(options).open();
+      const checkout = new Razorpay(options);
+      checkout.on('payment.failed', function (response) {
+        button.disabled = false;
+        notifyPaymentFailed(response);
+      });
+      checkout.open();
     });
   </script>
 {% endif %}

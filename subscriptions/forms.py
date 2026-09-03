@@ -1,5 +1,4 @@
 from django import forms
-from django.contrib.auth import get_user_model
 from django.utils.text import slugify
 
 from tenants.models import Tenant
@@ -19,27 +18,21 @@ class PlanSelectionForm(forms.Form):
 
 
 class CustomerSignupForm(forms.Form):
-    username = forms.CharField(max_length=150)
-    password = forms.CharField(widget=forms.PasswordInput, min_length=8)
     business_name = forms.CharField(max_length=255)
     publication_name = forms.CharField(max_length=255)
     email = forms.EmailField()
-    mobile = forms.CharField(max_length=32, required=False)
+    mobile = forms.CharField(max_length=32)
     price_id = forms.IntegerField(widget=forms.HiddenInput)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         placeholders = {
-            'username': 'Choose a login username',
-            'password': 'Minimum 8 characters',
             'business_name': 'Registered business or publisher name',
             'publication_name': 'News publication name',
             'email': 'owner@example.com',
-            'mobile': 'Mobile number',
+            'mobile': 'WhatsApp mobile number',
         }
         autocomplete = {
-            'username': 'username',
-            'password': 'new-password',
             'business_name': 'organization',
             'publication_name': 'organization-title',
             'email': 'email',
@@ -51,13 +44,6 @@ class CustomerSignupForm(forms.Form):
                     'placeholder': placeholders[name],
                     'autocomplete': autocomplete[name],
                 })
-
-    def clean_username(self):
-        username = self.cleaned_data['username']
-        User = get_user_model()
-        if User.objects.filter(username=username).exists():
-            raise forms.ValidationError('This username is already registered.')
-        return username
 
     def clean_price_id(self):
         price_id = self.cleaned_data['price_id']
@@ -81,7 +67,7 @@ class CustomerWorkspaceForm(forms.Form):
     business_name = forms.CharField(max_length=255)
     publication_name = forms.CharField(max_length=255)
     email = forms.EmailField(required=False)
-    mobile = forms.CharField(max_length=32, required=False)
+    mobile = forms.CharField(max_length=32)
     price_id = forms.IntegerField(widget=forms.HiddenInput)
 
     def __init__(self, *args, user=None, **kwargs):
@@ -94,7 +80,7 @@ class CustomerWorkspaceForm(forms.Form):
             'business_name': 'Registered business or publisher name',
             'publication_name': 'News publication name',
             'email': 'owner@example.com',
-            'mobile': 'Mobile number',
+            'mobile': 'WhatsApp mobile number',
         }
         autocomplete = {
             'business_name': 'organization',
