@@ -9,7 +9,11 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
+from categories.models import Category
+from news.models import AuthorProfile
+from pages.models import HomepageLayout, Menu, Page
 from tenants.models import Tenant, TenantMembership
+from themes.models import TenantBranding, ThemeActivation
 
 from .entitlements import get_feature_limit, tenant_has_feature, tenant_feature_limit
 from .models import (
@@ -29,6 +33,7 @@ from .models import (
 from .services import (
     auto_publish_paid_onboardings,
     create_tenant_after_verified_subscription,
+    ensure_paid_tenant_integrity,
     process_webhook,
     subscription_period_for_cycle,
     verify_razorpay_signature,
@@ -385,6 +390,55 @@ class SubscriptionTests(TestCase):
         self.assertIn('Backfilled 1 subscription period(s).', out.value)
         self.assertEqual(subscription.current_period_end.date(), timezone.datetime(2026, 10, 3).date())
         self.assertEqual(subscription.charge_at, subscription.current_period_end)
+
+    def test_paid_tenant_integrity_audit_can_fix_safe_defaults(self):
+        subscription = TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            status=TenantSubscription.Status.ACTIVE,
+            start_at=timezone.now(),
+            current_period_start=timezone.now(),
+        )
+        BillingRecord.objects.create(
+            tenant=self.tenant,
+            subscription=subscription,
+            razorpay_order_id='order_audit_123',
+            razorpay_payment_id='pay_audit_123',
+            amount=self.price.amount,
+            currency=self.price.currency,
+            status='paid',
+        )
+
+        open_issues = ensure_paid_tenant_integrity(tenant=self.tenant, fix=False)
+        self.assertTrue(open_issues)
+        self.assertFalse(Category.objects.filter(tenant=self.tenant, slug='general').exists())
+
+        fixed_issues = ensure_paid_tenant_integrity(tenant=self.tenant, fix=True)
+
+        self.assertTrue(fixed_issues)
+        self.assertTrue(Category.objects.filter(tenant=self.tenant, slug='general').exists())
+        self.assertTrue(AuthorProfile.objects.filter(tenant=self.tenant, slug='editor').exists())
+        self.assertTrue(TenantBranding.objects.filter(tenant=self.tenant).exists())
+        self.assertTrue(ThemeActivation.objects.filter(tenant=self.tenant).exists())
+        self.assertTrue(HomepageLayout.objects.filter(tenant=self.tenant, status=HomepageLayout.Status.PUBLISHED).exists())
+        self.assertEqual(Menu.objects.filter(tenant=self.tenant).count(), 2)
+        self.assertEqual(Page.objects.filter(tenant=self.tenant, is_published=True).count(), 4)
+
+    def test_paid_tenant_integrity_management_command_runs(self):
+        TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            status=TenantSubscription.Status.ACTIVE,
+            start_at=timezone.now(),
+            current_period_start=timezone.now(),
+        )
+
+        out = type('Stream', (), {'write': lambda self, value: setattr(self, 'value', value)})()
+        call_command('audit_paid_tenant_integrity', tenant_slug=self.tenant.slug, fix=True, stdout=out)
+
+        self.assertIn('Audit completed', out.value)
 
 
 class DynamicEntitlementTests(TestCase):

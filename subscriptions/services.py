@@ -15,7 +15,11 @@ from django.db.models import Q
 from django.utils import timezone
 from django.utils.text import slugify
 
+from categories.models import Category
+from news.models import AuthorProfile
+from pages.models import HomepageLayout, Menu, MenuItem, Page
 from tenants.models import Tenant, TenantMembership
+from themes.models import TenantBranding, ThemeActivation
 
 from .entitlements import get_effective_entitlements
 from .models import (
@@ -45,6 +49,173 @@ def subscription_period_for_cycle(start_at, billing_cycle):
     months = 12 if billing_cycle == PlanPrice.BillingCycle.YEARLY else 1
     end_at = _add_months(start_at, months)
     return start_at, end_at, end_at
+
+
+def _append_issue(issues, code, message, fixed=False):
+    issues.append({'code': code, 'message': message, 'fixed': fixed})
+
+
+def _safe_page_content(tenant, title):
+    return f'<p>{tenant.publication_name} will update this {title.lower()} page from the dashboard.</p>'
+
+
+@transaction.atomic
+def ensure_paid_tenant_integrity(*, tenant, fix=False):
+    issues = []
+    tenant = Tenant.objects.select_for_update().select_related('owner').get(pk=tenant.pk)
+
+    try:
+        subscription = tenant.subscription
+    except TenantSubscription.DoesNotExist:
+        _append_issue(issues, 'missing_subscription', 'Tenant has no subscription record.')
+        subscription = None
+
+    if subscription:
+        if subscription.status != TenantSubscription.Status.ACTIVE:
+            _append_issue(issues, 'subscription_not_active', f'Subscription status is {subscription.status}.')
+        period_start = subscription.current_period_start or subscription.start_at
+        if subscription.status == TenantSubscription.Status.ACTIVE and period_start and (
+            not subscription.current_period_end or not subscription.charge_at
+        ):
+            _, period_end, charge_at = subscription_period_for_cycle(period_start, subscription.billing_cycle)
+            if fix:
+                update_fields = []
+                if not subscription.current_period_start:
+                    subscription.current_period_start = period_start
+                    update_fields.append('current_period_start')
+                if not subscription.current_period_end:
+                    subscription.current_period_end = period_end
+                    update_fields.append('current_period_end')
+                if not subscription.charge_at:
+                    subscription.charge_at = charge_at
+                    update_fields.append('charge_at')
+                subscription.save(update_fields=update_fields + ['updated_at'])
+            _append_issue(issues, 'missing_period_dates', 'Subscription period end or charge date was missing.', fix)
+
+    membership = TenantMembership.objects.filter(
+        tenant=tenant,
+        user=tenant.owner,
+        status=TenantMembership.Status.ACTIVE,
+    ).first()
+    if membership is None:
+        if fix:
+            TenantMembership.objects.update_or_create(
+                tenant=tenant,
+                user=tenant.owner,
+                defaults={
+                    'role': TenantMembership.Role.OWNER,
+                    'status': TenantMembership.Status.ACTIVE,
+                    'joined_at': timezone.now(),
+                },
+            )
+        _append_issue(issues, 'missing_owner_membership', 'Tenant owner had no active membership.', fix)
+
+    acquisition = CustomerAcquisition.objects.filter(tenant=tenant).order_by('-created_at').first()
+    billing = BillingRecord.objects.filter(tenant=tenant, status='paid').order_by('-created_at').first()
+    if not acquisition:
+        _append_issue(issues, 'missing_acquisition', 'No customer acquisition is linked to this tenant.')
+    if not billing:
+        _append_issue(issues, 'missing_paid_billing_record', 'No paid billing record exists for this tenant.')
+    if acquisition and billing and fix:
+        acq_fields = []
+        if billing.razorpay_payment_id and not acquisition.provider_payment_id:
+            acquisition.provider_payment_id = billing.razorpay_payment_id
+            acq_fields.append('provider_payment_id')
+        if billing.razorpay_order_id and not acquisition.provider_order_id:
+            acquisition.provider_order_id = billing.razorpay_order_id
+            acq_fields.append('provider_order_id')
+        if acq_fields:
+            acquisition.save(update_fields=acq_fields + ['updated_at'])
+            _append_issue(issues, 'backfilled_acquisition_payment_reference', 'Acquisition payment references were backfilled from billing.', True)
+        bill_fields = []
+        if acquisition.provider_order_id and not billing.razorpay_order_id:
+            billing.razorpay_order_id = acquisition.provider_order_id
+            bill_fields.append('razorpay_order_id')
+        if acquisition.provider_signature and not billing.razorpay_signature:
+            billing.razorpay_signature = acquisition.provider_signature
+            bill_fields.append('razorpay_signature')
+        if bill_fields:
+            billing.save(update_fields=bill_fields + ['updated_at'])
+            _append_issue(issues, 'backfilled_billing_payment_reference', 'Billing payment references were backfilled from acquisition.', True)
+
+    if not TenantOnboarding.objects.filter(tenant=tenant).exists():
+        if fix:
+            TenantOnboarding.objects.create(tenant=tenant, status=TenantOnboarding.Status.ONBOARDING)
+        _append_issue(issues, 'missing_onboarding', 'Commercial onboarding record was missing.', fix)
+
+    if not Category.objects.filter(tenant=tenant, slug='general').exists():
+        if fix:
+            Category.objects.create(tenant=tenant, slug='general', name='General', show_in_menu=True, is_active=True)
+        _append_issue(issues, 'missing_default_category', 'Default General category was missing.', fix)
+
+    if not AuthorProfile.objects.filter(tenant=tenant, slug='editor').exists():
+        if fix:
+            AuthorProfile.objects.create(tenant=tenant, slug='editor', user=tenant.owner, display_name=tenant.publication_name)
+        _append_issue(issues, 'missing_default_author', 'Default editor author was missing.', fix)
+
+    if not TenantBranding.objects.filter(tenant=tenant).exists():
+        if fix:
+            TenantBranding.objects.create(
+                tenant=tenant,
+                publication_name=tenant.publication_name,
+                tagline=f'{tenant.publication_name} news and updates',
+                contact_details={'email': tenant.email, 'mobile': tenant.mobile},
+                copyright_text=f'Copyright {timezone.now().year} {tenant.publication_name}',
+            )
+        _append_issue(issues, 'missing_branding', 'Tenant branding was missing.', fix)
+
+    theme = ThemeActivation.objects.filter(tenant=tenant).first()
+    if theme is None:
+        if fix:
+            theme = ThemeActivation.objects.create(tenant=tenant)
+        _append_issue(issues, 'missing_theme_activation', 'Theme activation was missing.', fix)
+
+    active_theme = theme.active_theme if theme else ThemeActivation.ThemeKey.CLASSIC
+    if not HomepageLayout.objects.filter(tenant=tenant, status=HomepageLayout.Status.PUBLISHED).exists():
+        if fix:
+            HomepageLayout.objects.create(tenant=tenant, status=HomepageLayout.Status.PUBLISHED, name='Homepage', theme_key=active_theme)
+        _append_issue(issues, 'missing_homepage_layout', 'Published homepage layout was missing.', fix)
+
+    for location, name in ((Menu.Location.HEADER, 'Header Menu'), (Menu.Location.FOOTER, 'Footer Menu')):
+        menu = Menu.objects.filter(tenant=tenant, location=location).first()
+        if menu is None:
+            if fix:
+                menu = Menu.objects.create(tenant=tenant, location=location, name=name)
+            _append_issue(issues, f'missing_{location}_menu', f'{name} was missing.', fix)
+        if menu and not menu.items.exists() and fix:
+            MenuItem.objects.create(tenant=tenant, menu=menu, label='Home', link_type=MenuItem.LinkType.HOME, order=1)
+            _append_issue(issues, f'missing_{location}_menu_items', f'{name} had no items.', True)
+        elif menu and not menu.items.exists():
+            _append_issue(issues, f'missing_{location}_menu_items', f'{name} had no items.', False)
+
+    required_pages = [
+        (Page.PageType.ABOUT, 'About Us', 'about-us'),
+        (Page.PageType.CONTACT, 'Contact Us', 'contact-us'),
+        (Page.PageType.PRIVACY, 'Privacy Policy', 'privacy-policy'),
+        (Page.PageType.TERMS, 'Terms', 'terms'),
+    ]
+    for page_type, title, slug in required_pages:
+        page = Page.objects.filter(tenant=tenant, slug=slug).first()
+        if page is None:
+            if fix:
+                Page.objects.create(
+                    tenant=tenant,
+                    slug=slug,
+                    title=title,
+                    page_type=page_type,
+                    content=_safe_page_content(tenant, title),
+                    is_published=True,
+                )
+            _append_issue(issues, f'missing_{page_type}_page', f'{title} page was missing.', fix)
+        elif fix and not page.is_published:
+            page.is_published = True
+            page.save(update_fields=['is_published', 'updated_at'])
+            _append_issue(issues, f'unpublished_{page_type}_page', f'{title} page was unpublished.', True)
+        elif not page.is_published:
+            _append_issue(issues, f'unpublished_{page_type}_page', f'{title} page was unpublished.', False)
+
+    get_effective_entitlements(tenant)
+    return issues
 
 
 def verify_razorpay_signature(*, body, signature, secret):
