@@ -532,6 +532,31 @@ def billing_dashboard(request):
     if tenant is None:
         messages.error(request, 'No tenant workspace is linked with this account yet.')
         return redirect('subscriptions:account_status')
+    if subscription and subscription.razorpay_payment_reference:
+        plan_price = (
+            PlanPrice.objects
+            .filter(
+                plan=subscription.plan,
+                billing_cycle=subscription.billing_cycle,
+                is_active=True,
+            )
+            .first()
+        )
+        BillingRecord.objects.get_or_create(
+            tenant=tenant,
+            razorpay_payment_id=subscription.razorpay_payment_reference,
+            defaults={
+                'subscription': subscription,
+                'amount': plan_price.amount if plan_price else 0,
+                'currency': plan_price.currency if plan_price else 'INR',
+                'status': 'paid',
+                'payload': {
+                    'source': 'billing_dashboard_backfill',
+                    'plan': subscription.plan.name,
+                    'billing_cycle': subscription.billing_cycle,
+                },
+            },
+        )
     plans = Plan.objects.filter(is_active=True, is_current_version=True).prefetch_related('prices')
     add_ons = AddOn.objects.filter(is_active=True).select_related('feature').order_by('display_order', 'name')
     entitlements = get_effective_entitlements(tenant)

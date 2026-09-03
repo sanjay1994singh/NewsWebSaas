@@ -211,6 +211,22 @@ class SubscriptionTests(TestCase):
         self.assertEqual(response['Content-Type'], 'application/pdf')
         self.assertTrue(response.content.startswith(b'%PDF'))
 
+    def test_billing_dashboard_backfills_invoice_for_existing_successful_payment(self):
+        TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            status=TenantSubscription.Status.ACTIVE,
+            razorpay_payment_reference='pay_existing_123',
+        )
+
+        self.client.login(username='owner', password='testpass123')
+        response = self.client.get(reverse('subscriptions:billing_dashboard'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(BillingRecord.objects.filter(razorpay_payment_id='pay_existing_123').exists())
+        self.assertContains(response, 'Download PDF')
+
 
 class DynamicEntitlementTests(TestCase):
     def setUp(self):
