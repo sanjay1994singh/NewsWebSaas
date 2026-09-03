@@ -17,13 +17,12 @@ from .models import (
     Plan,
     PlanFeature,
     PlanPrice,
-    RazorpayPlanMapping,
     TenantAddOn,
     TenantFeatureOverride,
     TenantSubscription,
     WebhookEvent,
 )
-from .services import create_subscription_checkout, process_webhook, verify_razorpay_signature
+from .services import process_webhook, verify_razorpay_signature
 
 
 class SubscriptionTests(TestCase):
@@ -44,22 +43,14 @@ class SubscriptionTests(TestCase):
             entitlements={'custom_domain': True, 'staff': 10},
         )
         self.price = PlanPrice.objects.create(plan=self.plan, billing_cycle=PlanPrice.BillingCycle.MONTHLY, amount=199900)
-        RazorpayPlanMapping.objects.create(price=self.price, environment=RazorpayPlanMapping.Environment.TEST, razorpay_plan_id='plan_test_123')
 
     def test_entitlement_helpers_are_centralized(self):
         TenantSubscription.objects.create(tenant=self.tenant, plan=self.plan, billing_cycle=PlanPrice.BillingCycle.MONTHLY)
         self.assertTrue(tenant_has_feature(self.tenant, 'custom_domain'))
         self.assertEqual(get_feature_limit(self.tenant, 'staff'), 10)
 
-    @override_settings(RAZORPAY_ENVIRONMENT='test')
-    def test_checkout_uses_backend_price_and_environment_mapping(self):
-        checkout = create_subscription_checkout(tenant=self.tenant, price_id=self.price.id, quantity=2)
-        self.assertEqual(checkout['amount'], 199900)
-        self.assertEqual(checkout['razorpay_plan_id'], 'plan_test_123')
-        self.assertEqual(checkout['quantity'], 2)
-
     def test_signature_verification_rejects_invalid_signature(self):
-        body = b'{"id":"evt_1","event":"subscription.activated"}'
+        body = b'{"id":"evt_1","event":"order.paid"}'
         signature = hmac.new(b'secret', body, sha256).hexdigest()
         self.assertTrue(verify_razorpay_signature(body=body, signature=signature, secret='secret'))
         with self.assertRaises(ValidationError):
@@ -67,7 +58,7 @@ class SubscriptionTests(TestCase):
 
     @override_settings(RAZORPAY_WEBHOOK_SECRET='secret', RAZORPAY_ENVIRONMENT='test')
     def test_webhook_processing_is_idempotent(self):
-        body = json.dumps({'id': 'evt_once', 'event': 'subscription.activated'}).encode('utf-8')
+        body = json.dumps({'id': 'evt_once', 'event': 'order.paid'}).encode('utf-8')
         signature = hmac.new(b'secret', body, sha256).hexdigest()
         first = process_webhook(body=body, signature=signature)
         second = process_webhook(body=body, signature=signature)
@@ -82,42 +73,6 @@ class SubscriptionTests(TestCase):
         self.assertEqual(WebhookEvent.objects.count(), 0)
 
     @override_settings(RAZORPAY_WEBHOOK_SECRET='secret', RAZORPAY_ENVIRONMENT='test')
-    def test_subscription_webhook_creates_reserved_tenant(self):
-        acquisition = CustomerAcquisition.objects.create(
-            user=self.user,
-            plan_price=self.price,
-            business_name='Webhook Media',
-            publication_name='Webhook News',
-            publication_slug='webhook-news',
-            email='webhook@example.com',
-            mobile='9999999999',
-            status=CustomerAcquisition.Status.PAYMENT_PENDING,
-            provider_subscription_id='sub_test_123',
-        )
-        body = json.dumps(
-            {
-                'id': 'evt_subscription_active',
-                'event': 'subscription.activated',
-                'payload': {
-                    'subscription': {
-                        'entity': {
-                            'id': 'sub_test_123',
-                            'status': 'active',
-                            'notes': {'acquisition_uuid': str(acquisition.uuid)},
-                        }
-                    }
-                },
-            }
-        ).encode('utf-8')
-        signature = hmac.new(b'secret', body, sha256).hexdigest()
-
-        process_webhook(body=body, signature=signature)
-
-        acquisition.refresh_from_db()
-        self.assertIsNotNone(acquisition.tenant_id)
-        self.assertEqual(acquisition.tenant.subscription.status, TenantSubscription.Status.ACTIVE)
-
-    @override_settings(RAZORPAY_WEBHOOK_SECRET='secret', RAZORPAY_ENVIRONMENT='test')
     def test_order_webhook_creates_reserved_tenant(self):
         acquisition = CustomerAcquisition.objects.create(
             user=self.user,
@@ -128,7 +83,7 @@ class SubscriptionTests(TestCase):
             email='order@example.com',
             mobile='9999999999',
             status=CustomerAcquisition.Status.PAYMENT_PENDING,
-            provider_subscription_id='order_test_123',
+            provider_order_id='order_test_123',
         )
         body = json.dumps(
             {
@@ -150,30 +105,34 @@ class SubscriptionTests(TestCase):
 
         acquisition.refresh_from_db()
         self.assertIsNotNone(acquisition.tenant_id)
-        self.assertEqual(acquisition.tenant.subscription.razorpay_subscription_id, 'order_test_123')
+        self.assertEqual(acquisition.tenant.subscription.razorpay_payment_reference, 'order_test_123')
 
     @override_settings(RAZORPAY_WEBHOOK_SECRET='secret', RAZORPAY_ENVIRONMENT='test')
-    def test_failed_payment_webhook_marks_existing_subscription_issue(self):
-        tenant_subscription = TenantSubscription.objects.create(
-            tenant=self.tenant,
-            plan=self.plan,
-            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
-            razorpay_subscription_id='sub_test_failed',
-            status=TenantSubscription.Status.ACTIVE,
+    def test_failed_payment_webhook_marks_acquisition_failed(self):
+        acquisition = CustomerAcquisition.objects.create(
+            user=self.user,
+            plan_price=self.price,
+            business_name='Failed Media',
+            publication_name='Failed News',
+            publication_slug='failed-news',
+            email='failed@example.com',
+            mobile='9999999999',
+            status=CustomerAcquisition.Status.PAYMENT_PENDING,
+            provider_order_id='order_test_failed',
         )
         body = json.dumps(
             {
                 'id': 'evt_payment_failed',
                 'event': 'payment.failed',
-                'payload': {'payment': {'entity': {'subscription_id': 'sub_test_failed'}}},
+                'payload': {'payment': {'entity': {'order_id': 'order_test_failed'}}},
             }
         ).encode('utf-8')
         signature = hmac.new(b'secret', body, sha256).hexdigest()
 
         process_webhook(body=body, signature=signature)
 
-        tenant_subscription.refresh_from_db()
-        self.assertEqual(tenant_subscription.status, TenantSubscription.Status.PAYMENT_ISSUE)
+        acquisition.refresh_from_db()
+        self.assertEqual(acquisition.status, CustomerAcquisition.Status.FAILED)
 
 
 class DynamicEntitlementTests(TestCase):

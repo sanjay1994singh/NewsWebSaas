@@ -44,7 +44,7 @@
           {% csrf_token %}
           <h3>{{ add_on.name }}</h3>
           <p>{{ add_on.currency }} {{ add_on.monthly_price }} monthly / {{ add_on.yearly_price }} yearly</p>
-          <input name="provider_subscription_id" placeholder="Verified add-on subscription ID">
+          <input name="provider_payment_reference" placeholder="Verified add-on payment reference">
           <button class="btn" type="submit">Activate Add-on</button>
         </form>
       {% endfor %}

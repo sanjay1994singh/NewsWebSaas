@@ -1,7 +1,4 @@
 from django.contrib import admin
-from django.contrib import messages
-
-from .services import sync_razorpay_plan_for_price
 
 from .models import (
     AddOn,
@@ -13,7 +10,6 @@ from .models import (
     PlanFeature,
     PlanPrice,
     PlatformPolicy,
-    RazorpayPlanMapping,
     TenantAddOn,
     TenantFeatureOverride,
     TenantOnboarding,
@@ -87,46 +83,21 @@ class PlanPriceAdmin(admin.ModelAdmin):
     list_display = ('plan', 'billing_cycle', 'amount', 'currency', 'is_active')
     list_filter = ('billing_cycle', 'currency', 'is_active')
     search_fields = ('plan__name', 'plan__code', 'currency')
-    actions = ('sync_selected_to_razorpay',)
-
-    @admin.action(description='Sync selected prices to Razorpay')
-    def sync_selected_to_razorpay(self, request, queryset):
-        synced = 0
-        failed = 0
-        for price in queryset.select_related('plan'):
-            try:
-                sync_razorpay_plan_for_price(price)
-                synced += 1
-            except Exception as exc:
-                failed += 1
-                self.message_user(request, f"{price}: {exc}", level=messages.ERROR)
-        if synced:
-            self.message_user(request, f"{synced} Razorpay plan mapping(s) ready.", level=messages.SUCCESS)
-        if failed:
-            self.message_user(request, f"{failed} price(s) could not be synced.", level=messages.WARNING)
-
-
-@admin.register(RazorpayPlanMapping)
-class RazorpayPlanMappingAdmin(admin.ModelAdmin):
-    list_display = ('price', 'environment', 'razorpay_plan_id', 'version', 'is_active')
-    list_filter = ('environment', 'is_active')
-    search_fields = ('price__plan__name', 'price__plan__code', 'razorpay_plan_id')
-    autocomplete_fields = ('price',)
 
 
 @admin.register(TenantSubscription)
 class TenantSubscriptionAdmin(admin.ModelAdmin):
     list_display = ('tenant', 'plan', 'status', 'billing_cycle', 'current_period_end')
     list_filter = ('status', 'billing_cycle')
-    search_fields = ('tenant__publication_name', 'razorpay_subscription_id')
+    search_fields = ('tenant__publication_name', 'razorpay_payment_reference')
     autocomplete_fields = ('tenant', 'plan')
 
 
 @admin.register(CustomerAcquisition)
 class CustomerAcquisitionAdmin(admin.ModelAdmin):
-    list_display = ('publication_name', 'user', 'plan_price', 'status', 'tenant', 'provider_subscription_id', 'created_at')
+    list_display = ('publication_name', 'user', 'plan_price', 'status', 'tenant', 'provider_order_id', 'created_at')
     list_filter = ('status', 'plan_price__billing_cycle')
-    search_fields = ('publication_name', 'publication_slug', 'business_name', 'email', 'provider_subscription_id')
+    search_fields = ('publication_name', 'publication_slug', 'business_name', 'email', 'provider_order_id')
     autocomplete_fields = ('user', 'plan_price', 'tenant')
 
 

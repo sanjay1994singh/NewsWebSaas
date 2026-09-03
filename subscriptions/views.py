@@ -351,7 +351,8 @@ def verify_subscription(request, acquisition_id):
         return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
     tenant = create_tenant_after_verified_subscription(
         acquisition=acquisition,
-        provider_subscription_id=order_id,
+        provider_order_id=order_id,
+        payment_reference=payment_id,
     )
     notify_payment_success(
         acquisition=acquisition,
@@ -368,7 +369,7 @@ def verify_subscription(request, acquisition_id):
 @require_POST
 def payment_failed(request, acquisition_id):
     acquisition = get_object_or_404(CustomerAcquisition.objects.select_related('plan_price__plan', 'user'), uuid=acquisition_id, user=request.user)
-    payment_reference = request.POST.get('razorpay_payment_id', '').strip() or request.POST.get('razorpay_order_id', '').strip() or acquisition.provider_subscription_id
+    payment_reference = request.POST.get('razorpay_payment_id', '').strip() or request.POST.get('razorpay_order_id', '').strip() or acquisition.provider_order_id
     notify_payment_failed(
         acquisition=acquisition,
         payment_reference=payment_reference,
@@ -528,9 +529,9 @@ def activate_add_on(request, add_on_id):
         add_on=add_on,
         defaults={'status': TenantAddOn.Status.PAYMENT_PENDING, 'is_active': False},
     )
-    provider_subscription_id = request.POST.get('provider_subscription_id', '').strip()
-    if provider_subscription_id:
-        activate_tenant_add_on(tenant_add_on=tenant_add_on, provider_subscription_id=provider_subscription_id)
+    provider_payment_reference = request.POST.get('provider_payment_reference', '').strip()
+    if provider_payment_reference:
+        activate_tenant_add_on(tenant_add_on=tenant_add_on, provider_payment_reference=provider_payment_reference)
         messages.success(request, 'Verified add-on activated.')
     else:
         messages.success(request, 'Add-on reserved. It activates only after provider verification.')

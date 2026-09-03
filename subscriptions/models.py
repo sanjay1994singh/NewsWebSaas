@@ -82,8 +82,6 @@ class AddOn(UUIDModel, TimeStampedModel):
     monthly_price = models.PositiveIntegerField(default=0)
     yearly_price = models.PositiveIntegerField(default=0)
     currency = models.CharField(max_length=3, default='INR')
-    razorpay_monthly_plan_id = models.CharField(max_length=120, blank=True)
-    razorpay_yearly_plan_id = models.CharField(max_length=120, blank=True)
     display_order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True, db_index=True)
     limit_value = models.PositiveIntegerField(null=True, blank=True)
@@ -102,7 +100,7 @@ class TenantAddOn(TimeStampedModel):
 
     tenant = models.ForeignKey('tenants.Tenant', on_delete=models.CASCADE, related_name='add_ons')
     add_on = models.ForeignKey(AddOn, on_delete=models.PROTECT, related_name='tenant_add_ons')
-    provider_subscription_id = models.CharField(max_length=120, blank=True, db_index=True)
+    provider_payment_reference = models.CharField(max_length=120, blank=True, db_index=True)
     status = models.CharField(max_length=40, choices=Status.choices, default=Status.ACTIVE, db_index=True)
     quantity = models.PositiveIntegerField(default=1)
     is_active = models.BooleanField(default=True, db_index=True)
@@ -176,23 +174,6 @@ class PlanPrice(TimeStampedModel):
         return f"{self.plan} {self.billing_cycle}"
 
 
-class RazorpayPlanMapping(TimeStampedModel):
-    class Environment(models.TextChoices):
-        TEST = 'test', 'Test'
-        LIVE = 'live', 'Live'
-
-    price = models.ForeignKey(PlanPrice, on_delete=models.CASCADE, related_name='razorpay_mappings')
-    environment = models.CharField(max_length=10, choices=Environment.choices)
-    razorpay_plan_id = models.CharField(max_length=120)
-    version = models.PositiveIntegerField(default=1)
-    is_active = models.BooleanField(default=True)
-
-    class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=['environment', 'razorpay_plan_id'], name='unique_razorpay_plan_environment'),
-        ]
-
-
 class TenantSubscription(UUIDModel, TimeStampedModel):
     class Status(models.TextChoices):
         TRIAL = 'trial', 'Trial'
@@ -206,7 +187,7 @@ class TenantSubscription(UUIDModel, TimeStampedModel):
 
     tenant = models.OneToOneField('tenants.Tenant', on_delete=models.CASCADE, related_name='subscription')
     plan = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name='tenant_subscriptions')
-    razorpay_subscription_id = models.CharField(max_length=120, blank=True, db_index=True)
+    razorpay_payment_reference = models.CharField(max_length=120, blank=True, db_index=True)
     status = models.CharField(max_length=40, choices=Status.choices, default=Status.TRIAL, db_index=True)
     billing_cycle = models.CharField(max_length=20, choices=PlanPrice.BillingCycle.choices)
     quantity = models.PositiveIntegerField(default=1)
@@ -235,7 +216,7 @@ class CustomerAcquisition(UUIDModel, TimeStampedModel):
     email = models.EmailField()
     mobile = models.CharField(max_length=32, blank=True)
     status = models.CharField(max_length=40, choices=Status.choices, default=Status.DRAFT, db_index=True)
-    provider_subscription_id = models.CharField(max_length=120, blank=True, db_index=True)
+    provider_order_id = models.CharField(max_length=120, blank=True, db_index=True)
     verified_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -244,7 +225,7 @@ class CustomerAcquisition(UUIDModel, TimeStampedModel):
         ]
         indexes = [
             models.Index(fields=['user', 'status']),
-            models.Index(fields=['provider_subscription_id']),
+            models.Index(fields=['provider_order_id']),
         ]
 
     def __str__(self):
@@ -341,7 +322,7 @@ class BillingRecord(TimeStampedModel):
 
 
 class WebhookEvent(TimeStampedModel):
-    environment = models.CharField(max_length=10, choices=RazorpayPlanMapping.Environment.choices)
+    environment = models.CharField(max_length=10, choices=(('test', 'Test'), ('live', 'Live')))
     provider = models.CharField(max_length=40, default='razorpay')
     event_id = models.CharField(max_length=160)
     event_type = models.CharField(max_length=120, db_index=True)

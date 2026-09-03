@@ -22,7 +22,6 @@ from .models import (
     OnboardingReviewEvent,
     PlanChangeRequest,
     PlanPrice,
-    RazorpayPlanMapping,
     TenantAddOn,
     TenantOnboarding,
     TenantSubscription,
@@ -38,105 +37,10 @@ def verify_razorpay_signature(*, body, signature, secret):
     return True
 
 
-def get_active_mapping(price, environment):
-    return RazorpayPlanMapping.objects.get(price=price, environment=environment, is_active=True)
-
-
-def get_optional_active_mapping(price, environment):
-    try:
-        return get_active_mapping(price, environment)
-    except RazorpayPlanMapping.DoesNotExist:
-        return None
-
-
 def get_razorpay_client():
     if not settings.RAZORPAY_KEY_ID or not settings.RAZORPAY_KEY_SECRET:
         raise ValidationError("Razorpay keys are not configured.")
     return razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-
-
-def sync_razorpay_plan_for_price(price, environment=None):
-    environment = environment or settings.RAZORPAY_ENVIRONMENT
-    if environment == 'live' and price.amount < 1000:
-        raise ValidationError("Live Razorpay subscriptions require a valid plan amount. Update the SaaS plan price before checkout.")
-    mapping = get_optional_active_mapping(price, environment)
-    if mapping:
-        try:
-            razorpay_plan = get_razorpay_client().plan.fetch(mapping.razorpay_plan_id)
-            mapped_amount = razorpay_plan.get('item', {}).get('amount')
-        except Exception:
-            mapped_amount = price.amount
-        if mapped_amount == price.amount:
-            return mapping
-        mapping.is_active = False
-        mapping.save(update_fields=['is_active', 'updated_at'])
-    mapping = get_optional_active_mapping(price, environment)
-    if mapping:
-        return mapping
-
-    period = 'monthly' if price.billing_cycle == PlanPrice.BillingCycle.MONTHLY else 'yearly'
-    client = get_razorpay_client()
-    razorpay_plan = client.plan.create(
-        {
-            'period': period,
-            'interval': 1,
-            'item': {
-                'name': f"{price.plan.name} - {price.get_billing_cycle_display()}",
-                'amount': price.amount,
-                'currency': price.currency,
-                'description': f"Press Nexa {price.plan.name} {price.get_billing_cycle_display()} subscription",
-            },
-            'notes': {
-                'plan_code': price.plan.code,
-                'plan_version': str(price.plan.version),
-                'plan_price_id': str(price.id),
-                'environment': environment,
-            },
-        }
-    )
-    return RazorpayPlanMapping.objects.create(
-        price=price,
-        environment=environment,
-        razorpay_plan_id=razorpay_plan['id'],
-        version=price.plan.version,
-        is_active=True,
-    )
-
-
-def create_razorpay_subscription_for_acquisition(acquisition):
-    price = acquisition.plan_price
-    mapping = sync_razorpay_plan_for_price(price, settings.RAZORPAY_ENVIRONMENT)
-    total_count = 120 if price.billing_cycle == PlanPrice.BillingCycle.MONTHLY else 10
-    client = get_razorpay_client()
-    subscription = client.subscription.create(
-        {
-            'plan_id': mapping.razorpay_plan_id,
-            'total_count': total_count,
-            'quantity': 1,
-            'customer_notify': 1,
-            'notes': {
-                'acquisition_uuid': str(acquisition.uuid),
-                'publication_slug': acquisition.publication_slug,
-                'plan_price_id': str(price.id),
-            },
-        }
-    )
-    acquisition.provider_subscription_id = subscription['id']
-    acquisition.save(update_fields=['provider_subscription_id', 'updated_at'])
-    return {
-        'key_id': settings.RAZORPAY_KEY_ID,
-        'subscription_id': subscription['id'],
-        'razorpay_plan_id': mapping.razorpay_plan_id,
-        'amount': price.amount,
-        'currency': price.currency,
-        'name': 'Press Nexa',
-        'description': f"{price.plan.name} - {price.get_billing_cycle_display()}",
-        'prefill': {
-            'name': acquisition.publication_name,
-            'email': acquisition.email,
-            'contact': acquisition.mobile,
-        },
-    }
 
 
 def create_razorpay_order_for_acquisition(acquisition):
@@ -158,8 +62,8 @@ def create_razorpay_order_for_acquisition(acquisition):
             },
         }
     )
-    acquisition.provider_subscription_id = order['id']
-    acquisition.save(update_fields=['provider_subscription_id', 'updated_at'])
+    acquisition.provider_order_id = order['id']
+    acquisition.save(update_fields=['provider_order_id', 'updated_at'])
     return {
         'key_id': settings.RAZORPAY_KEY_ID,
         'order_id': order['id'],
@@ -196,13 +100,6 @@ def _razorpay_entity(payload, entity_name):
     return payload.get('payload', {}).get(entity_name, {}).get('entity', {}) or {}
 
 
-def _subscription_id_from_webhook(payload):
-    subscription = _razorpay_entity(payload, 'subscription')
-    payment = _razorpay_entity(payload, 'payment')
-    invoice = _razorpay_entity(payload, 'invoice')
-    return subscription.get('id') or payment.get('subscription_id') or invoice.get('subscription_id') or ''
-
-
 def _order_id_from_webhook(payload):
     payment = _razorpay_entity(payload, 'payment')
     order = _razorpay_entity(payload, 'order')
@@ -218,22 +115,10 @@ def _acquisition_uuid_from_webhook(payload):
     return ''
 
 
-def _acquisition_for_webhook(payload, subscription_id):
-    queryset = CustomerAcquisition.objects.select_related('plan_price__plan', 'user')
-    if subscription_id:
-        acquisition = queryset.filter(provider_subscription_id=subscription_id).order_by('-created_at').first()
-        if acquisition:
-            return acquisition
-    acquisition_uuid = _acquisition_uuid_from_webhook(payload)
-    if acquisition_uuid:
-        return queryset.filter(uuid=acquisition_uuid).first()
-    return None
-
-
 def _acquisition_for_order_webhook(payload, order_id):
     queryset = CustomerAcquisition.objects.select_related('plan_price__plan', 'user')
     if order_id:
-        acquisition = queryset.filter(provider_subscription_id=order_id).order_by('-created_at').first()
+        acquisition = queryset.filter(provider_order_id=order_id).order_by('-created_at').first()
         if acquisition:
             return acquisition
     acquisition_uuid = _acquisition_uuid_from_webhook(payload)
@@ -248,42 +133,25 @@ def _payment_reference_from_webhook(payload):
     return payment.get('id') or payment.get('order_id') or order.get('id') or ''
 
 
-def _status_for_webhook(event_type, provider_status):
-    event_status_map = {
-        'subscription.authenticated': TenantSubscription.Status.ACTIVE,
-        'subscription.activated': TenantSubscription.Status.ACTIVE,
-        'subscription.charged': TenantSubscription.Status.ACTIVE,
-        'subscription.resumed': TenantSubscription.Status.ACTIVE,
-        'subscription.completed': TenantSubscription.Status.COMPLETED,
-        'subscription.cancelled': TenantSubscription.Status.CANCELLED,
-        'subscription.pending': TenantSubscription.Status.PAYMENT_ISSUE,
-        'subscription.halted': TenantSubscription.Status.PAYMENT_ISSUE,
-        'subscription.paused': TenantSubscription.Status.RESTRICTED,
-        'payment.captured': TenantSubscription.Status.ACTIVE,
-        'payment.failed': TenantSubscription.Status.PAYMENT_ISSUE,
-    }
-    provider_status_map = {
-        'authenticated': TenantSubscription.Status.ACTIVE,
-        'active': TenantSubscription.Status.ACTIVE,
-        'completed': TenantSubscription.Status.COMPLETED,
-        'cancelled': TenantSubscription.Status.CANCELLED,
-        'halted': TenantSubscription.Status.PAYMENT_ISSUE,
-        'paused': TenantSubscription.Status.RESTRICTED,
-    }
-    return event_status_map.get(event_type) or provider_status_map.get(provider_status)
-
-
-def _sync_subscription_from_webhook(*, payload, event_type):
+def _sync_payment_from_webhook(*, payload, event_type):
     order_id = _order_id_from_webhook(payload)
     order_acquisition = _acquisition_for_order_webhook(payload, order_id)
     if order_acquisition:
         if event_type in ('payment.captured', 'order.paid') and order_id:
             create_tenant_after_verified_subscription(
                 acquisition=order_acquisition,
-                provider_subscription_id=order_id,
+                provider_order_id=order_id,
+                payment_reference=_payment_reference_from_webhook(payload),
             )
             return True
         if event_type == 'payment.failed':
+            order_acquisition.status = CustomerAcquisition.Status.FAILED
+            order_acquisition.save(update_fields=['status', 'updated_at'])
+            if order_acquisition.tenant_id:
+                TenantSubscription.objects.filter(tenant=order_acquisition.tenant).update(
+                    status=TenantSubscription.Status.PAYMENT_ISSUE,
+                    updated_at=timezone.now(),
+                )
             notify_payment_failed(
                 acquisition=order_acquisition,
                 payment_reference=_payment_reference_from_webhook(payload) or order_id,
@@ -291,81 +159,7 @@ def _sync_subscription_from_webhook(*, payload, event_type):
                 profile_url=f"{settings.SITE_BASE_URL}/account/profile/",
             )
             return True
-
-    subscription_id = _subscription_id_from_webhook(payload)
-    acquisition = _acquisition_for_webhook(payload, subscription_id)
-    subscription_entity = _razorpay_entity(payload, 'subscription')
-    provider_status = subscription_entity.get('status')
-    next_status = _status_for_webhook(event_type, provider_status)
-    activation_events = {
-        'subscription.authenticated',
-        'subscription.activated',
-        'subscription.charged',
-        'subscription.resumed',
-        'payment.captured',
-    }
-
-    if acquisition and not acquisition.tenant_id and event_type in activation_events and subscription_id:
-        create_tenant_after_verified_subscription(
-            acquisition=acquisition,
-            provider_subscription_id=subscription_id,
-        )
-        acquisition.refresh_from_db()
-
-    tenant_subscription = None
-    if acquisition and acquisition.tenant_id:
-        tenant_subscription = TenantSubscription.objects.select_for_update().filter(tenant=acquisition.tenant).first()
-    if tenant_subscription is None and subscription_id:
-        tenant_subscription = TenantSubscription.objects.select_for_update().filter(
-            razorpay_subscription_id=subscription_id
-        ).first()
-    if tenant_subscription is None:
-        if acquisition and event_type == 'payment.failed':
-            acquisition.status = CustomerAcquisition.Status.FAILED
-            acquisition.save(update_fields=['status', 'updated_at'])
-        return False
-
-    update_fields = ['updated_at']
-    if subscription_id and tenant_subscription.razorpay_subscription_id != subscription_id:
-        tenant_subscription.razorpay_subscription_id = subscription_id
-        update_fields.append('razorpay_subscription_id')
-    if next_status and tenant_subscription.status != next_status:
-        tenant_subscription.status = next_status
-        update_fields.append('status')
-
-    date_fields = {
-        'start_at': 'start_at',
-        'current_period_start': 'current_start',
-        'current_period_end': 'current_end',
-        'charge_at': 'charge_at',
-        'ended_at': 'ended_at',
-    }
-    if event_type == 'subscription.cancelled':
-        date_fields['cancelled_at'] = 'ended_at'
-    for model_field, provider_field in date_fields.items():
-        value = _timestamp_from_razorpay(subscription_entity.get(provider_field))
-        if value and getattr(tenant_subscription, model_field) != value:
-            setattr(tenant_subscription, model_field, value)
-            update_fields.append(model_field)
-
-    if len(update_fields) > 1:
-        tenant_subscription.save(update_fields=update_fields)
-    return True
-
-
-def create_subscription_checkout(*, tenant, price_id, quantity=1):
-    price = PlanPrice.objects.select_related('plan').get(pk=price_id, is_active=True, plan__is_active=True)
-    mapping = get_active_mapping(price, settings.RAZORPAY_ENVIRONMENT)
-    return {
-        'tenant_id': tenant.id,
-        'plan_id': price.plan_id,
-        'billing_cycle': price.billing_cycle,
-        'amount': price.amount,
-        'currency': price.currency,
-        'quantity': quantity,
-        'razorpay_plan_id': mapping.razorpay_plan_id,
-        'environment': settings.RAZORPAY_ENVIRONMENT,
-    }
+    return False
 
 def _mobile_suffix(mobile):
     digits = re.sub(r'\D+', '', mobile or '')
@@ -454,7 +248,7 @@ def update_pending_customer_acquisition(*, acquisition, business_name, publicati
     acquisition.publication_slug = publication_slug
     acquisition.email = email or acquisition.user.email
     acquisition.mobile = mobile
-    acquisition.provider_subscription_id = ''
+    acquisition.provider_order_id = ''
     acquisition.save(
         update_fields=[
             'plan_price',
@@ -463,7 +257,7 @@ def update_pending_customer_acquisition(*, acquisition, business_name, publicati
             'publication_slug',
             'email',
             'mobile',
-            'provider_subscription_id',
+            'provider_order_id',
             'updated_at',
         ]
     )
@@ -479,7 +273,7 @@ def update_pending_customer_acquisition(*, acquisition, business_name, publicati
 
 
 @transaction.atomic
-def create_tenant_after_verified_subscription(*, acquisition, provider_subscription_id):
+def create_tenant_after_verified_subscription(*, acquisition, provider_order_id, payment_reference=''):
     acquisition = CustomerAcquisition.objects.select_for_update().select_related('user', 'plan_price__plan').get(pk=acquisition.pk)
     if acquisition.tenant_id:
         return acquisition.tenant
@@ -510,7 +304,7 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_subscript
         defaults={
             'plan': acquisition.plan_price.plan,
             'billing_cycle': acquisition.plan_price.billing_cycle,
-            'razorpay_subscription_id': provider_subscription_id,
+            'razorpay_payment_reference': payment_reference or provider_order_id,
             'status': TenantSubscription.Status.ACTIVE,
             'start_at': timezone.now(),
             'current_period_start': timezone.now(),
@@ -523,10 +317,10 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_subscript
         defaults={'status': TenantOnboarding.Status.ONBOARDING},
     )
     acquisition.tenant = tenant
-    acquisition.provider_subscription_id = provider_subscription_id
+    acquisition.provider_order_id = provider_order_id
     acquisition.status = CustomerAcquisition.Status.TENANT_CREATED
     acquisition.verified_at = timezone.now()
-    acquisition.save(update_fields=['tenant', 'provider_subscription_id', 'status', 'verified_at', 'updated_at'])
+    acquisition.save(update_fields=['tenant', 'provider_order_id', 'status', 'verified_at', 'updated_at'])
     get_effective_entitlements(tenant)
     return tenant
 
@@ -602,13 +396,13 @@ def apply_verified_plan_change(*, plan_change, provider_reference=''):
 
 
 @transaction.atomic
-def activate_tenant_add_on(*, tenant_add_on, provider_subscription_id=''):
+def activate_tenant_add_on(*, tenant_add_on, provider_payment_reference=''):
     tenant_add_on = TenantAddOn.objects.select_for_update().get(pk=tenant_add_on.pk)
-    tenant_add_on.provider_subscription_id = provider_subscription_id or tenant_add_on.provider_subscription_id
+    tenant_add_on.provider_payment_reference = provider_payment_reference or tenant_add_on.provider_payment_reference
     tenant_add_on.status = TenantAddOn.Status.ACTIVE
     tenant_add_on.is_active = True
     tenant_add_on.starts_at = tenant_add_on.starts_at or timezone.now()
-    tenant_add_on.save(update_fields=['provider_subscription_id', 'status', 'is_active', 'starts_at', 'updated_at'])
+    tenant_add_on.save(update_fields=['provider_payment_reference', 'status', 'is_active', 'starts_at', 'updated_at'])
     get_effective_entitlements(tenant_add_on.tenant)
     return tenant_add_on
 
@@ -630,7 +424,7 @@ def process_webhook(*, body, signature, environment=None):
     )
     if not created:
         return event
-    _sync_subscription_from_webhook(payload=payload, event_type=event_type)
+    _sync_payment_from_webhook(payload=payload, event_type=event_type)
     event.processed_at = timezone.now()
     event.save(update_fields=['processed_at', 'updated_at'])
     return event
