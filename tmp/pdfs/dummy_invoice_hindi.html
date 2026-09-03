@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="hi">
+<head>
+  <meta charset="utf-8">
+  <title>Press Nexa Dummy Invoice Hindi</title>
+  <style>
+    @page { size: A4; margin: 18mm; }
+    body { margin: 0; font-family: "Nirmala UI", "Mangal", Arial, sans-serif; color: #17231f; line-height: 1.45; }
+    .top { display: grid; grid-template-columns: 1fr 260px; gap: 24px; align-items: start; margin-bottom: 28px; }
+    .brand { font-size: 34px; font-weight: 900; color: #0f3b31; margin-bottom: 38px; }
+    .muted { color: #5f7169; font-size: 13px; }
+    .invoice-title { text-align: right; color: #0f3b31; font-size: 30px; font-weight: 900; line-height: 1.15; }
+    .amount { text-align: right; color: #0f3b31; font-size: 24px; font-weight: 900; margin-top: 24px; }
+    .amount strong { display: block; font-size: 34px; }
+    .note { font-size: 17px; margin: 28px 0; }
+    .details { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #cfe0d8; background: #eef6f2; margin-bottom: 28px; }
+    .box { padding: 14px; border-right: 1px solid #cfe0d8; font-size: 16px; }
+    .box:last-child { border-right: 0; }
+    .box b { display: block; margin-bottom: 6px; }
+    h2 { color: #0f3b31; font-size: 21px; margin: 0 0 12px; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 18px; }
+    th { background: #0f3b31; color: #fff; text-align: left; padding: 11px; font-size: 15px; }
+    td { border: 1px solid #d8e6df; padding: 11px; font-size: 15px; }
+    td:last-child, th:last-child { text-align: right; }
+    .total { display: grid; grid-template-columns: 1fr 180px; border: 1px solid #cfe0d8; background: #f6faf8; padding: 12px; font-weight: 900; margin-bottom: 28px; }
+    .total div:last-child { text-align: right; }
+    .links { font-size: 16px; margin-bottom: 34px; }
+    footer { color: #5f7169; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <section class="top">
+    <div>
+      <div class="brand">Press Nexa</div>
+      <div class="muted">
+        Operated by SHRI INFOWAVE PRIVATE LIMITED<br>
+        101 Govind Kund Tila, Radha Niwas, Vrindaban, Mathura - 281121, Uttar Pradesh, India<br>
+        Support: srbc500@gmail.com | WhatsApp: 8279408396
+      </div>
+    </div>
+    <div>
+      <div class="invoice-title">नमूना<br>इनवॉइस</div>
+      <div class="amount">राशि<strong>INR 999.00</strong></div>
+    </div>
+  </section>
+
+  <p class="note">यह Press Nexa द्वारा प्रदर्शन और परीक्षण के लिए बनाया गया नमूना इनवॉइस है। यह किसी वास्तविक भुगतान का टैक्स इनवॉइस नहीं है।</p>
+
+  <section class="details">
+    <div class="box">
+      <b>ग्राहक विवरण</b>
+      Publication: Demo News Portal<br>
+      Username: demo_news_8396<br>
+      Mobile: 8279408396<br>
+      Email: customer@example.com
+    </div>
+    <div class="box">
+      <b>भुगतान विवरण</b>
+      Payment status: Successful<br>
+      Payment ID: pay_TEST123456789<br>
+      Order ID: order_TEST123456<br>
+      Invoice No: PN-DUMMY-2026-001<br>
+      Invoice Date: 03 September 2026
+    </div>
+  </section>
+
+  <h2>सेवा विवरण</h2>
+  <table>
+    <thead>
+      <tr><th>विवरण</th><th>अवधि</th><th>राशि</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Press Nexa News + Video SaaS Plan</td><td>Monthly</td><td>INR 999.00</td></tr>
+      <tr><td>Tenant workspace setup and onboarding access</td><td>Included</td><td>INR 0.00</td></tr>
+    </tbody>
+  </table>
+
+  <div class="total"><div>कुल राशि</div><div>INR 999.00</div></div>
+
+  <div class="links">
+    Profile URL: https://pressnexa.live-app.in/account/profile/<br>
+    Onboarding URL: https://pressnexa.live-app.in/billing/onboarding/
+  </div>
+
+  <footer>Press Nexa - SHRI INFOWAVE PRIVATE LIMITED | CIN: U62012UW2026PTC257361 | PAN: ABUCS7544P</footer>
+</body>
+</html>
