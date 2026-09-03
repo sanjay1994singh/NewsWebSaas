@@ -34,7 +34,7 @@
       <p>PAN: {{ company.pan }}</p>
       <p>{{ company.registered_office }}</p>
       <p>Support: {{ company.support_email }}</p>
-      <p>WhatsApp: {{ company.whatsapp_number }}</p>
+      <p>WhatsApp: <a href="{{ company.whatsapp_url }}" target="_blank" rel="noopener">{{ company.whatsapp_number }}</a></p>
     </aside>
   </section>
   <article class="policy-body">

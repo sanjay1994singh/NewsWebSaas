@@ -55,7 +55,7 @@
   <section class="address-band">
     <div class="eyebrow">Registered Office</div>
     <h2>{{ company.registered_office }}</h2>
-    <p class="muted">Support: {{ company.support_email }} | WhatsApp: {{ company.whatsapp_number }} | {{ company.business_hours }}</p>
+    <p class="muted">Support: {{ company.support_email }} | WhatsApp: <a href="{{ company.whatsapp_url }}" target="_blank" rel="noopener">{{ company.whatsapp_number }}</a> | {{ company.business_hours }}</p>
   </section>
 </main>
 {% endblock %}
