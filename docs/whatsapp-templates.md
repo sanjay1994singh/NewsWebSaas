@@ -10,7 +10,6 @@ WHATSAPP_FAST2SMS_API_KEY=
 WHATSAPP_PHONE_NUMBER_ID=
 WHATSAPP_FAST2SMS_VERSION=v26.0
 WHATSAPP_TEMPLATE_LANGUAGE=en_US
-WHATSAPP_ACCOUNT_CREATED_TEMPLATE=pressnexa_account_created
 WHATSAPP_PAYMENT_SUCCESS_TEMPLATE=pressnexa_payment_success
 WHATSAPP_PAYMENT_FAILED_TEMPLATE=pressnexa_payment_failed
 ```
@@ -20,39 +19,6 @@ Fast2SMS sends template messages through:
 ```text
 POST https://www.fast2sms.com/dev/whatsapp/{version}/{phone_number_id}/messages
 Authorization: YOUR_FAST2SMS_API_KEY
-```
-
-## Template: pressnexa_account_created
-
-Category: Utility
-
-Body:
-
-```text
-Hello, your Press Nexa account has been created for {{1}}.
-
-Username: {{2}}
-
-Selected plan: {{3}}
-Amount: {{4}}
-
-Login: {{5}}
-Update your profile: {{6}}
-Complete payment: {{7}}
-
-Use the login page to access your account. If you need password help, contact Press Nexa support.
-```
-
-Variables:
-
-```text
-{{1}} Publication name
-{{2}} Auto-generated username
-{{3}} Selected plan name
-{{4}} Amount with currency
-{{5}} Login URL
-{{6}} Profile URL
-{{7}} Checkout URL
 ```
 
 ## Template: pressnexa_payment_success

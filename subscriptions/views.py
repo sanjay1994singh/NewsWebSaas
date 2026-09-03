@@ -41,7 +41,7 @@ from .services import (
     update_pending_customer_acquisition,
     verify_razorpay_checkout_signature,
 )
-from .whatsapp import notify_account_created, notify_payment_failed, notify_payment_success
+from .whatsapp import notify_payment_failed, notify_payment_success
 
 COMPANY_PROFILE = {
     'brand_name': 'Press Nexa',
@@ -302,12 +302,6 @@ def signup(request):
             )
             login(request, acquisition.user)
             request.session['pending_checkout'] = checkout
-            notify_account_created(
-                acquisition=acquisition,
-                login_url=request.build_absolute_uri('/account/login/'),
-                profile_url=request.build_absolute_uri('/account/profile/'),
-                checkout_url=request.build_absolute_uri(f'/billing/saas/checkout/{acquisition.uuid}/'),
-            )
             messages.success(request, 'Account reserved. Complete the verified subscription step to create your tenant workspace.')
             return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
     else:

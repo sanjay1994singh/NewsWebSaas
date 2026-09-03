@@ -78,22 +78,6 @@ def money_text(price):
     return f'{price.currency} {amount_text}'
 
 
-def notify_account_created(*, acquisition, login_url, profile_url, checkout_url):
-    return send_template_message(
-        to=acquisition.mobile,
-        template_name=settings.WHATSAPP_ACCOUNT_CREATED_TEMPLATE,
-        values=[
-            acquisition.publication_name,
-            acquisition.user.username,
-            acquisition.plan_price.plan.name,
-            money_text(acquisition.plan_price),
-            login_url,
-            profile_url,
-            checkout_url,
-        ],
-    )
-
-
 def notify_payment_success(*, acquisition, tenant, payment_reference, onboarding_url, profile_url):
     return send_template_message(
         to=acquisition.mobile,
