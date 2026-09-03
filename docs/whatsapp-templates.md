@@ -41,7 +41,7 @@ Authorization: YOUR_FAST2SMS_API_KEY
 
 Category: Utility
 
-Body:
+English Body:
 
 ```text
 Payment successful for {{1}}.
@@ -56,6 +56,23 @@ Start onboarding: {{7}}
 Update profile: {{8}}
 
 Your Press Nexa tenant workspace is now active for onboarding.
+```
+
+Hindi Body:
+
+```text
+{{1}} ke liye payment safal ho gaya hai.
+
+Username: {{2}}
+Plan: {{3}}
+Paid amount: {{4}}
+Payment ID: {{5}}
+Tenant slug: {{6}}
+
+Onboarding shuru karein: {{7}}
+Profile update karein: {{8}}
+
+Aapka Press Nexa tenant workspace ab onboarding ke liye active hai.
 ```
 
 Variables:
@@ -75,7 +92,7 @@ Variables:
 
 Category: Utility
 
-Body:
+English Body:
 
 ```text
 Payment failed for {{1}}.
@@ -90,6 +107,23 @@ Update profile: {{7}}
 WhatsApp support: {{8}}
 
 If money was deducted, please share the reference with support.
+```
+
+Hindi Body:
+
+```text
+{{1}} ke liye payment fail ho gaya hai.
+
+Username: {{2}}
+Plan: {{3}}
+Amount: {{4}}
+Reference: {{5}}
+
+Payment dobara try karein: {{6}}
+Profile update karein: {{7}}
+WhatsApp support: {{8}}
+
+Agar paise deduct hue hain, to kripya reference support team ke saath share karein.
 ```
 
 Variables:
