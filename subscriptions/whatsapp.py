@@ -27,9 +27,10 @@ def _template_component(values):
 
 def send_template_message(*, to, template_name, values):
     phone_number_id = settings.WHATSAPP_PHONE_NUMBER_ID
-    token = settings.WHATSAPP_CLOUD_API_TOKEN
     recipient = normalize_whatsapp_number(to)
-    if not phone_number_id or not token or not recipient:
+    provider = settings.WHATSAPP_PROVIDER.lower()
+    api_key = settings.WHATSAPP_FAST2SMS_API_KEY if provider == 'fast2sms' else settings.WHATSAPP_CLOUD_API_TOKEN
+    if not phone_number_id or not api_key or not recipient:
         logger.info('WhatsApp template skipped because configuration or recipient is missing.')
         return False
 
@@ -43,11 +44,18 @@ def send_template_message(*, to, template_name, values):
             'components': [_template_component(values)],
         },
     }
+    if provider == 'fast2sms':
+        url = f'https://www.fast2sms.com/dev/whatsapp/{settings.WHATSAPP_FAST2SMS_VERSION}/{phone_number_id}/messages'
+        authorization = api_key
+    else:
+        url = f'https://graph.facebook.com/v20.0/{phone_number_id}/messages'
+        authorization = f'Bearer {api_key}'
+
     request = Request(
-        f'https://graph.facebook.com/v20.0/{phone_number_id}/messages',
+        url,
         data=json.dumps(payload).encode('utf-8'),
         headers={
-            'Authorization': f'Bearer {token}',
+            'Authorization': authorization,
             'Content-Type': 'application/json',
         },
         method='POST',

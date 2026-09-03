@@ -1,16 +1,25 @@
 # Press Nexa WhatsApp Templates
 
-Use these approved WhatsApp Business templates with Meta WhatsApp Cloud API. Keep the template names exactly as configured in `.env`, or update the `.env` names to match the approved templates.
+Use these approved WhatsApp Business templates with Fast2SMS WhatsApp API. Keep the template names exactly as configured in `.env`, or update the `.env` names to match the approved templates.
 
 ## Environment Variables
 
 ```text
-WHATSAPP_CLOUD_API_TOKEN=
+WHATSAPP_PROVIDER=fast2sms
+WHATSAPP_FAST2SMS_API_KEY=
 WHATSAPP_PHONE_NUMBER_ID=
+WHATSAPP_FAST2SMS_VERSION=v26.0
 WHATSAPP_TEMPLATE_LANGUAGE=en_US
 WHATSAPP_ACCOUNT_CREATED_TEMPLATE=pressnexa_account_created
 WHATSAPP_PAYMENT_SUCCESS_TEMPLATE=pressnexa_payment_success
 WHATSAPP_PAYMENT_FAILED_TEMPLATE=pressnexa_payment_failed
+```
+
+Fast2SMS sends template messages through:
+
+```text
+POST https://www.fast2sms.com/dev/whatsapp/{version}/{phone_number_id}/messages
+Authorization: YOUR_FAST2SMS_API_KEY
 ```
 
 ## Template: pressnexa_account_created
