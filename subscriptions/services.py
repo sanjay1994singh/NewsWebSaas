@@ -11,6 +11,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.text import slugify
 
@@ -378,6 +379,65 @@ def record_onboarding_review(*, onboarding, action, actor=None, notes=''):
     onboarding.save(update_fields=update_fields)
     OnboardingReviewEvent.objects.create(onboarding=onboarding, action=action, actor=actor, notes=notes)
     return onboarding
+
+
+@transaction.atomic
+def publish_onboarding(*, onboarding, actor=None, notes=''):
+    onboarding = (
+        TenantOnboarding.objects
+        .select_for_update()
+        .select_related('tenant')
+        .get(pk=onboarding.pk)
+    )
+    if onboarding.status == TenantOnboarding.Status.PUBLISHED:
+        return onboarding
+    onboarding.status = TenantOnboarding.Status.PUBLISHED
+    onboarding.reviewer_notes = notes
+    onboarding.reviewed_at = timezone.now()
+    onboarding.published_at = timezone.now()
+    onboarding.tenant.status = Tenant.Status.ACTIVE
+    onboarding.tenant.onboarding_status = Tenant.OnboardingStatus.COMPLETE
+    onboarding.tenant.save(update_fields=['status', 'onboarding_status', 'updated_at'])
+    onboarding.save(update_fields=['status', 'reviewer_notes', 'reviewed_at', 'published_at', 'updated_at'])
+    OnboardingReviewEvent.objects.create(
+        onboarding=onboarding,
+        action=OnboardingReviewEvent.Action.PUBLISHED,
+        actor=actor,
+        notes=notes,
+    )
+    return onboarding
+
+
+def auto_publish_paid_onboardings(*, older_than_minutes=30, limit=100):
+    cutoff = timezone.now() - timezone.timedelta(minutes=older_than_minutes)
+    eligible_statuses = [
+        TenantOnboarding.Status.ONBOARDING,
+        TenantOnboarding.Status.SUBMITTED_FOR_REVIEW,
+        TenantOnboarding.Status.UNDER_REVIEW,
+        TenantOnboarding.Status.APPROVED,
+        TenantOnboarding.Status.READY_TO_PUBLISH,
+    ]
+    onboardings = (
+        TenantOnboarding.objects
+        .select_related('tenant', 'tenant__subscription')
+        .filter(
+            status__in=eligible_statuses,
+            tenant__subscription__status=TenantSubscription.Status.ACTIVE,
+            tenant__subscription__start_at__lte=cutoff,
+            published_at__isnull=True,
+        )
+        .filter(Q(tenant__status=Tenant.Status.TRIAL) | Q(tenant__status=Tenant.Status.ACTIVE))
+        .order_by('tenant__subscription__start_at', 'created_at')[:limit]
+    )
+    published = []
+    for onboarding in onboardings:
+        published.append(
+            publish_onboarding(
+                onboarding=onboarding,
+                notes=f'Auto-published after {older_than_minutes} minutes without manual admin action.',
+            )
+        )
+    return published
 
 
 @transaction.atomic

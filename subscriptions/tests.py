@@ -3,9 +3,11 @@ import json
 from hashlib import sha256
 
 from django.contrib.auth import get_user_model
+from django.core.management import call_command
 from django.core.exceptions import ValidationError
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from tenants.models import Tenant, TenantMembership
 
@@ -24,7 +26,7 @@ from .models import (
     TenantSubscription,
     WebhookEvent,
 )
-from .services import process_webhook, verify_razorpay_signature
+from .services import auto_publish_paid_onboardings, process_webhook, verify_razorpay_signature
 
 
 class SubscriptionTests(TestCase):
@@ -249,6 +251,59 @@ class SubscriptionTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(BillingRecord.objects.filter(razorpay_payment_id='pay_existing_123').exists())
         self.assertContains(response, 'Download PDF')
+
+    def test_paid_onboarding_auto_publishes_after_waiting_period(self):
+        old_start = timezone.now() - timezone.timedelta(minutes=31)
+        subscription = TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            status=TenantSubscription.Status.ACTIVE,
+            start_at=old_start,
+            current_period_start=old_start,
+        )
+        subscription.save(update_fields=['start_at', 'current_period_start', 'updated_at'])
+        onboarding = TenantOnboarding.objects.create(
+            tenant=self.tenant,
+            status=TenantOnboarding.Status.ONBOARDING,
+        )
+
+        published = auto_publish_paid_onboardings(older_than_minutes=30)
+
+        self.assertEqual(published, [onboarding])
+        onboarding.refresh_from_db()
+        self.tenant.refresh_from_db()
+        self.assertEqual(onboarding.status, TenantOnboarding.Status.PUBLISHED)
+        self.assertIsNotNone(onboarding.published_at)
+        self.assertEqual(self.tenant.status, Tenant.Status.ACTIVE)
+        self.assertEqual(self.tenant.onboarding_status, Tenant.OnboardingStatus.COMPLETE)
+
+    def test_auto_publish_skips_recent_or_rejected_onboardings(self):
+        recent_start = timezone.now() - timezone.timedelta(minutes=10)
+        TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            status=TenantSubscription.Status.ACTIVE,
+            start_at=recent_start,
+            current_period_start=recent_start,
+        )
+        recent = TenantOnboarding.objects.create(
+            tenant=self.tenant,
+            status=TenantOnboarding.Status.ONBOARDING,
+        )
+
+        published = auto_publish_paid_onboardings(older_than_minutes=30)
+
+        self.assertEqual(published, [])
+        recent.refresh_from_db()
+        self.assertEqual(recent.status, TenantOnboarding.Status.ONBOARDING)
+
+    def test_auto_publish_management_command_runs(self):
+        out = type('Stream', (), {'write': lambda self, value: setattr(self, 'value', value)})()
+        call_command('auto_publish_paid_onboardings', minutes=30, stdout=out)
+
+        self.assertIn('Auto-published 0 onboarding record(s).', out.value)
 
 
 class DynamicEntitlementTests(TestCase):
