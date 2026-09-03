@@ -85,7 +85,13 @@ def tenant_dashboard(request):
         ('mobile_app', 'Mobile App', '/dashboard/mobile-app/'),
     ]
     visible_menu = [
-        {'code': code, 'label': label, 'url': url, 'entitlement': entitlements.get(code)}
+        {
+            'code': code,
+            'label': label,
+            'url': url,
+            'entitlement': entitlements.get(code),
+            'source_label': 'Included in plan' if entitlements.get(code, {}).get('source') == 'plan_feature' else 'Custom access',
+        }
         for code, label, url in feature_menu
         if entitlements.get(code, {}).get('is_enabled')
     ]

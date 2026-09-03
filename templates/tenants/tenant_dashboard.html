@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ tenant.publication_name }} Dashboard</title>
   <style>
-    :root { --ink:#13201b; --muted:#66766e; --line:#d9e4de; --paper:#f6faf8; --brand:#15614f; --deep:#102f29; --warn:#9a5549; --soft:#eef6f2; }
+    :root { --ink:#13201b; --muted:#66766e; --line:#d9e4de; --paper:#f6faf8; --brand:#15614f; --deep:#102f29; --warn:#9a5549; --soft:#eef6f2; --gold:#d99b38; }
     * { box-sizing:border-box; }
     body { margin:0; font-family:Arial,sans-serif; background:var(--paper); color:var(--ink); line-height:1.5; }
     a { color:inherit; }
-    .shell { display:grid; grid-template-columns:268px minmax(0,1fr); min-height:100vh; }
-    .sidebar { position:sticky; top:0; height:100vh; background:var(--deep); color:#fff; padding:22px 18px; overflow:auto; }
+    .shell { display:grid; grid-template-columns:280px minmax(0,1fr); min-height:100vh; }
+    .sidebar { position:sticky; top:0; height:100vh; background:linear-gradient(180deg,#0f3b31 0%,#102f29 100%); color:#fff; padding:22px 18px; overflow:auto; }
     .side-brand { display:flex; gap:12px; align-items:center; padding-bottom:18px; border-bottom:1px solid rgba(255,255,255,.14); }
     .logo { width:46px; height:46px; border-radius:8px; background:#fff; color:var(--brand); display:grid; place-items:center; font-weight:900; font-size:22px; overflow:hidden; }
     .logo img { width:100%; height:100%; object-fit:cover; }
@@ -18,19 +18,28 @@
     .side-brand p { margin:3px 0 0; color:#b9d6cc; font-size:13px; }
     .nav-group { margin-top:18px; }
     .nav-label { margin:0 0 8px; color:#8fb8aa; font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.08em; }
-    .sidebar a, .logout-btn { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; min-height:40px; padding:9px 10px; color:#e4f3ee; text-decoration:none; border:0; border-radius:6px; background:transparent; font:inherit; cursor:pointer; }
-    .sidebar a:hover, .logout-btn:hover { background:rgba(255,255,255,.08); }
+    .sidebar a, .logout-btn { display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%; min-height:42px; padding:10px 12px; color:#e4f3ee; text-decoration:none; border:0; border-radius:8px; background:transparent; font:inherit; cursor:pointer; }
+    .sidebar a:hover, .logout-btn:hover, .sidebar a.active { background:rgba(255,255,255,.1); }
+    .sidebar span { color:#b9d6cc; font-size:12px; }
     .main { min-width:0; padding:28px; }
-    .topbar { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:22px; }
+    .topbar { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom:20px; }
     .eyebrow { margin:0 0 7px; color:var(--brand); font-weight:900; font-size:13px; text-transform:uppercase; letter-spacing:.08em; }
     .topbar h2 { margin:0; font-size:36px; line-height:1.05; }
     .muted { color:var(--muted); }
     .pills { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
     .pill { display:inline-flex; align-items:center; min-height:32px; padding:6px 10px; border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--muted); font-size:13px; font-weight:800; white-space:nowrap; }
+    .welcome { display:grid; grid-template-columns:1fr auto; gap:18px; align-items:center; margin-bottom:18px; padding:22px; border:1px solid var(--line); border-radius:8px; background:linear-gradient(135deg,#fff 0%,#f4fbf8 60%,#fff7ec 100%); }
+    .welcome h3 { margin:0; font-size:26px; }
+    .welcome p { max-width:760px; margin:8px 0 0; }
     .hero { display:grid; grid-template-columns:1.1fr .9fr; gap:18px; margin-bottom:18px; }
     .panel { background:#fff; border:1px solid var(--line); border-radius:8px; padding:20px; }
     .next-panel { background:linear-gradient(135deg,#f4fbf8 0%,#fff 62%,#eef7f2 100%); }
     .panel h3 { margin:0 0 10px; font-size:24px; }
+    .quick-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-bottom:18px; }
+    .quick-card { display:grid; gap:8px; min-height:126px; background:#fff; border:1px solid var(--line); border-radius:8px; padding:16px; text-decoration:none; }
+    .quick-card strong { font-size:18px; }
+    .quick-card span { color:var(--muted); font-size:14px; }
+    .quick-card:hover { border-color:var(--brand); box-shadow:0 12px 30px rgba(19,32,27,.08); }
     .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
     .btn { display:inline-flex; align-items:center; justify-content:center; min-height:42px; padding:10px 15px; border-radius:6px; border:1px solid var(--brand); background:var(--brand); color:#fff; text-decoration:none; font-weight:900; cursor:pointer; }
     .btn.secondary { background:#fff; color:var(--brand); }
@@ -45,7 +54,7 @@
     .stat p { margin:8px 0 0; color:var(--muted); }
     .content-grid { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
     .feature-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
-    .feature-card { border:1px solid var(--line); border-radius:8px; padding:14px; background:#fbfdfc; }
+    .feature-card { border:1px solid var(--line); border-radius:8px; padding:14px; background:#fbfdfc; text-decoration:none; }
     .feature-card h4 { margin:0 0 5px; font-size:17px; }
     .feature-card p { margin:0; color:var(--muted); font-size:13px; }
     .restricted { color:var(--warn); font-weight:800; }
@@ -54,7 +63,8 @@
       .sidebar { position:static; height:auto; }
       .nav-group { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px; }
       .nav-label { grid-column:1 / -1; }
-      .hero, .content-grid { grid-template-columns:1fr; }
+      .hero, .content-grid, .welcome { grid-template-columns:1fr; }
+      .quick-grid { grid-template-columns:1fr; }
       .stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
     }
     @media (max-width:640px) {
@@ -83,17 +93,18 @@
       </div>
       <nav class="nav-group">
         <p class="nav-label">Workspace</p>
-        <a href="{% url 'tenants:tenant_dashboard' %}">Dashboard <span>Home</span></a>
-        <a href="{% url 'subscriptions:onboarding' %}">Onboarding <span>{% if onboarding %}{{ onboarding.get_status_display }}{% else %}Start{% endif %}</span></a>
+        <a class="active" href="{% url 'tenants:tenant_dashboard' %}">Dashboard <span>Overview</span></a>
+        <a href="/cms/">Create News <span>Publish</span></a>
+        <a href="{% url 'subscriptions:onboarding' %}">Setup Review <span>{% if onboarding %}{{ onboarding.get_status_display }}{% else %}Start{% endif %}</span></a>
         <a href="{% url 'subscriptions:billing_dashboard' %}">Billing <span>{% if subscription %}{{ subscription.get_status_display }}{% else %}Review{% endif %}</span></a>
-        <a href="{% url 'accounts:profile' %}">Profile <span>Account</span></a>
         <a href="{% url 'tenants:tenant_settings' tenant.uuid %}">Settings <span>Brand</span></a>
+        <a href="{% url 'accounts:profile' %}">Profile <span>Account</span></a>
       </nav>
       {% if visible_menu %}
         <nav class="nav-group">
           <p class="nav-label">Enabled features</p>
           {% for item in visible_menu %}
-            <a href="{{ item.url }}">{{ item.label }} <span>{{ item.entitlement.source }}</span></a>
+            <a href="{{ item.url }}">{{ item.label }} <span>{{ item.source_label }}</span></a>
           {% endfor %}
         </nav>
       {% endif %}
@@ -115,6 +126,31 @@
           {% if subscription %}<span class="pill">{{ subscription.plan.name }}</span>{% endif %}
           {% if primary_domain %}<span class="pill">{{ primary_domain.domain }}</span>{% endif %}
         </div>
+      </section>
+
+      <section class="welcome">
+        <div>
+          <h3>Your publication workspace is ready</h3>
+          <p class="muted">Use the actions below to publish content, manage billing, update branding, and connect launch essentials from one place.</p>
+        </div>
+        <div class="pills">
+          <span class="pill">Setup: {% if onboarding %}{{ onboarding.get_status_display }}{% else %}Not started{% endif %}</span>
+        </div>
+      </section>
+
+      <section class="quick-grid">
+        <a class="quick-card" href="/cms/">
+          <strong>Create News</strong>
+          <span>Write and publish your first article.</span>
+        </a>
+        <a class="quick-card" href="{% url 'tenants:tenant_settings' tenant.uuid %}">
+          <strong>Brand Settings</strong>
+          <span>Update name, contact, language, and workspace details.</span>
+        </a>
+        <a class="quick-card" href="{% url 'subscriptions:billing_dashboard' %}">
+          <strong>Invoices & Billing</strong>
+          <span>Download invoice PDFs and manage your plan.</span>
+        </a>
       </section>
 
       <section class="hero">
@@ -163,7 +199,7 @@
             {% for item in visible_menu %}
               <a class="feature-card" href="{{ item.url }}">
                 <h4>{{ item.label }}</h4>
-                <p>{{ item.entitlement.source }}{% if item.entitlement.limit_value %} / limit {{ item.entitlement.limit_value }}{% endif %}</p>
+                <p>{{ item.source_label }}{% if item.entitlement.limit_value %} / limit {{ item.entitlement.limit_value }}{% endif %}</p>
               </a>
             {% empty %}
               <div class="feature-card">
