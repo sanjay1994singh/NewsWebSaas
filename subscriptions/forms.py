@@ -22,6 +22,15 @@ class CustomerSignupForm(forms.Form):
     publication_name = forms.CharField(max_length=255)
     email = forms.EmailField()
     mobile = forms.CharField(max_length=32)
+    password = forms.CharField(
+        min_length=8,
+        widget=forms.PasswordInput,
+        help_text='Use at least 8 characters.',
+    )
+    confirm_password = forms.CharField(
+        label='Confirm password',
+        widget=forms.PasswordInput,
+    )
     price_id = forms.IntegerField(widget=forms.HiddenInput)
 
     def __init__(self, *args, **kwargs):
@@ -31,12 +40,16 @@ class CustomerSignupForm(forms.Form):
             'publication_name': 'News publication name',
             'email': 'owner@example.com',
             'mobile': 'WhatsApp mobile number',
+            'password': 'Create password',
+            'confirm_password': 'Confirm password',
         }
         autocomplete = {
             'business_name': 'organization',
             'publication_name': 'organization-title',
             'email': 'email',
             'mobile': 'tel',
+            'password': 'new-password',
+            'confirm_password': 'new-password',
         }
         for name, field in self.fields.items():
             if name in placeholders:
@@ -60,6 +73,10 @@ class CustomerSignupForm(forms.Form):
             if Tenant.objects.filter(slug=slug).exists() or CustomerAcquisition.objects.filter(publication_slug=slug).exists():
                 self.add_error('publication_name', 'A publication with this name is already reserved.')
             cleaned_data['publication_slug'] = slug
+        password = cleaned_data.get('password')
+        confirm_password = cleaned_data.get('confirm_password')
+        if password and confirm_password and password != confirm_password:
+            self.add_error('confirm_password', 'Passwords do not match.')
         return cleaned_data
 
 

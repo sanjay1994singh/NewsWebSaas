@@ -70,7 +70,7 @@
           {% else %}
             <div class="form-field {% if field.errors %}has-error{% endif %}">
               <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-              {% if field.name == 'password' %}
+              {% if field.name == 'password' or field.name == 'confirm_password' %}
                 <div class="password-wrap">
                   {{ field }}
                   <button class="password-toggle" type="button" data-password-toggle aria-controls="{{ field.id_for_label }}">Show</button>

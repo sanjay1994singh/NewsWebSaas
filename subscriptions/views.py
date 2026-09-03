@@ -310,6 +310,7 @@ def signup(request):
                 publication_slug=form.cleaned_data['publication_slug'],
                 email=form.cleaned_data['email'],
                 mobile=form.cleaned_data['mobile'],
+                password=form.cleaned_data['password'],
                 plan_price=form.cleaned_data['price_id'],
             )
             login(request, acquisition.user)

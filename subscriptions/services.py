@@ -387,10 +387,9 @@ def generate_temporary_password(length=12):
 
 
 @transaction.atomic
-def reserve_customer_acquisition(*, business_name, publication_name, publication_slug, email, mobile, plan_price):
+def reserve_customer_acquisition(*, business_name, publication_name, publication_slug, email, mobile, password, plan_price):
     User = get_user_model()
     username = generate_customer_username(publication_name=publication_name, mobile=mobile)
-    password = generate_temporary_password()
     user = User.objects.create_user(username=username, email=email, password=password)
     acquisition = CustomerAcquisition.objects.create(
         user=user,
