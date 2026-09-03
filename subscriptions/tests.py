@@ -7,11 +7,12 @@ from django.core.exceptions import ValidationError
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from tenants.models import Tenant
+from tenants.models import Tenant, TenantMembership
 
 from .entitlements import get_feature_limit, tenant_has_feature, tenant_feature_limit
 from .models import (
     AddOn,
+    BillingRecord,
     CustomerAcquisition,
     Feature,
     Plan,
@@ -37,6 +38,12 @@ class SubscriptionTests(TestCase):
             slug='billing-news',
             email='billing@example.com',
             status=Tenant.Status.ACTIVE,
+        )
+        TenantMembership.objects.create(
+            tenant=self.tenant,
+            user=self.user,
+            role=TenantMembership.Role.OWNER,
+            status=TenantMembership.Status.ACTIVE,
         )
         self.plan = Plan.objects.create(
             name='Professional',
@@ -180,6 +187,29 @@ class SubscriptionTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, reverse('subscriptions:activate_add_on', kwargs={'add_on_id': add_on.uuid}))
+
+    def test_invoice_pdf_download_is_available_to_tenant_owner(self):
+        subscription = TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            status=TenantSubscription.Status.ACTIVE,
+        )
+        invoice = BillingRecord.objects.create(
+            tenant=self.tenant,
+            subscription=subscription,
+            razorpay_payment_id='pay_test_123',
+            amount=199900,
+            currency='INR',
+            status='paid',
+        )
+
+        self.client.login(username='owner', password='testpass123')
+        response = self.client.get(reverse('subscriptions:download_invoice', kwargs={'record_id': invoice.id}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertTrue(response.content.startswith(b'%PDF'))
 
 
 class DynamicEntitlementTests(TestCase):

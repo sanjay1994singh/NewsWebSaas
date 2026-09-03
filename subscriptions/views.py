@@ -3,19 +3,22 @@ from django.contrib import messages
 from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.http import require_POST
 
+from core.models import user_can_access_tenant
 from tenants.models import Tenant
 
 from .entitlements import get_effective_entitlement, get_effective_entitlements
 from .forms import CustomerSignupForm, CustomerWorkspaceForm, OnboardingForm, ReviewActionForm
+from .invoices import build_invoice_pdf, email_invoice, invoice_filename
 from .models import (
     AddOn,
+    BillingRecord,
     CustomerAcquisition,
     Feature,
     OnboardingReviewEvent,
@@ -383,6 +386,9 @@ def verify_subscription(request, acquisition_id):
         provider_order_id=order_id,
         payment_reference=payment_id,
     )
+    billing_record = BillingRecord.objects.filter(tenant=tenant, status='paid').order_by('-created_at').first()
+    if billing_record:
+        email_invoice(billing_record)
     notify_payment_success(
         acquisition=acquisition,
         tenant=tenant,
@@ -529,6 +535,7 @@ def billing_dashboard(request):
     plans = Plan.objects.filter(is_active=True, is_current_version=True).prefetch_related('prices')
     add_ons = AddOn.objects.filter(is_active=True).select_related('feature').order_by('display_order', 'name')
     entitlements = get_effective_entitlements(tenant)
+    invoices = BillingRecord.objects.filter(tenant=tenant).select_related('subscription__plan').order_by('-created_at')[:20]
     return render(
         request,
         'subscriptions/billing_dashboard.html',
@@ -539,8 +546,22 @@ def billing_dashboard(request):
             'plans': plans,
             'add_ons': add_ons,
             'entitlements': entitlements,
+            'invoices': invoices,
         },
     )
+
+
+@login_required
+def download_invoice(request, record_id):
+    record = get_object_or_404(
+        BillingRecord.objects.select_related('tenant', 'subscription__plan'),
+        pk=record_id,
+    )
+    if record.tenant.owner_id != request.user.id and not user_can_access_tenant(request.user, record.tenant):
+        raise PermissionDenied("You do not have access to this invoice.")
+    response = HttpResponse(build_invoice_pdf(record), content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="{invoice_filename(record)}"'
+    return response
 
 
 @login_required

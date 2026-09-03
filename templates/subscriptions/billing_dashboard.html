@@ -12,6 +12,10 @@
   .detail-row { display:flex; justify-content:space-between; gap:12px; border-top:1px solid var(--line); padding-top:10px; }
   .feature-card { padding:14px; }
   .field-note { font-size:13px; color:var(--muted); margin:0; }
+  .invoice-table { width:100%; border-collapse:collapse; overflow:hidden; border:1px solid var(--line); border-radius:8px; background:#fff; }
+  .invoice-table th, .invoice-table td { padding:12px; border-bottom:1px solid var(--line); text-align:left; }
+  .invoice-table th { background:#eef6f2; color:var(--deep); font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
+  .invoice-table tr:last-child td { border-bottom:0; }
   @media (max-width:760px) { .billing-hero, .detail-row { display:grid; } }
 {% endblock %}
 
@@ -36,6 +40,36 @@
       {% else %}
         <p class="muted">No active subscription record is linked yet. Choose a plan or contact support if payment is already complete.</p>
         <a class="btn" href="{% url 'public_saas_landing' %}">Choose Plan</a>
+      {% endif %}
+    </section>
+
+    <section>
+      <h2>Invoices</h2>
+      {% if invoices %}
+        <table class="invoice-table">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Plan</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th>PDF</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for invoice in invoices %}
+              <tr>
+                <td>{{ invoice.created_at|date:"d M Y" }}</td>
+                <td>{% if invoice.subscription %}{{ invoice.subscription.plan.name }}{% else %}Subscription{% endif %}</td>
+                <td>{{ invoice.currency }} {{ invoice.amount|paise_to_rupees }}</td>
+                <td>{{ invoice.status|title }}</td>
+                <td><a class="btn secondary" href="{% url 'subscriptions:download_invoice' invoice.id %}">Download PDF</a></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="card"><p class="muted">Your invoices will appear here after a successful payment.</p></div>
       {% endif %}
     </section>
 

@@ -1,10 +1,48 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><title>{{ tenant.publication_name }} Settings</title></head>
-<body>
-  <main>
-    <h1>{{ tenant.publication_name }} Settings</h1>
-    {{ form.as_p }}
+{% extends "base.html" %}
+
+{% block title %}{{ tenant.publication_name }} Settings - Press Nexa{% endblock %}
+
+{% block styles %}
+  .settings-shell { display:grid; gap:20px; }
+  .settings-hero { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; }
+  .settings-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:16px; }
+  .settings-card { display:grid; gap:12px; }
+  .field-error { color:var(--danger); font-size:13px; margin-top:4px; }
+  .settings-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
+  @media (max-width:760px) { .settings-hero, .settings-grid { grid-template-columns:1fr; display:grid; } }
+{% endblock %}
+
+{% block content %}
+  <main class="page settings-shell">
+    <section class="card settings-hero">
+      <div>
+        <p class="muted">Workspace settings</p>
+        <h1>{{ tenant.publication_name }}</h1>
+        <p class="muted">Keep your publication identity and customer contact details updated.</p>
+      </div>
+      <a class="btn secondary" href="{% url 'tenants:tenant_dashboard' %}">Back to Dashboard</a>
+    </section>
+
+    <form class="card settings-card" method="post">
+      {% csrf_token %}
+      <h2>Publication Details</h2>
+      <div class="settings-grid">
+        {% for field in form %}
+          <div>
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<p class="muted">{{ field.help_text }}</p>{% endif %}
+            {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+      {% if form.non_field_errors %}
+        {% for error in form.non_field_errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+      {% endif %}
+      <div class="settings-actions">
+        <button class="btn" type="submit">Save Settings</button>
+        <a class="btn secondary" href="{% url 'subscriptions:billing_dashboard' %}">Billing</a>
+      </div>
+    </form>
   </main>
-</body>
-</html>
+{% endblock %}

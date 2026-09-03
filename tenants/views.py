@@ -109,5 +109,12 @@ def tenant_settings(request, uuid):
     tenant = get_object_or_404(Tenant, uuid=uuid)
     if not user_can_access_tenant(request.user, tenant):
         raise PermissionDenied("You do not have access to this tenant.")
-    form = TenantSettingsForm(instance=tenant)
+    if request.method == 'POST':
+        form = TenantSettingsForm(request.POST, instance=tenant)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Workspace settings updated.')
+            return redirect('tenants:tenant_settings', uuid=tenant.uuid)
+    else:
+        form = TenantSettingsForm(instance=tenant)
     return render(request, 'tenants/tenant_settings.html', {'tenant': tenant, 'form': form})

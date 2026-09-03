@@ -19,6 +19,7 @@ from tenants.models import Tenant, TenantMembership
 from .entitlements import get_effective_entitlements
 from .models import (
     CustomerAcquisition,
+    BillingRecord,
     OnboardingReviewEvent,
     PlanChangeRequest,
     PlanPrice,
@@ -299,7 +300,7 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
             'joined_at': timezone.now(),
         },
     )
-    TenantSubscription.objects.update_or_create(
+    subscription, _ = TenantSubscription.objects.update_or_create(
         tenant=tenant,
         defaults={
             'plan': acquisition.plan_price.plan,
@@ -308,6 +309,23 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
             'status': TenantSubscription.Status.ACTIVE,
             'start_at': timezone.now(),
             'current_period_start': timezone.now(),
+        },
+    )
+    BillingRecord.objects.update_or_create(
+        tenant=tenant,
+        razorpay_payment_id=payment_reference or provider_order_id,
+        defaults={
+            'subscription': subscription,
+            'razorpay_invoice_id': '',
+            'amount': acquisition.plan_price.amount,
+            'currency': acquisition.plan_price.currency,
+            'status': 'paid',
+            'payload': {
+                'provider_order_id': provider_order_id,
+                'acquisition_uuid': str(acquisition.uuid),
+                'plan': acquisition.plan_price.plan.name,
+                'billing_cycle': acquisition.plan_price.billing_cycle,
+            },
         },
     )
     from .models import TenantOnboarding
