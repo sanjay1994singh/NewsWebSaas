@@ -153,7 +153,7 @@ USE_TZ = True
 AUTH_USER_MODEL = 'accounts.User'
 AUTHENTICATION_BACKENDS = ['accounts.auth_backends.IdentifierBackend']
 LOGIN_URL = 'accounts:login'
-LOGIN_REDIRECT_URL = 'home'
+LOGIN_REDIRECT_URL = 'tenants:tenant_dashboard'
 LOGOUT_REDIRECT_URL = 'home'
 
 

@@ -176,7 +176,7 @@ class OnboardingForm(forms.ModelForm):
             'logo': 'Logo',
             'primary_color': 'Primary color',
             'secondary_color': 'Secondary color',
-            'site_title': 'Website title',
+            'site_title': 'Channel name / Paper name',
             'meta_description': 'Website description',
         }
         placeholders = {
@@ -200,6 +200,9 @@ class OnboardingForm(forms.ModelForm):
             self.fields[name].label = label
         for name, placeholder in placeholders.items():
             self.fields[name].widget.attrs['placeholder'] = placeholder
+        tenant = getattr(self.instance, 'tenant', None)
+        if tenant and not self.instance.site_title:
+            self.fields['site_title'].initial = tenant.business_name
         for name, help_text in help_texts.items():
             self.fields[name].help_text = help_text
 
@@ -218,6 +221,11 @@ class OnboardingForm(forms.ModelForm):
             'address': forms.Textarea(attrs={'rows': 3}),
             'meta_description': forms.Textarea(attrs={'rows': 3}),
         }
+
+    def clean_site_title(self):
+        site_title = (self.cleaned_data.get('site_title') or '').strip()
+        tenant = getattr(self.instance, 'tenant', None)
+        return site_title or (tenant.business_name if tenant else '')
 
 
 class ReviewActionForm(forms.Form):

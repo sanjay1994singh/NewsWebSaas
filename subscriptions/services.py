@@ -5,6 +5,7 @@ import secrets
 import string
 from datetime import datetime
 from hashlib import sha256
+from urllib.parse import urlparse
 
 import razorpay
 from django.conf import settings
@@ -16,6 +17,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 
 from categories.models import Category
+from domains.models import TenantDomain
 from news.models import AuthorProfile
 from pages.models import HomepageLayout, Menu, MenuItem, Page
 from tenants.models import Tenant, TenantMembership
@@ -49,6 +51,55 @@ def subscription_period_for_cycle(start_at, billing_cycle):
     months = 12 if billing_cycle == PlanPrice.BillingCycle.YEARLY else 1
     end_at = _add_months(start_at, months)
     return start_at, end_at, end_at
+
+
+def platform_root_domain():
+    configured = getattr(settings, 'TENANT_PLATFORM_ROOT_DOMAIN', '').strip().lower()
+    if configured:
+        return configured
+    parsed = urlparse(settings.SITE_BASE_URL)
+    host = (parsed.netloc or parsed.path).split(':', 1)[0].strip().lower()
+    parts = host.split('.')
+    if len(parts) > 2:
+        return '.'.join(parts[-2:])
+    return host
+
+
+def platform_domain_for_name(name):
+    root_domain = platform_root_domain()
+    subdomain = slugify(name or '').strip('-') or 'publication'
+    return f'{subdomain}.{root_domain}'
+
+
+def ensure_platform_domain_for_tenant(tenant):
+    primary = TenantDomain.objects.filter(tenant=tenant, is_primary=True).first()
+    if primary:
+        return primary
+    root_domain = platform_root_domain()
+    base_subdomain = slugify(tenant.business_name or tenant.publication_name or tenant.slug).strip('-') or tenant.slug
+    for index in range(1, 1000):
+        subdomain = base_subdomain if index == 1 else f'{base_subdomain}-{index}'
+        domain_name = f'{subdomain}.{root_domain}'
+        existing = TenantDomain.objects.filter(domain=domain_name).first()
+        if existing and existing.tenant_id == tenant.id:
+            if not existing.is_primary or not existing.is_verified or existing.status != TenantDomain.Status.ACTIVE:
+                existing.is_primary = True
+                existing.is_verified = True
+                existing.status = TenantDomain.Status.ACTIVE
+                existing.ssl_status = TenantDomain.SSLStatus.ACTIVE
+                existing.save(update_fields=['is_primary', 'is_verified', 'status', 'ssl_status', 'updated_at'])
+            return existing
+        if not existing:
+            return TenantDomain.objects.create(
+                tenant=tenant,
+                domain=domain_name,
+                domain_type=TenantDomain.DomainType.PLATFORM_SUBDOMAIN,
+                is_primary=True,
+                is_verified=True,
+                status=TenantDomain.Status.ACTIVE,
+                ssl_status=TenantDomain.SSLStatus.ACTIVE,
+            )
+    raise ValidationError('Unable to create a unique platform domain for this tenant.')
 
 
 def _append_issue(issues, code, message, fixed=False):
@@ -516,6 +567,7 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
             'joined_at': timezone.now(),
         },
     )
+    ensure_platform_domain_for_tenant(tenant)
     period_start, period_end, charge_at = subscription_period_for_cycle(timezone.now(), acquisition.plan_price.billing_cycle)
     subscription, _ = TenantSubscription.objects.update_or_create(
         tenant=tenant,
@@ -556,7 +608,10 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
 
     TenantOnboarding.objects.get_or_create(
         tenant=tenant,
-        defaults={'status': TenantOnboarding.Status.ONBOARDING},
+        defaults={
+            'status': TenantOnboarding.Status.ONBOARDING,
+            'site_title': tenant.business_name,
+        },
     )
     acquisition.tenant = tenant
     acquisition.provider_order_id = provider_order_id

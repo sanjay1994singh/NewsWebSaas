@@ -8,6 +8,7 @@ from domains.models import TenantDomain
 from news.models import NewsArticle
 from subscriptions.entitlements import get_effective_entitlements
 from subscriptions.models import CustomerAcquisition, TenantOnboarding, TenantSubscription
+from subscriptions.services import ensure_platform_domain_for_tenant
 
 from .forms import TenantSettingsForm
 from .models import Tenant, TenantMembership
@@ -66,6 +67,9 @@ def tenant_dashboard(request):
 
     entitlements = get_effective_entitlements(tenant)
     primary_domain = TenantDomain.objects.filter(tenant=tenant, is_primary=True).first()
+    if primary_domain is None:
+        primary_domain = ensure_platform_domain_for_tenant(tenant)
+    site_url = f'https://{primary_domain.domain}/' if primary_domain else ''
     article_queryset = NewsArticle.objects.filter(tenant=tenant)
     news_stats = {
         'total': article_queryset.count(),
@@ -105,6 +109,7 @@ def tenant_dashboard(request):
             'entitlements': entitlements,
             'visible_menu': visible_menu,
             'primary_domain': primary_domain,
+            'site_url': site_url,
             'news_stats': news_stats,
         },
     )
