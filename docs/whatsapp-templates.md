@@ -12,12 +12,28 @@ WHATSAPP_FAST2SMS_VERSION=v26.0
 WHATSAPP_TEMPLATE_LANGUAGE=en_US
 WHATSAPP_PAYMENT_SUCCESS_TEMPLATE=pressnexa_payment_success
 WHATSAPP_PAYMENT_FAILED_TEMPLATE=pressnexa_payment_failed
+WHATSAPP_PAYMENT_SUCCESS_MESSAGE_ID=
+WHATSAPP_PAYMENT_FAILED_MESSAGE_ID=
 ```
 
 Fast2SMS sends template messages through:
 
 ```text
 POST https://www.fast2sms.com/dev/whatsapp/{version}/{phone_number_id}/messages
+Authorization: YOUR_FAST2SMS_API_KEY
+```
+
+If the Fast2SMS dashboard shows numeric Message IDs for the approved templates, set `WHATSAPP_PAYMENT_SUCCESS_MESSAGE_ID` and `WHATSAPP_PAYMENT_FAILED_MESSAGE_ID`. The app will then use the simple Fast2SMS template API:
+
+```text
+GET https://www.fast2sms.com/dev/whatsapp?message_id=...&phone_number_id=...&numbers=...&variables_values=...
+Authorization: YOUR_FAST2SMS_API_KEY
+```
+
+For invoice PDF/session documents, the app supports this Fast2SMS endpoint:
+
+```text
+POST https://www.fast2sms.com/dev/whatsapp-session?phone_number_id=...&to=...&type=document&url=...&document_filename=invoice.pdf
 Authorization: YOUR_FAST2SMS_API_KEY
 ```
 
