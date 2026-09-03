@@ -26,7 +26,12 @@ from .models import (
     TenantSubscription,
     WebhookEvent,
 )
-from .services import auto_publish_paid_onboardings, process_webhook, verify_razorpay_signature
+from .services import (
+    auto_publish_paid_onboardings,
+    create_tenant_after_verified_subscription,
+    process_webhook,
+    verify_razorpay_signature,
+)
 
 
 class SubscriptionTests(TestCase):
@@ -100,6 +105,12 @@ class SubscriptionTests(TestCase):
                 'id': 'evt_order_paid',
                 'event': 'order.paid',
                 'payload': {
+                    'payment': {
+                        'entity': {
+                            'id': 'pay_test_123',
+                            'order_id': 'order_test_123',
+                        }
+                    },
                     'order': {
                         'entity': {
                             'id': 'order_test_123',
@@ -115,7 +126,41 @@ class SubscriptionTests(TestCase):
 
         acquisition.refresh_from_db()
         self.assertIsNotNone(acquisition.tenant_id)
-        self.assertEqual(acquisition.tenant.subscription.razorpay_payment_reference, 'order_test_123')
+        self.assertEqual(acquisition.provider_payment_id, 'pay_test_123')
+        self.assertEqual(acquisition.tenant.subscription.razorpay_payment_reference, 'pay_test_123')
+        billing_record = acquisition.tenant.billing_records.get(razorpay_payment_id='pay_test_123')
+        self.assertEqual(billing_record.razorpay_order_id, 'order_test_123')
+        self.assertIn('webhook_event', billing_record.payload['checkout'])
+
+    def test_verified_checkout_stores_order_payment_and_signature_references(self):
+        acquisition = CustomerAcquisition.objects.create(
+            user=self.user,
+            plan_price=self.price,
+            business_name='Checkout Media',
+            publication_name='Checkout News',
+            publication_slug='checkout-news',
+            email='checkout@example.com',
+            mobile='9999999999',
+            status=CustomerAcquisition.Status.PAYMENT_PENDING,
+            provider_order_id='order_checkout_123',
+        )
+
+        tenant = create_tenant_after_verified_subscription(
+            acquisition=acquisition,
+            provider_order_id='order_checkout_123',
+            payment_reference='pay_checkout_123',
+            provider_signature='sig_checkout_123',
+            provider_payload={'source': 'checkout_verify'},
+        )
+
+        acquisition.refresh_from_db()
+        billing_record = tenant.billing_records.get(razorpay_payment_id='pay_checkout_123')
+        self.assertEqual(acquisition.provider_order_id, 'order_checkout_123')
+        self.assertEqual(acquisition.provider_payment_id, 'pay_checkout_123')
+        self.assertEqual(acquisition.provider_signature, 'sig_checkout_123')
+        self.assertEqual(billing_record.razorpay_order_id, 'order_checkout_123')
+        self.assertEqual(billing_record.razorpay_signature, 'sig_checkout_123')
+        self.assertEqual(billing_record.payload['provider_payment_id'], 'pay_checkout_123')
 
     @override_settings(RAZORPAY_WEBHOOK_SECRET='secret', RAZORPAY_ENVIRONMENT='test')
     def test_failed_payment_webhook_marks_acquisition_failed(self):
@@ -134,7 +179,7 @@ class SubscriptionTests(TestCase):
             {
                 'id': 'evt_payment_failed',
                 'event': 'payment.failed',
-                'payload': {'payment': {'entity': {'order_id': 'order_test_failed'}}},
+                'payload': {'payment': {'entity': {'id': 'pay_failed_123', 'order_id': 'order_test_failed'}}},
             }
         ).encode('utf-8')
         signature = hmac.new(b'secret', body, sha256).hexdigest()
@@ -143,6 +188,8 @@ class SubscriptionTests(TestCase):
 
         acquisition.refresh_from_db()
         self.assertEqual(acquisition.status, CustomerAcquisition.Status.FAILED)
+        self.assertEqual(acquisition.provider_payment_id, 'pay_failed_123')
+        self.assertIn('failed_webhook', acquisition.provider_payload)
 
     def test_checkout_redirects_when_workspace_is_already_active(self):
         TenantSubscription.objects.create(

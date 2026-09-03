@@ -217,6 +217,10 @@ class CustomerAcquisition(UUIDModel, TimeStampedModel):
     mobile = models.CharField(max_length=32, blank=True)
     status = models.CharField(max_length=40, choices=Status.choices, default=Status.DRAFT, db_index=True)
     provider_order_id = models.CharField(max_length=120, blank=True, db_index=True)
+    provider_payment_id = models.CharField(max_length=120, blank=True, db_index=True)
+    provider_signature = models.CharField(max_length=255, blank=True)
+    provider_receipt = models.CharField(max_length=120, blank=True, db_index=True)
+    provider_payload = JSONTextField(blank=True)
     verified_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
@@ -226,6 +230,8 @@ class CustomerAcquisition(UUIDModel, TimeStampedModel):
         indexes = [
             models.Index(fields=['user', 'status']),
             models.Index(fields=['provider_order_id']),
+            models.Index(fields=['provider_payment_id']),
+            models.Index(fields=['provider_receipt']),
         ]
 
     def __str__(self):
@@ -313,8 +319,10 @@ class PlanChangeRequest(UUIDModel, TimeStampedModel):
 class BillingRecord(TimeStampedModel):
     tenant = models.ForeignKey('tenants.Tenant', on_delete=models.CASCADE, related_name='billing_records')
     subscription = models.ForeignKey(TenantSubscription, on_delete=models.SET_NULL, null=True, blank=True, related_name='billing_records')
+    razorpay_order_id = models.CharField(max_length=120, blank=True, db_index=True)
     razorpay_payment_id = models.CharField(max_length=120, blank=True, db_index=True)
     razorpay_invoice_id = models.CharField(max_length=120, blank=True, db_index=True)
+    razorpay_signature = models.CharField(max_length=255, blank=True)
     amount = models.PositiveIntegerField(default=0)
     currency = models.CharField(max_length=3, default='INR')
     status = models.CharField(max_length=60, db_index=True)

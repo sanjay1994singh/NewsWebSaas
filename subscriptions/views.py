@@ -385,6 +385,13 @@ def verify_subscription(request, acquisition_id):
         acquisition=acquisition,
         provider_order_id=order_id,
         payment_reference=payment_id,
+        provider_signature=signature,
+        provider_payload={
+            'razorpay_order_id': order_id,
+            'razorpay_payment_id': payment_id,
+            'razorpay_signature_present': bool(signature),
+            'source': 'checkout_verify',
+        },
     )
     billing_record = BillingRecord.objects.filter(tenant=tenant, status='paid').order_by('-created_at').first()
     if billing_record:
@@ -405,6 +412,17 @@ def verify_subscription(request, acquisition_id):
 def payment_failed(request, acquisition_id):
     acquisition = get_object_or_404(CustomerAcquisition.objects.select_related('plan_price__plan', 'user'), uuid=acquisition_id, user=request.user)
     payment_reference = request.POST.get('razorpay_payment_id', '').strip() or request.POST.get('razorpay_order_id', '').strip() or acquisition.provider_order_id
+    acquisition.provider_payment_id = request.POST.get('razorpay_payment_id', '').strip()
+    acquisition.provider_payload = {
+        **(acquisition.provider_payload or {}),
+        'failed_checkout': {
+            'razorpay_order_id': request.POST.get('razorpay_order_id', '').strip(),
+            'razorpay_payment_id': request.POST.get('razorpay_payment_id', '').strip(),
+            'source': 'checkout_failed',
+        },
+    }
+    acquisition.status = CustomerAcquisition.Status.FAILED
+    acquisition.save(update_fields=['provider_payment_id', 'provider_payload', 'status', 'updated_at'])
     notify_payment_failed(
         acquisition=acquisition,
         payment_reference=payment_reference,

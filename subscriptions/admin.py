@@ -95,9 +95,9 @@ class TenantSubscriptionAdmin(admin.ModelAdmin):
 
 @admin.register(CustomerAcquisition)
 class CustomerAcquisitionAdmin(admin.ModelAdmin):
-    list_display = ('publication_name', 'user', 'plan_price', 'status', 'tenant', 'provider_order_id', 'created_at')
+    list_display = ('publication_name', 'user', 'plan_price', 'status', 'tenant', 'provider_order_id', 'provider_payment_id', 'created_at')
     list_filter = ('status', 'plan_price__billing_cycle')
-    search_fields = ('publication_name', 'publication_slug', 'business_name', 'email', 'provider_order_id')
+    search_fields = ('publication_name', 'publication_slug', 'business_name', 'email', 'provider_order_id', 'provider_payment_id', 'provider_receipt')
     autocomplete_fields = ('user', 'plan_price', 'tenant')
 
 
@@ -135,8 +135,9 @@ class PlanChangeRequestAdmin(admin.ModelAdmin):
 
 @admin.register(BillingRecord)
 class BillingRecordAdmin(admin.ModelAdmin):
-    list_display = ('tenant', 'status', 'amount', 'currency', 'razorpay_payment_id', 'razorpay_invoice_id', 'created_at')
+    list_display = ('tenant', 'status', 'amount', 'currency', 'razorpay_order_id', 'razorpay_payment_id', 'razorpay_invoice_id', 'created_at')
     list_filter = ('status', 'currency')
+    search_fields = ('tenant__publication_name', 'tenant__slug', 'razorpay_order_id', 'razorpay_payment_id', 'razorpay_invoice_id')
     autocomplete_fields = ('tenant', 'subscription')
 
 

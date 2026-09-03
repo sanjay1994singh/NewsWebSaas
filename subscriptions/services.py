@@ -65,7 +65,12 @@ def create_razorpay_order_for_acquisition(acquisition):
         }
     )
     acquisition.provider_order_id = order['id']
-    acquisition.save(update_fields=['provider_order_id', 'updated_at'])
+    acquisition.provider_receipt = order.get('receipt', receipt)
+    acquisition.provider_payload = {
+        'order': order,
+        'created_by': 'checkout',
+    }
+    acquisition.save(update_fields=['provider_order_id', 'provider_receipt', 'provider_payload', 'updated_at'])
     return {
         'key_id': settings.RAZORPAY_KEY_ID,
         'order_id': order['id'],
@@ -144,11 +149,17 @@ def _sync_payment_from_webhook(*, payload, event_type):
                 acquisition=order_acquisition,
                 provider_order_id=order_id,
                 payment_reference=_payment_reference_from_webhook(payload),
+                provider_payload={'webhook_event': event_type, 'payload': payload},
             )
             return True
         if event_type == 'payment.failed':
             order_acquisition.status = CustomerAcquisition.Status.FAILED
-            order_acquisition.save(update_fields=['status', 'updated_at'])
+            order_acquisition.provider_payment_id = _payment_reference_from_webhook(payload)
+            order_acquisition.provider_payload = {
+                **(order_acquisition.provider_payload or {}),
+                'failed_webhook': {'event': event_type, 'payload': payload},
+            }
+            order_acquisition.save(update_fields=['status', 'provider_payment_id', 'provider_payload', 'updated_at'])
             if order_acquisition.tenant_id:
                 TenantSubscription.objects.filter(tenant=order_acquisition.tenant).update(
                     status=TenantSubscription.Status.PAYMENT_ISSUE,
@@ -275,9 +286,28 @@ def update_pending_customer_acquisition(*, acquisition, business_name, publicati
 
 
 @transaction.atomic
-def create_tenant_after_verified_subscription(*, acquisition, provider_order_id, payment_reference=''):
+def create_tenant_after_verified_subscription(*, acquisition, provider_order_id, payment_reference='', provider_signature='', provider_payload=None):
     acquisition = CustomerAcquisition.objects.select_for_update().select_related('user', 'plan_price__plan').get(pk=acquisition.pk)
     if acquisition.tenant_id:
+        update_fields = []
+        if provider_order_id and acquisition.provider_order_id != provider_order_id:
+            acquisition.provider_order_id = provider_order_id
+            update_fields.append('provider_order_id')
+        if payment_reference and acquisition.provider_payment_id != payment_reference:
+            acquisition.provider_payment_id = payment_reference
+            update_fields.append('provider_payment_id')
+        if provider_signature and acquisition.provider_signature != provider_signature:
+            acquisition.provider_signature = provider_signature
+            update_fields.append('provider_signature')
+        if provider_payload:
+            acquisition.provider_payload = {
+                **(acquisition.provider_payload or {}),
+                'latest_verified_checkout': provider_payload,
+            }
+            update_fields.append('provider_payload')
+        if update_fields:
+            update_fields.append('updated_at')
+            acquisition.save(update_fields=update_fields)
         return acquisition.tenant
 
     tenant, _ = Tenant.objects.get_or_create(
@@ -317,15 +347,20 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
         razorpay_payment_id=payment_reference or provider_order_id,
         defaults={
             'subscription': subscription,
+            'razorpay_order_id': provider_order_id,
             'razorpay_invoice_id': '',
+            'razorpay_signature': provider_signature,
             'amount': acquisition.plan_price.amount,
             'currency': acquisition.plan_price.currency,
             'status': 'paid',
             'payload': {
                 'provider_order_id': provider_order_id,
+                'provider_payment_id': payment_reference,
+                'provider_signature_present': bool(provider_signature),
                 'acquisition_uuid': str(acquisition.uuid),
                 'plan': acquisition.plan_price.plan.name,
                 'billing_cycle': acquisition.plan_price.billing_cycle,
+                'checkout': provider_payload or {},
             },
         },
     )
@@ -337,9 +372,27 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
     )
     acquisition.tenant = tenant
     acquisition.provider_order_id = provider_order_id
+    acquisition.provider_payment_id = payment_reference
+    acquisition.provider_signature = provider_signature
+    if provider_payload:
+        acquisition.provider_payload = {
+            **(acquisition.provider_payload or {}),
+            'verified_checkout': provider_payload,
+        }
     acquisition.status = CustomerAcquisition.Status.TENANT_CREATED
     acquisition.verified_at = timezone.now()
-    acquisition.save(update_fields=['tenant', 'provider_order_id', 'status', 'verified_at', 'updated_at'])
+    acquisition.save(
+        update_fields=[
+            'tenant',
+            'provider_order_id',
+            'provider_payment_id',
+            'provider_signature',
+            'provider_payload',
+            'status',
+            'verified_at',
+            'updated_at',
+        ]
+    )
     get_effective_entitlements(tenant)
     return tenant
 
