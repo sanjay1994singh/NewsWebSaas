@@ -94,8 +94,10 @@
         <p class="muted">Only these details are needed for the first setup. More branding, menu, social, YouTube, Live TV, and pages can be updated after login from the dashboard.</p>
       </div>
       <div class="onboarding-actions">
-        <button class="btn" type="submit" name="save">Save</button>
-        <button class="btn secondary" type="submit" name="submit_for_review">Submit For Review</button>
+        <button class="btn" type="submit" name="save">{% if onboarding.status == 'published' %}Save Updates{% else %}Save{% endif %}</button>
+        {% if onboarding.status != 'published' %}
+          <button class="btn secondary" type="submit" name="submit_for_review">Submit For Review</button>
+        {% endif %}
       </div>
     </form>
   </main>

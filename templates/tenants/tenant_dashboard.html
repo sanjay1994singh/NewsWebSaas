@@ -95,7 +95,7 @@
         <p class="nav-label">Workspace</p>
         <a class="active" href="{% url 'tenants:tenant_dashboard' %}">Dashboard <span>Overview</span></a>
         <a href="/cms/">Create News <span>Publish</span></a>
-        <a href="{% url 'subscriptions:onboarding' %}">Setup Review <span>{% if onboarding %}{{ onboarding.get_status_display }}{% else %}Start{% endif %}</span></a>
+        <a href="{% url 'subscriptions:onboarding' %}">Onboarding <span>{% if onboarding %}{{ onboarding.get_status_display }}{% else %}Update{% endif %}</span></a>
         <a href="{% url 'subscriptions:billing_dashboard' %}">Billing <span>{% if subscription %}{{ subscription.get_status_display }}{% else %}Review{% endif %}</span></a>
         <a href="{% url 'tenants:tenant_settings' tenant.uuid %}">Settings <span>Brand</span></a>
         <a href="{% url 'accounts:profile' %}">Profile <span>Account</span></a>

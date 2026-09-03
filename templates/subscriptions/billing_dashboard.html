@@ -4,19 +4,30 @@
 {% block title %}Billing - Press Nexa{% endblock %}
 
 {% block styles %}
-  .billing-shell { display:grid; gap:20px; }
-  .billing-hero { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; }
+  .billing-shell { display:grid; gap:16px; margin-top:22px; }
+  .billing-hero { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; padding:18px 20px; }
+  .billing-hero h1 { margin:6px 0; font-size:30px; line-height:1.1; }
+  .billing-hero p { margin:0; }
   .status-pill { display:inline-flex; align-items:center; min-height:38px; padding:8px 12px; border:1px solid var(--line); border-radius:999px; background:#eef6f2; color:var(--brand); font-weight:800; }
-  .billing-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px; }
-  .billing-card { display:grid; gap:10px; }
-  .detail-row { display:flex; justify-content:space-between; gap:12px; border-top:1px solid var(--line); padding-top:10px; }
-  .feature-card { padding:14px; }
+  .billing-summary-grid { display:grid; grid-template-columns:.8fr 1.2fr; gap:16px; align-items:start; }
+  .billing-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(210px, 1fr)); gap:12px; }
+  .billing-card { display:grid; gap:8px; padding:16px; }
+  .billing-card h3 { margin:0; font-size:16px; }
+  .compact-section h2 { margin:0 0 10px; font-size:22px; }
+  .detail-row { display:flex; justify-content:space-between; gap:12px; border-top:1px solid var(--line); padding-top:8px; font-size:14px; }
+  .detail-row:first-of-type { border-top:0; padding-top:0; }
+  .feature-card { padding:12px; }
+  .feature-card strong { font-size:13px; }
+  .feature-card p { margin:4px 0 0; font-size:12px; }
   .field-note { font-size:13px; color:var(--muted); margin:0; }
   .invoice-table { width:100%; border-collapse:collapse; overflow:hidden; border:1px solid var(--line); border-radius:8px; background:#fff; }
-  .invoice-table th, .invoice-table td { padding:12px; border-bottom:1px solid var(--line); text-align:left; }
+  .invoice-table th, .invoice-table td { padding:10px; border-bottom:1px solid var(--line); text-align:left; font-size:13px; }
   .invoice-table th { background:#eef6f2; color:var(--deep); font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
   .invoice-table tr:last-child td { border-bottom:0; }
-  @media (max-width:760px) { .billing-hero, .detail-row { display:grid; } }
+  .invoice-actions { display:flex; gap:8px; flex-wrap:wrap; }
+  .invoice-actions .btn { min-height:34px; padding:7px 10px; font-size:12px; }
+  @media (max-width:900px) { .billing-summary-grid { grid-template-columns:1fr; } }
+  @media (max-width:760px) { .billing-hero, .detail-row { display:grid; } .invoice-table { display:block; overflow-x:auto; } }
 {% endblock %}
 
 {% block content %}
@@ -30,53 +41,57 @@
       <span class="status-pill">{% if subscription %}{{ subscription.get_status_display }}{% else %}No active subscription{% endif %}</span>
     </section>
 
-    <section class="card billing-card">
-      <h2>Current Plan</h2>
-      {% if subscription %}
-        <div class="detail-row"><span>Plan</span><strong>{{ subscription.plan.name }}</strong></div>
-        <div class="detail-row"><span>Cycle</span><strong>{{ subscription.get_billing_cycle_display }}</strong></div>
-        <div class="detail-row"><span>Payment reference</span><strong>{{ subscription.razorpay_payment_reference|default:"-" }}</strong></div>
-        {% if onboarding %}<div class="detail-row"><span>Setup status</span><strong>{{ onboarding.get_status_display }}</strong></div>{% endif %}
-      {% else %}
-        <p class="muted">No active subscription record is linked yet. Choose a plan or contact support if payment is already complete.</p>
-        <a class="btn" href="{% url 'public_saas_landing' %}">Choose Plan</a>
-      {% endif %}
-    </section>
+    <div class="billing-summary-grid">
+      <section class="card billing-card compact-section">
+        <h2>Current Plan</h2>
+        {% if subscription %}
+          <div class="detail-row"><span>Plan</span><strong>{{ subscription.plan.name }}</strong></div>
+          <div class="detail-row"><span>Cycle</span><strong>{{ subscription.get_billing_cycle_display }}</strong></div>
+          <div class="detail-row"><span>Payment reference</span><strong>{{ subscription.razorpay_payment_reference|default:"-" }}</strong></div>
+          {% if onboarding %}<div class="detail-row"><span>Setup status</span><strong>{{ onboarding.get_status_display }}</strong></div>{% endif %}
+        {% else %}
+          <p class="muted">No active subscription record is linked yet. Choose a plan or contact support if payment is already complete.</p>
+          <a class="btn" href="{% url 'public_saas_landing' %}">Choose Plan</a>
+        {% endif %}
+      </section>
 
-    <section>
-      <h2>Invoices</h2>
-      {% if invoices %}
-        <table class="invoice-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Plan</th>
-              <th>Amount</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for invoice in invoices %}
+      <section class="compact-section">
+        <h2>Invoices</h2>
+        {% if invoices %}
+          <table class="invoice-table">
+            <thead>
               <tr>
-                <td>{{ invoice.created_at|date:"d M Y" }}</td>
-                <td>{% if invoice.subscription %}{{ invoice.subscription.plan.name }}{% else %}Subscription{% endif %}</td>
-                <td>{{ invoice.currency }} {{ invoice.amount|paise_to_rupees }}</td>
-                <td>{{ invoice.status|title }}</td>
-                <td>
-                  <a class="btn secondary" href="{% url 'subscriptions:view_invoice' invoice.id %}" target="_blank" rel="noopener">View PDF</a>
-                  <a class="btn secondary" href="{% url 'subscriptions:download_invoice' invoice.id %}">Download PDF</a>
-                </td>
+                <th>Date</th>
+                <th>Plan</th>
+                <th>Amount</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      {% else %}
-        <div class="card"><p class="muted">Your invoices will appear here after a successful payment.</p></div>
-      {% endif %}
-    </section>
+            </thead>
+            <tbody>
+              {% for invoice in invoices %}
+                <tr>
+                  <td>{{ invoice.created_at|date:"d M Y" }}</td>
+                  <td>{% if invoice.subscription %}{{ invoice.subscription.plan.name }}{% else %}Subscription{% endif %}</td>
+                  <td>{{ invoice.currency }} {{ invoice.amount|paise_to_rupees }}</td>
+                  <td>{{ invoice.status|title }}</td>
+                  <td>
+                    <div class="invoice-actions">
+                      <a class="btn secondary" href="{% url 'subscriptions:view_invoice' invoice.id %}" target="_blank" rel="noopener">View PDF</a>
+                      <a class="btn secondary" href="{% url 'subscriptions:download_invoice' invoice.id %}">Download PDF</a>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="card"><p class="muted">Your invoices will appear here after a successful payment.</p></div>
+        {% endif %}
+      </section>
+    </div>
 
-    <section>
+    <section class="compact-section">
       <h2>Change Plan</h2>
       <div class="billing-grid">
         {% for plan in plans %}
@@ -93,7 +108,7 @@
       </div>
     </section>
 
-    <section>
+    <section class="compact-section">
       <h2>Add-ons</h2>
       <div class="billing-grid">
         {% for add_on in add_ons %}
@@ -112,7 +127,7 @@
       </div>
     </section>
 
-    <section>
+    <section class="compact-section">
       <h2>Effective Features</h2>
       <div class="billing-grid">
         {% for code, entitlement in entitlements.items %}

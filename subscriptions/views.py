@@ -125,7 +125,6 @@ def customer_home(request):
 
     if onboarding_record.status == TenantOnboarding.Status.PUBLISHED:
         _activate_published_tenant(tenant)
-        return redirect('tenants:tenant_dashboard')
 
     return redirect('subscriptions:account_status')
 
