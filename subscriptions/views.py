@@ -14,7 +14,19 @@ from tenants.models import Tenant
 
 from .entitlements import get_effective_entitlement, get_effective_entitlements
 from .forms import CustomerSignupForm, CustomerWorkspaceForm, OnboardingForm, ReviewActionForm
-from .models import AddOn, CustomerAcquisition, Feature, OnboardingReviewEvent, Plan, PlanFeature, PlanPrice, TenantAddOn, TenantOnboarding, TenantSubscription
+from .models import (
+    AddOn,
+    CustomerAcquisition,
+    Feature,
+    OnboardingReviewEvent,
+    Plan,
+    PlanFeature,
+    PlanPrice,
+    PlatformPolicy,
+    TenantAddOn,
+    TenantOnboarding,
+    TenantSubscription,
+)
 from .services import (
     activate_tenant_add_on,
     apply_verified_plan_change,
@@ -29,6 +41,17 @@ from .services import (
     update_pending_customer_acquisition,
     verify_razorpay_checkout_signature,
 )
+
+COMPANY_PROFILE = {
+    'brand_name': 'Press Nexa',
+    'legal_name': 'SHRI INFOWAVE PRIVATE LIMITED',
+    'cin': 'U62012UW2026PTC257361',
+    'pan': 'ABUCS7544P',
+    'incorporated_on': '17 August 2026',
+    'registered_office': '101 Govind Kund Tila, Radha Niwas, Vrindaban, Mathura, Mathura - 281121, Uttar Pradesh, India',
+    'support_email': 'srbc500@gmail.com',
+    'business_hours': 'Monday to Saturday, 10:00 AM to 6:00 PM IST',
+}
 
 
 def _customer_tenant_context(user):
@@ -161,6 +184,30 @@ def _public_plan_context():
         comparison_rows.append({'feature': row['feature'], 'cells': cells})
 
     return {'plans': plans, 'plan_cards': plan_cards, 'features': features, 'comparison_rows': comparison_rows}
+
+
+def about_us(request):
+    return render(
+        request,
+        'subscriptions/about.html',
+        {
+            'company': COMPANY_PROFILE,
+            'page_title': 'About Press Nexa',
+        },
+    )
+
+
+def policy_page(request, policy_type):
+    policy = get_object_or_404(PlatformPolicy, policy_type=policy_type, is_published=True)
+    return render(
+        request,
+        'subscriptions/policy_page.html',
+        {
+            'company': COMPANY_PROFILE,
+            'policy': policy,
+            'page_title': policy.title,
+        },
+    )
 
 
 def landing_page(request):

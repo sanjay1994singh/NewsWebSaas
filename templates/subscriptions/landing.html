@@ -80,6 +80,9 @@
     footer { padding: 34px 0; background: var(--deep); color: #fff; }
     footer .wrap { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
     footer p { color: #bed2ca; margin: 4px 0 0; }
+    .footer-links { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:12px 18px; max-width:620px; }
+    .footer-links a { color:#d8e8e1; text-decoration:none; font-weight:700; }
+    .footer-links a:hover { color:#fff; }
     @media (max-width: 860px) {
       .hero-grid, .feature-band { grid-template-columns: 1fr; }
       .nav-links { display: none; }
@@ -255,8 +258,16 @@
 
   <footer>
     <div class="wrap">
-      <div><strong>Press Nexa</strong><p>News publishing SaaS for commercial media teams.</p></div>
-      <div><a href="/admin/">Admin</a></div>
+      <div><strong>Press Nexa</strong><p>Operated by SHRI INFOWAVE PRIVATE LIMITED</p><p>CIN: U62012UW2026PTC257361</p></div>
+      <div class="footer-links">
+        <a href="{% url 'about_us' %}">About Us</a>
+        <a href="{% url 'contact_us' %}">Contact Us</a>
+        <a href="{% url 'privacy_policy' %}">Privacy Policy</a>
+        <a href="{% url 'terms_and_conditions' %}">Terms</a>
+        <a href="{% url 'refund_policy' %}">Refund Policy</a>
+        <a href="{% url 'billing_policy' %}">Billing Policy</a>
+        <a href="{% url 'grievance' %}">Grievance</a>
+      </div>
     </div>
   </footer>
   <script>

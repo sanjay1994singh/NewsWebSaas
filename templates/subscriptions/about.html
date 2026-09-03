@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block title %}About Us - Press Nexa{% endblock %}
+
+{% block styles %}
+.legal-shell { width:min(1160px, calc(100% - 32px)); margin:38px auto; }
+.legal-hero { display:grid; grid-template-columns:1.3fr .8fr; gap:28px; align-items:stretch; padding:38px 0; border-bottom:1px solid var(--line); }
+.eyebrow { color:var(--brand); font-size:13px; font-weight:900; letter-spacing:.12em; text-transform:uppercase; }
+.legal-hero h1 { font-size:clamp(34px, 5vw, 58px); line-height:1.02; margin:12px 0 18px; }
+.legal-hero p { color:var(--muted); font-size:18px; max-width:720px; }
+.identity-panel { background:#fff; border:1px solid var(--line); border-radius:8px; padding:22px; box-shadow:0 18px 44px rgba(19,32,27,.08); }
+.identity-row { display:flex; justify-content:space-between; gap:18px; padding:12px 0; border-bottom:1px solid var(--line); }
+.identity-row:last-child { border-bottom:0; }
+.identity-row span { color:var(--muted); }
+.identity-row strong { text-align:right; }
+.legal-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:18px; margin-top:28px; }
+.legal-card { background:#fff; border:1px solid var(--line); border-radius:8px; padding:22px; }
+.legal-card h2 { margin:0 0 10px; font-size:22px; }
+.legal-card p { color:var(--muted); margin:0; }
+.address-band { margin-top:28px; background:#edf7f2; border:1px solid var(--line); border-radius:8px; padding:24px; }
+@media (max-width:860px) { .legal-hero, .legal-grid { grid-template-columns:1fr; } .identity-row { display:block; } .identity-row strong { display:block; text-align:left; margin-top:4px; } }
+{% endblock %}
+
+{% block content %}
+<main class="legal-shell">
+  <section class="legal-hero">
+    <div>
+      <div class="eyebrow">About Press Nexa</div>
+      <h1>News publishing SaaS built for modern media teams.</h1>
+      <p>Press Nexa is a subscription-based platform for publishers who need websites, content management, video, ePaper, analytics, billing workflows, and tenant-specific branding from one managed system.</p>
+    </div>
+    <aside class="identity-panel" aria-label="Company identity">
+      <div class="identity-row"><span>Legal entity</span><strong>{{ company.legal_name }}</strong></div>
+      <div class="identity-row"><span>CIN</span><strong>{{ company.cin }}</strong></div>
+      <div class="identity-row"><span>PAN</span><strong>{{ company.pan }}</strong></div>
+      <div class="identity-row"><span>Incorporated</span><strong>{{ company.incorporated_on }}</strong></div>
+    </aside>
+  </section>
+
+  <section class="legal-grid" aria-label="Services">
+    <article class="legal-card">
+      <h2>Publishing Platform</h2>
+      <p>Tenant-aware CMS, website pages, themes, categories, articles, media workflows, SEO tools, and publication dashboards.</p>
+    </article>
+    <article class="legal-card">
+      <h2>Technology Services</h2>
+      <p>Web applications, software development, hosting coordination, integrations, API workflows, maintenance, and technical support.</p>
+    </article>
+    <article class="legal-card">
+      <h2>Growth Tools</h2>
+      <p>Video publishing, digital content support, analytics, monetization readiness, subscriptions, billing, and add-on feature controls.</p>
+    </article>
+  </section>
+
+  <section class="address-band">
+    <div class="eyebrow">Registered Office</div>
+    <h2>{{ company.registered_office }}</h2>
+    <p class="muted">Support: {{ company.support_email }} | {{ company.business_hours }}</p>
+  </section>
+</main>
+{% endblock %}
