@@ -590,6 +590,19 @@ def download_invoice(request, record_id):
 
 
 @login_required
+def view_invoice(request, record_id):
+    record = get_object_or_404(
+        BillingRecord.objects.select_related('tenant', 'subscription__plan'),
+        pk=record_id,
+    )
+    if record.tenant.owner_id != request.user.id and not user_can_access_tenant(request.user, record.tenant):
+        raise PermissionDenied("You do not have access to this invoice.")
+    response = HttpResponse(build_invoice_pdf(record), content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="{invoice_filename(record)}"'
+    return response
+
+
+@login_required
 def account_status(request):
     tenant, subscription, onboarding_record = _customer_tenant_context(request.user)
     plans = _public_plan_context()['plan_cards']

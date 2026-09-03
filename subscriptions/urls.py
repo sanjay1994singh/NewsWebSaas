@@ -16,6 +16,7 @@ urlpatterns = [
     path('onboarding/review/<uuid:onboarding_id>/', views.onboarding_review, name='onboarding_review'),
     path('account/billing/', views.billing_dashboard, name='billing_dashboard'),
     path('account/status/', views.account_status, name='account_status'),
+    path('account/billing/invoices/<int:record_id>/view/', views.view_invoice, name='view_invoice'),
     path('account/billing/invoices/<int:record_id>/download/', views.download_invoice, name='download_invoice'),
     path('account/billing/change-plan/', views.change_plan, name='change_plan'),
     path('account/billing/add-ons/<uuid:add_on_id>/activate/', views.activate_add_on, name='activate_add_on'),

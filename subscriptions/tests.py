@@ -211,6 +211,29 @@ class SubscriptionTests(TestCase):
         self.assertEqual(response['Content-Type'], 'application/pdf')
         self.assertTrue(response.content.startswith(b'%PDF'))
 
+    def test_invoice_pdf_view_opens_inline_for_tenant_owner(self):
+        subscription = TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            status=TenantSubscription.Status.ACTIVE,
+        )
+        invoice = BillingRecord.objects.create(
+            tenant=self.tenant,
+            subscription=subscription,
+            razorpay_payment_id='pay_view_123',
+            amount=199900,
+            currency='INR',
+            status='paid',
+        )
+
+        self.client.login(username='owner', password='testpass123')
+        response = self.client.get(reverse('subscriptions:view_invoice', kwargs={'record_id': invoice.id}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response['Content-Type'], 'application/pdf')
+        self.assertIn('inline', response['Content-Disposition'])
+
     def test_billing_dashboard_backfills_invoice_for_existing_successful_payment(self):
         TenantSubscription.objects.create(
             tenant=self.tenant,

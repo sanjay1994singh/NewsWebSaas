@@ -53,7 +53,7 @@
               <th>Plan</th>
               <th>Amount</th>
               <th>Status</th>
-              <th>PDF</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -63,7 +63,10 @@
                 <td>{% if invoice.subscription %}{{ invoice.subscription.plan.name }}{% else %}Subscription{% endif %}</td>
                 <td>{{ invoice.currency }} {{ invoice.amount|paise_to_rupees }}</td>
                 <td>{{ invoice.status|title }}</td>
-                <td><a class="btn secondary" href="{% url 'subscriptions:download_invoice' invoice.id %}">Download PDF</a></td>
+                <td>
+                  <a class="btn secondary" href="{% url 'subscriptions:view_invoice' invoice.id %}" target="_blank" rel="noopener">View PDF</a>
+                  <a class="btn secondary" href="{% url 'subscriptions:download_invoice' invoice.id %}">Download PDF</a>
+                </td>
               </tr>
             {% endfor %}
           </tbody>
