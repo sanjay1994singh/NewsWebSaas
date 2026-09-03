@@ -460,7 +460,6 @@ def onboarding(request):
         return redirect('subscriptions:ready_to_publish')
     if onboarding_record.status == TenantOnboarding.Status.PUBLISHED:
         _activate_published_tenant(tenant)
-        return redirect('tenants:tenant_dashboard')
     if request.method == 'POST':
         form = OnboardingForm(request.POST, request.FILES, instance=onboarding_record)
         if form.is_valid():
