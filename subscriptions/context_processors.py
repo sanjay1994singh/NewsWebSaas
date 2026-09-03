@@ -61,7 +61,33 @@ def customer_navigation(request):
             'customer_nav_links': fallback_links,
         }
 
-    if pending_acquisition:
+    if tenant and subscription and onboarding and onboarding.status == TenantOnboarding.Status.PUBLISHED and tenant.status == Tenant.Status.ACTIVE:
+        stage = 'published'
+        links.append({'label': 'Dashboard', 'url': reverse('tenants:tenant_dashboard')})
+        links.append({'label': 'Billing', 'url': reverse('subscriptions:billing_dashboard')})
+    elif tenant and subscription and (onboarding is None or onboarding.status in {
+        TenantOnboarding.Status.PAYMENT_PENDING,
+        TenantOnboarding.Status.ONBOARDING,
+        TenantOnboarding.Status.CHANGES_REQUESTED,
+    }):
+        stage = 'onboarding'
+        links.append({'label': 'Setup', 'url': reverse('subscriptions:onboarding')})
+        links.append({'label': 'Billing', 'url': reverse('subscriptions:billing_dashboard')})
+    elif tenant and subscription and onboarding.status in {
+        TenantOnboarding.Status.SUBMITTED_FOR_REVIEW,
+        TenantOnboarding.Status.UNDER_REVIEW,
+    }:
+        stage = 'review'
+        links.append({'label': 'Review Status', 'url': reverse('subscriptions:review_status')})
+        links.append({'label': 'Billing', 'url': reverse('subscriptions:billing_dashboard')})
+    elif tenant and subscription and onboarding.status in {
+        TenantOnboarding.Status.APPROVED,
+        TenantOnboarding.Status.READY_TO_PUBLISH,
+    }:
+        stage = 'ready'
+        links.append({'label': 'Publish Status', 'url': reverse('subscriptions:ready_to_publish')})
+        links.append({'label': 'Billing', 'url': reverse('subscriptions:billing_dashboard')})
+    elif pending_acquisition:
         stage = 'payment_pending'
         links.append({
             'label': 'Continue Payment',
@@ -72,32 +98,6 @@ def customer_navigation(request):
         stage = 'choose_plan'
         links.append({'label': 'Choose Plan', 'url': reverse('public_saas_landing')})
         links.append({'label': 'Account Status', 'url': reverse('subscriptions:account_status')})
-    elif onboarding is None or onboarding.status in {
-        TenantOnboarding.Status.PAYMENT_PENDING,
-        TenantOnboarding.Status.ONBOARDING,
-        TenantOnboarding.Status.CHANGES_REQUESTED,
-    }:
-        stage = 'onboarding'
-        links.append({'label': 'Setup', 'url': reverse('subscriptions:onboarding')})
-        links.append({'label': 'Billing', 'url': reverse('subscriptions:billing_dashboard')})
-    elif onboarding.status in {
-        TenantOnboarding.Status.SUBMITTED_FOR_REVIEW,
-        TenantOnboarding.Status.UNDER_REVIEW,
-    }:
-        stage = 'review'
-        links.append({'label': 'Review Status', 'url': reverse('subscriptions:review_status')})
-        links.append({'label': 'Billing', 'url': reverse('subscriptions:billing_dashboard')})
-    elif onboarding.status in {
-        TenantOnboarding.Status.APPROVED,
-        TenantOnboarding.Status.READY_TO_PUBLISH,
-    }:
-        stage = 'ready'
-        links.append({'label': 'Publish Status', 'url': reverse('subscriptions:ready_to_publish')})
-        links.append({'label': 'Billing', 'url': reverse('subscriptions:billing_dashboard')})
-    elif onboarding.status == TenantOnboarding.Status.PUBLISHED and tenant.status == Tenant.Status.ACTIVE:
-        stage = 'published'
-        links.append({'label': 'Dashboard', 'url': reverse('tenants:tenant_dashboard')})
-        links.append({'label': 'Billing', 'url': reverse('subscriptions:billing_dashboard')})
     else:
         stage = 'account_status'
         links.append({'label': 'Account Status', 'url': reverse('subscriptions:account_status')})
