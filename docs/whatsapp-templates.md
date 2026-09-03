@@ -61,18 +61,18 @@ Your Press Nexa tenant workspace is now active for onboarding.
 Hindi Body:
 
 ```text
-{{1}} ke liye payment safal ho gaya hai.
+{{1}} के लिए भुगतान सफल हो गया है।
 
 Username: {{2}}
-Plan: {{3}}
-Paid amount: {{4}}
-Payment ID: {{5}}
+प्लान: {{3}}
+भुगतान राशि: {{4}}
+पेमेंट आईडी: {{5}}
 Tenant slug: {{6}}
 
-Onboarding shuru karein: {{7}}
-Profile update karein: {{8}}
+ऑनबोर्डिंग शुरू करें: {{7}}
+प्रोफाइल अपडेट करें: {{8}}
 
-Aapka Press Nexa tenant workspace ab onboarding ke liye active hai.
+आपका Press Nexa tenant workspace अब onboarding के लिए active है।
 ```
 
 Variables:
@@ -112,18 +112,18 @@ If money was deducted, please share the reference with support.
 Hindi Body:
 
 ```text
-{{1}} ke liye payment fail ho gaya hai.
+{{1}} के लिए भुगतान असफल हो गया है।
 
 Username: {{2}}
-Plan: {{3}}
-Amount: {{4}}
-Reference: {{5}}
+प्लान: {{3}}
+राशि: {{4}}
+रेफरेंस: {{5}}
 
-Payment dobara try karein: {{6}}
-Profile update karein: {{7}}
+भुगतान दोबारा करें: {{6}}
+प्रोफाइल अपडेट करें: {{7}}
 WhatsApp support: {{8}}
 
-Agar paise deduct hue hain, to kripya reference support team ke saath share karein.
+अगर पैसे कट गए हैं, तो कृपया रेफरेंस सपोर्ट टीम के साथ शेयर करें।
 ```
 
 Variables:
