@@ -61,7 +61,7 @@ def customer_navigation(request):
             'customer_nav_links': fallback_links,
         }
 
-    if tenant and subscription and onboarding and onboarding.status == TenantOnboarding.Status.PUBLISHED and tenant.status == Tenant.Status.ACTIVE:
+    if tenant and subscription and onboarding and onboarding.status == TenantOnboarding.Status.PUBLISHED:
         stage = 'published'
         links.append({'label': 'Dashboard', 'url': reverse('tenants:tenant_dashboard')})
         links.append({'label': 'Billing', 'url': reverse('subscriptions:billing_dashboard')})
