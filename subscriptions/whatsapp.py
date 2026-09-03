@@ -95,7 +95,7 @@ def notify_payment_success(*, acquisition, tenant, payment_reference, onboarding
     )
 
 
-def notify_payment_failed(*, acquisition, payment_reference, checkout_url):
+def notify_payment_failed(*, acquisition, payment_reference, checkout_url, profile_url):
     return send_template_message(
         to=acquisition.mobile,
         template_name=settings.WHATSAPP_PAYMENT_FAILED_TEMPLATE,
@@ -106,6 +106,7 @@ def notify_payment_failed(*, acquisition, payment_reference, checkout_url):
             money_text(acquisition.plan_price),
             payment_reference,
             checkout_url,
+            profile_url,
             '8279408396',
         ],
     )

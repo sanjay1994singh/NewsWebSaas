@@ -70,7 +70,8 @@ Amount: {{4}}
 Reference: {{5}}
 
 Retry payment: {{6}}
-WhatsApp support: {{7}}
+Update profile: {{7}}
+WhatsApp support: {{8}}
 
 If money was deducted, please share the reference with support.
 ```
@@ -84,5 +85,6 @@ Variables:
 {{4}} Amount with currency
 {{5}} Razorpay payment/order reference
 {{6}} Checkout URL
-{{7}} Support WhatsApp number
+{{7}} Profile URL
+{{8}} Support WhatsApp number
 ```

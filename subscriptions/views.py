@@ -373,6 +373,7 @@ def payment_failed(request, acquisition_id):
         acquisition=acquisition,
         payment_reference=payment_reference,
         checkout_url=request.build_absolute_uri(f'/billing/saas/checkout/{acquisition.uuid}/'),
+        profile_url=request.build_absolute_uri('/account/profile/'),
     )
     return JsonResponse({'ok': True})
 

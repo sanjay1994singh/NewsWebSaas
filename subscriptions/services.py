@@ -288,6 +288,7 @@ def _sync_subscription_from_webhook(*, payload, event_type):
                 acquisition=order_acquisition,
                 payment_reference=_payment_reference_from_webhook(payload) or order_id,
                 checkout_url=f"{settings.SITE_BASE_URL}/billing/saas/checkout/{order_acquisition.uuid}/",
+                profile_url=f"{settings.SITE_BASE_URL}/account/profile/",
             )
             return True
 
