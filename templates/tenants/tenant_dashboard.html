@@ -163,6 +163,7 @@
         <a href="{% url 'tenants:reporter_list' %}">Reporters <span>Add</span></a>
         <a href="{% url 'subscriptions:onboarding' %}">Onboarding <span>{% if onboarding %}{{ onboarding.get_status_display }}{% else %}Update{% endif %}</span></a>
         <a href="{% url 'subscriptions:billing_dashboard' %}">Billing <span>{% if subscription %}{{ subscription.get_status_display }}{% else %}Review{% endif %}</span></a>
+        <a href="{% url 'subscriptions:upgrade_plan' %}">Upgrade Plan <span>Renew</span></a>
         <a href="{% url 'tenants:tenant_settings' tenant.uuid %}">Settings <span>Brand</span></a>
         <a href="{% url 'accounts:profile' %}">Profile <span>Account</span></a>
       </nav>

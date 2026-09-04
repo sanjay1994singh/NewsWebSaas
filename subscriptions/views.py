@@ -29,6 +29,7 @@ from .models import (
     Feature,
     OnboardingReviewEvent,
     Plan,
+    PlanChangeRequest,
     PlanFeature,
     PlanPrice,
     PlatformPolicy,
@@ -38,9 +39,12 @@ from .models import (
 )
 
 WHATSAPP_INVOICE_SIGNER_SALT = 'subscriptions.whatsapp.invoice'
-from .pricing import calculate_checkout_pricing, money_display
+from .pricing import calculate_checkout_pricing, money_display, monthly_price_for_plan, normalize_billing_months
 from .services import (
     activate_tenant_add_on,
+    apply_verified_plan_change_checkout,
+    calculate_plan_change_quote,
+    create_plan_change_checkout,
     apply_verified_plan_change,
     create_tenant_after_verified_subscription,
     create_razorpay_order_for_acquisition,
@@ -737,6 +741,139 @@ def account_status(request):
             'entitlements': entitlements,
         },
     )
+
+
+@login_required
+@require_http_methods(['GET', 'POST'])
+def upgrade_plan(request):
+    tenant, subscription, onboarding_record = _customer_tenant_context(request.user)
+    if tenant is None or subscription is None:
+        messages.error(request, 'No active tenant subscription is linked with this account yet.')
+        return redirect('subscriptions:account_status')
+    if tenant.owner_id != request.user.id:
+        raise PermissionDenied("Only the workspace owner can upgrade or renew the plan.")
+
+    active_prices = (
+        PlanPrice.objects
+        .filter(is_active=True, plan__is_active=True, plan__is_current_version=True, billing_cycle=PlanPrice.BillingCycle.MONTHLY)
+        .select_related('plan')
+        .order_by('amount', 'plan__name')
+    )
+    selected_months = normalize_billing_months(request.POST.get('billing_months') or request.GET.get('months') or subscription.billing_months)
+    selected_price_id = request.POST.get('plan_price_id') or request.GET.get('plan_price_id')
+    selected_price = active_prices.filter(pk=selected_price_id).first() if selected_price_id else None
+    if selected_price is None:
+        selected_price = monthly_price_for_plan(subscription.plan) or active_prices.first()
+    quote = None
+    checkout = {}
+    plan_change = None
+    if selected_price:
+        quote = calculate_plan_change_quote(
+            tenant=tenant,
+            subscription=subscription,
+            plan_price=selected_price,
+            billing_months=selected_months,
+        )
+
+    if request.method == 'POST' and selected_price:
+        try:
+            plan_change, checkout = create_plan_change_checkout(
+                tenant=tenant,
+                subscription=subscription,
+                plan_price=selected_price,
+                billing_months=selected_months,
+                requested_by=request.user,
+            )
+            if plan_change.payable_amount <= 0:
+                apply_verified_plan_change_checkout(
+                    plan_change=plan_change,
+                    provider_order_id=f'credit_{plan_change.uuid.hex[:24]}',
+                    payment_reference=f'credit_{plan_change.uuid.hex[:24]}',
+                    provider_payload={'source': 'credit_only_upgrade'},
+                )
+                messages.success(request, 'Plan updated using your remaining balance credit.')
+                return redirect('subscriptions:upgrade_plan')
+        except ValidationError as exc:
+            messages.error(request, exc.message)
+        except Exception:
+            messages.error(request, 'Unable to initialize secure upgrade payment right now.')
+
+    plan_options = []
+    for price in active_prices:
+        option_quote = calculate_plan_change_quote(
+            tenant=tenant,
+            subscription=subscription,
+            plan_price=price,
+            billing_months=selected_months,
+        )
+        plan_options.append({'price': price, 'plan': price.plan, 'quote': option_quote, 'is_selected': selected_price and price.id == selected_price.id})
+
+    invoices = BillingRecord.objects.filter(tenant=tenant).select_related('subscription__plan').order_by('-created_at')[:20]
+    changes = (
+        PlanChangeRequest.objects
+        .filter(tenant=tenant)
+        .select_related('from_plan', 'to_plan')
+        .order_by('-created_at')[:20]
+    )
+    return render(
+        request,
+        'subscriptions/upgrade_plan.html',
+        {
+            'tenant': tenant,
+            'subscription': subscription,
+            'onboarding': onboarding_record,
+            'plan_options': plan_options,
+            'selected_price': selected_price,
+            'selected_months': selected_months,
+            'quote': quote,
+            'checkout': checkout,
+            'plan_change': plan_change,
+            'invoices': invoices,
+            'changes': changes,
+        },
+    )
+
+
+@login_required
+@require_POST
+def verify_plan_upgrade(request, plan_change_id):
+    tenant, subscription, onboarding_record = _customer_tenant_context(request.user)
+    if tenant is None or tenant.owner_id != request.user.id:
+        raise PermissionDenied("Only the workspace owner can verify plan upgrades.")
+    plan_change = get_object_or_404(
+        PlanChangeRequest.objects.select_related('tenant', 'plan_price__plan'),
+        uuid=plan_change_id,
+        tenant=tenant,
+    )
+    order_id = request.POST.get('razorpay_order_id', '').strip()
+    payment_id = request.POST.get('razorpay_payment_id', '').strip()
+    signature = request.POST.get('razorpay_signature', '').strip()
+    if not order_id or not payment_id or not signature:
+        messages.error(request, 'Verified Razorpay payment response is required.')
+        return redirect('subscriptions:upgrade_plan')
+    try:
+        verify_razorpay_checkout_signature(
+            payment_id=payment_id,
+            order_id=order_id,
+            signature=signature,
+        )
+    except ValidationError:
+        messages.error(request, 'Razorpay payment signature verification failed.')
+        return redirect('subscriptions:upgrade_plan')
+    apply_verified_plan_change_checkout(
+        plan_change=plan_change,
+        provider_order_id=order_id,
+        payment_reference=payment_id,
+        provider_signature=signature,
+        provider_payload={
+            'razorpay_order_id': order_id,
+            'razorpay_payment_id': payment_id,
+            'razorpay_signature_present': bool(signature),
+            'source': 'upgrade_verify',
+        },
+    )
+    messages.success(request, 'Plan upgraded successfully. Billing history and invoice record are saved.')
+    return redirect('subscriptions:upgrade_plan')
 
 
 @login_required

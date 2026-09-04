@@ -35,7 +35,7 @@ from .models import (
     TenantSubscription,
     WebhookEvent,
 )
-from .pricing import calculate_checkout_pricing, money_display, normalize_billing_months
+from .pricing import calculate_checkout_pricing, money_display, monthly_price_for_plan, normalize_billing_months
 from .whatsapp import notify_payment_failed
 
 
@@ -64,6 +64,65 @@ def next_subscription_period_start(subscription, now=None):
     ):
         return subscription.current_period_end
     return now
+
+
+def _paid_record_covering_current_period(tenant, now):
+    return (
+        BillingRecord.objects
+        .filter(tenant=tenant, status='paid', period_start__lte=now, period_end__gt=now)
+        .order_by('-period_end', '-created_at')
+        .first()
+    )
+
+
+def calculate_plan_change_quote(*, tenant, subscription, plan_price, billing_months=1, now=None):
+    now = now or timezone.now()
+    checkout_pricing = calculate_checkout_pricing(plan_price, billing_months)
+    period_start = now
+    credit_amount = 0
+    remaining_days = 0
+    total_days = 0
+    is_same_plan = subscription and subscription.plan_id == plan_price.plan_id
+    if is_same_plan:
+        period_start = next_subscription_period_start(subscription, now)
+    elif (
+        subscription
+        and subscription.status == TenantSubscription.Status.ACTIVE
+        and subscription.current_period_start
+        and subscription.current_period_end
+        and subscription.current_period_end > now
+    ):
+        paid_record = _paid_record_covering_current_period(tenant, now)
+        paid_amount = paid_record.amount if paid_record else 0
+        if not paid_amount:
+            current_price = monthly_price_for_plan(subscription.plan)
+            if current_price:
+                paid_amount = calculate_checkout_pricing(current_price, subscription.billing_months).payable_amount
+        total_seconds = max((subscription.current_period_end - subscription.current_period_start).total_seconds(), 1)
+        remaining_seconds = max((subscription.current_period_end - now).total_seconds(), 0)
+        credit_amount = min(round(paid_amount * remaining_seconds / total_seconds), checkout_pricing.payable_amount)
+        total_days = max((subscription.current_period_end.date() - subscription.current_period_start.date()).days, 1)
+        remaining_days = max((subscription.current_period_end.date() - now.date()).days, 0)
+    period_start, period_end, _ = subscription_period_for_cycle(period_start, plan_price.billing_cycle, checkout_pricing.billing_months)
+    payable_amount = max(checkout_pricing.payable_amount - credit_amount, 0)
+    return {
+        'billing_months': checkout_pricing.billing_months,
+        'billing_label': checkout_pricing.billing_label,
+        'list_amount': checkout_pricing.list_amount,
+        'discount_percent': checkout_pricing.discount_percent,
+        'discount_amount': checkout_pricing.discount_amount,
+        'credit_amount': credit_amount,
+        'payable_amount': payable_amount,
+        'currency': checkout_pricing.currency,
+        'period_start': period_start,
+        'period_end': period_end,
+        'remaining_days': remaining_days,
+        'total_days': total_days,
+        'list_display': money_display(checkout_pricing.list_amount, checkout_pricing.currency),
+        'discount_display': money_display(checkout_pricing.discount_amount, checkout_pricing.currency),
+        'credit_display': money_display(credit_amount, checkout_pricing.currency),
+        'payable_display': money_display(payable_amount, checkout_pricing.currency),
+    }
 
 
 def record_successful_subscription_payment(
@@ -448,6 +507,168 @@ def create_razorpay_order_for_acquisition(acquisition):
             'contact': acquisition.mobile,
         },
     }
+
+
+def create_razorpay_order_for_plan_change(plan_change):
+    if plan_change.payable_amount <= 0:
+        return {
+            'key_id': settings.RAZORPAY_KEY_ID,
+            'order_id': '',
+            'amount': 0,
+            'currency': plan_change.currency,
+            'name': 'Press Nexa',
+            'description': f"{plan_change.to_plan.name} - {plan_change.billing_months} month{'s' if plan_change.billing_months != 1 else ''}",
+            'pricing': _plan_change_pricing_payload(plan_change),
+        }
+    client = get_razorpay_client()
+    receipt = f"upgrade_{plan_change.tenant_id}_{plan_change.uuid.hex[:22]}"
+    order = client.order.create(
+        {
+            'amount': plan_change.payable_amount,
+            'currency': plan_change.currency,
+            'receipt': receipt,
+            'payment_capture': 1,
+            'notes': {
+                'plan_change_uuid': str(plan_change.uuid),
+                'tenant_id': str(plan_change.tenant_id),
+                'from_plan': plan_change.from_plan.code,
+                'to_plan': plan_change.to_plan.code,
+                'billing_months': str(plan_change.billing_months),
+                'list_amount': str(plan_change.list_amount),
+                'discount_percent': str(plan_change.discount_percent),
+                'discount_amount': str(plan_change.discount_amount),
+                'credit_amount': str(plan_change.credit_amount),
+                'payable_amount': str(plan_change.payable_amount),
+            },
+        }
+    )
+    plan_change.provider_order_id = order['id']
+    plan_change.provider_payload = {
+        **(plan_change.provider_payload or {}),
+        'order': order,
+        'created_by': 'upgrade_plan',
+    }
+    plan_change.save(update_fields=['provider_order_id', 'provider_payload', 'updated_at'])
+    return {
+        'key_id': settings.RAZORPAY_KEY_ID,
+        'order_id': order['id'],
+        'amount': order['amount'],
+        'currency': order['currency'],
+        'name': 'Press Nexa',
+        'description': f"{plan_change.to_plan.name} - {plan_change.billing_months} month{'s' if plan_change.billing_months != 1 else ''}",
+        'pricing': _plan_change_pricing_payload(plan_change),
+    }
+
+
+def _plan_change_pricing_payload(plan_change):
+    billing_label = '1 month' if plan_change.billing_months == 1 else f'{plan_change.billing_months} months'
+    return {
+        'billing_label': billing_label,
+        'list_display': money_display(plan_change.list_amount, plan_change.currency),
+        'discount_percent': plan_change.discount_percent,
+        'discount_display': money_display(plan_change.discount_amount, plan_change.currency),
+        'credit_display': money_display(plan_change.credit_amount, plan_change.currency),
+        'payable_display': money_display(plan_change.payable_amount, plan_change.currency),
+    }
+
+
+@transaction.atomic
+def create_plan_change_checkout(*, tenant, subscription, plan_price, billing_months, requested_by):
+    subscription = TenantSubscription.objects.select_for_update().select_related('plan').get(pk=subscription.pk)
+    quote = calculate_plan_change_quote(
+        tenant=tenant,
+        subscription=subscription,
+        plan_price=plan_price,
+        billing_months=billing_months,
+    )
+    current_price = monthly_price_for_plan(subscription.plan)
+    change_type = PlanChangeRequest.ChangeType.UPGRADE
+    if current_price and plan_price.amount < current_price.amount:
+        change_type = PlanChangeRequest.ChangeType.DOWNGRADE
+    plan_change = PlanChangeRequest.objects.create(
+        tenant=tenant,
+        from_plan=subscription.plan,
+        to_plan=plan_price.plan,
+        requested_by=requested_by,
+        change_type=change_type,
+        status=PlanChangeRequest.Status.PENDING_PAYMENT,
+        effective_at=quote['period_start'],
+        plan_price=plan_price,
+        billing_months=quote['billing_months'],
+        list_amount=quote['list_amount'],
+        discount_percent=quote['discount_percent'],
+        discount_amount=quote['discount_amount'],
+        credit_amount=quote['credit_amount'],
+        payable_amount=quote['payable_amount'],
+        currency=quote['currency'],
+        period_start=quote['period_start'],
+        period_end=quote['period_end'],
+        provider_payload={
+            'quote': {
+                'remaining_days': quote['remaining_days'],
+                'total_days': quote['total_days'],
+            },
+        },
+    )
+    checkout = create_razorpay_order_for_plan_change(plan_change)
+    return plan_change, checkout
+
+
+@transaction.atomic
+def apply_verified_plan_change_checkout(*, plan_change, provider_order_id='', payment_reference='', provider_signature='', provider_payload=None):
+    plan_change = (
+        PlanChangeRequest.objects
+        .select_for_update()
+        .select_related('tenant', 'plan_price__plan', 'to_plan')
+        .get(pk=plan_change.pk)
+    )
+    if plan_change.status == PlanChangeRequest.Status.APPLIED:
+        return plan_change
+    subscription = TenantSubscription.objects.select_for_update().get(tenant=plan_change.tenant)
+    payment_id = payment_reference or provider_order_id or plan_change.provider_order_id
+    record_successful_subscription_payment(
+        tenant=plan_change.tenant,
+        subscription=subscription,
+        plan_price=plan_change.plan_price,
+        billing_months=plan_change.billing_months,
+        provider_order_id=provider_order_id or plan_change.provider_order_id,
+        payment_reference=payment_id,
+        provider_signature=provider_signature,
+        amount=plan_change.payable_amount,
+        list_amount=plan_change.list_amount,
+        discount_percent=plan_change.discount_percent,
+        discount_amount=plan_change.discount_amount + plan_change.credit_amount,
+        period_start=plan_change.period_start,
+        provider_payload={
+            **(provider_payload or {}),
+            'plan_change_uuid': str(plan_change.uuid),
+            'credit_amount': plan_change.credit_amount,
+            'base_offer_discount_amount': plan_change.discount_amount,
+            'source': 'upgrade_plan',
+        },
+    )
+    plan_change.provider_order_id = provider_order_id or plan_change.provider_order_id
+    plan_change.provider_payment_id = payment_id
+    plan_change.provider_reference = payment_id
+    plan_change.provider_signature = provider_signature
+    plan_change.provider_payload = {
+        **(plan_change.provider_payload or {}),
+        'verified_checkout': provider_payload or {},
+    }
+    plan_change.status = PlanChangeRequest.Status.APPLIED
+    plan_change.effective_at = timezone.now()
+    plan_change.save(update_fields=[
+        'provider_order_id',
+        'provider_payment_id',
+        'provider_reference',
+        'provider_signature',
+        'provider_payload',
+        'status',
+        'effective_at',
+        'updated_at',
+    ])
+    get_effective_entitlements(plan_change.tenant)
+    return plan_change
 
 
 def verify_razorpay_checkout_signature(*, payment_id, order_id, signature):

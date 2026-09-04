@@ -24,6 +24,7 @@ from .models import (
     Feature,
     OnboardingReviewEvent,
     Plan,
+    PlanChangeRequest,
     PlanFeature,
     PlanPrice,
     TenantOnboarding,
@@ -35,9 +36,12 @@ from .models import (
 from .pricing import calculate_checkout_pricing
 from .services import (
     auto_publish_paid_onboardings,
+    apply_verified_plan_change_checkout,
+    calculate_plan_change_quote,
     create_tenant_after_verified_subscription,
     ensure_paid_tenant_integrity,
     process_webhook,
+    create_plan_change_checkout,
     record_successful_subscription_payment,
     subscription_period_for_cycle,
     verify_razorpay_signature,
@@ -644,6 +648,127 @@ class SubscriptionTests(TestCase):
 
         self.assertEqual(BillingRecord.objects.filter(tenant=self.tenant, razorpay_payment_id='pay_same').count(), 1)
         self.assertEqual(subscription.current_period_end, period_end)
+
+    def test_upgrade_quote_credits_unused_current_plan_days(self):
+        new_plan = Plan.objects.create(name='News Pro', code=Plan.Code.NEWS_PRO, entitlements={'news_articles': 2000})
+        new_price = PlanPrice.objects.create(plan=new_plan, billing_cycle=PlanPrice.BillingCycle.MONTHLY, amount=399800)
+        now = timezone.now()
+        period_start = now - timezone.timedelta(days=15)
+        period_end = now + timezone.timedelta(days=15)
+        subscription = TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            billing_months=1,
+            status=TenantSubscription.Status.ACTIVE,
+            start_at=period_start,
+            current_period_start=period_start,
+            current_period_end=period_end,
+            charge_at=period_end,
+        )
+        BillingRecord.objects.create(
+            tenant=self.tenant,
+            subscription=subscription,
+            razorpay_payment_id='pay_current',
+            amount=99950,
+            billing_months=1,
+            list_amount=199900,
+            discount_percent=50,
+            discount_amount=99950,
+            period_start=period_start,
+            period_end=period_end,
+            currency='INR',
+            status='paid',
+        )
+
+        quote = calculate_plan_change_quote(
+            tenant=self.tenant,
+            subscription=subscription,
+            plan_price=new_price,
+            billing_months=1,
+            now=now,
+        )
+
+        self.assertEqual(quote['list_amount'], 399800)
+        self.assertEqual(quote['discount_amount'], 199900)
+        self.assertEqual(quote['credit_amount'], 49975)
+        self.assertEqual(quote['payable_amount'], 149925)
+        self.assertEqual(quote['period_start'], now)
+
+    def test_verified_plan_upgrade_updates_subscription_and_keeps_billing_history(self):
+        new_plan = Plan.objects.create(name='News Pro', code=Plan.Code.NEWS_PRO, entitlements={'news_articles': 2000})
+        new_price = PlanPrice.objects.create(plan=new_plan, billing_cycle=PlanPrice.BillingCycle.MONTHLY, amount=399800)
+        now = timezone.now()
+        subscription = TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            billing_months=1,
+            status=TenantSubscription.Status.ACTIVE,
+            start_at=now - timezone.timedelta(days=15),
+            current_period_start=now - timezone.timedelta(days=15),
+            current_period_end=now + timezone.timedelta(days=15),
+            charge_at=now + timezone.timedelta(days=15),
+        )
+        BillingRecord.objects.create(
+            tenant=self.tenant,
+            subscription=subscription,
+            razorpay_payment_id='pay_old',
+            amount=99950,
+            billing_months=1,
+            list_amount=199900,
+            discount_percent=50,
+            discount_amount=99950,
+            period_start=subscription.current_period_start,
+            period_end=subscription.current_period_end,
+            currency='INR',
+            status='paid',
+        )
+        quote = calculate_plan_change_quote(
+            tenant=self.tenant,
+            subscription=subscription,
+            plan_price=new_price,
+            billing_months=12,
+            now=now,
+        )
+        plan_change = PlanChangeRequest.objects.create(
+            tenant=self.tenant,
+            from_plan=self.plan,
+            to_plan=new_plan,
+            requested_by=self.user,
+            change_type=PlanChangeRequest.ChangeType.UPGRADE,
+            status=PlanChangeRequest.Status.PENDING_PAYMENT,
+            plan_price=new_price,
+            billing_months=quote['billing_months'],
+            list_amount=quote['list_amount'],
+            discount_percent=quote['discount_percent'],
+            discount_amount=quote['discount_amount'],
+            credit_amount=quote['credit_amount'],
+            payable_amount=quote['payable_amount'],
+            currency=quote['currency'],
+            period_start=quote['period_start'],
+            period_end=quote['period_end'],
+        )
+
+        apply_verified_plan_change_checkout(
+            plan_change=plan_change,
+            provider_order_id='order_upgrade',
+            payment_reference='pay_upgrade',
+            provider_signature='sig_upgrade',
+        )
+
+        subscription.refresh_from_db()
+        plan_change.refresh_from_db()
+        invoice = BillingRecord.objects.get(razorpay_payment_id='pay_upgrade')
+        self.assertEqual(subscription.plan, new_plan)
+        self.assertEqual(subscription.billing_months, 12)
+        self.assertEqual(subscription.current_period_start, quote['period_start'])
+        self.assertEqual(subscription.current_period_end, quote['period_end'])
+        self.assertEqual(plan_change.status, PlanChangeRequest.Status.APPLIED)
+        self.assertEqual(invoice.amount, quote['payable_amount'])
+        self.assertEqual(invoice.list_amount, quote['list_amount'])
+        self.assertEqual(invoice.discount_amount, quote['discount_amount'] + quote['credit_amount'])
+        self.assertEqual(BillingRecord.objects.filter(tenant=self.tenant, status='paid').count(), 2)
 
     def test_paid_tenant_integrity_audit_can_fix_safe_defaults(self):
         subscription = TenantSubscription.objects.create(
