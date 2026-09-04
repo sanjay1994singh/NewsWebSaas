@@ -6,6 +6,7 @@ app_name = 'subscriptions'
 
 urlpatterns = [
     path('saas/', views.landing_page, name='landing'),
+    path('saas/plan-quote/', views.public_plan_quote, name='public_plan_quote'),
     path('saas/signup/', views.signup, name='signup'),
     path('saas/checkout/<uuid:acquisition_id>/', views.checkout, name='checkout'),
     path('saas/checkout/<uuid:acquisition_id>/verify/', views.verify_subscription, name='verify_subscription'),
@@ -16,6 +17,7 @@ urlpatterns = [
     path('onboarding/review/<uuid:onboarding_id>/', views.onboarding_review, name='onboarding_review'),
     path('account/billing/', views.billing_dashboard, name='billing_dashboard'),
     path('account/billing/upgrade-plan/', views.upgrade_plan, name='upgrade_plan'),
+    path('account/billing/upgrade-plan/quote/', views.upgrade_plan_quote, name='upgrade_plan_quote'),
     path('account/billing/upgrade-plan/<uuid:plan_change_id>/verify/', views.verify_plan_upgrade, name='verify_plan_upgrade'),
     path('account/status/', views.account_status, name='account_status'),
     path('account/billing/invoices/<int:record_id>/view/', views.view_invoice, name='view_invoice'),

@@ -307,6 +307,21 @@ class SubscriptionTests(TestCase):
         self.assertEqual(twenty_four_months.list_amount, 4797600)
         self.assertEqual(twenty_four_months.payable_amount, 2398800)
 
+    def test_public_plan_quote_returns_backend_calculated_duration_price(self):
+        response = self.client.get(
+            reverse('subscriptions:public_plan_quote'),
+            {'price_id': self.price.id, 'months': '12'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['billing_months'], 12)
+        self.assertEqual(data['list_display'], 'INR 23,988')
+        self.assertEqual(data['payable_display'], 'INR 11,994')
+        self.assertIn(f'price={self.price.id}', data['signup_url'])
+        self.assertIn('months=12', data['signup_url'])
+
     def test_whatsapp_number_normalization_handles_leading_zero(self):
         self.assertEqual(normalize_whatsapp_number('06397712918'), '916397712918')
         self.assertEqual(normalize_whatsapp_number('9106397712918'), '916397712918')
@@ -857,6 +872,33 @@ class SubscriptionTests(TestCase):
         self.assertRedirects(response, reverse('subscriptions:upgrade_plan'), fetch_redirect_response=False)
         self.assertEqual(plan_change.status, PlanChangeRequest.Status.PENDING_PAYMENT)
         self.assertFalse(BillingRecord.objects.filter(razorpay_payment_id='pay_wrong').exists())
+
+    def test_upgrade_plan_quote_returns_backend_calculated_selected_plan_price(self):
+        new_plan = Plan.objects.create(name='News Pro', code=Plan.Code.NEWS_PRO, entitlements={'news_articles': 2000})
+        new_price = PlanPrice.objects.create(plan=new_plan, billing_cycle=PlanPrice.BillingCycle.MONTHLY, amount=399800)
+        TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            billing_months=1,
+            status=TenantSubscription.Status.ACTIVE,
+            start_at=timezone.now(),
+            current_period_start=timezone.now(),
+            current_period_end=timezone.now() + timezone.timedelta(days=30),
+        )
+
+        self.client.login(username='owner', password='testpass123')
+        response = self.client.get(
+            reverse('subscriptions:upgrade_plan_quote'),
+            {'plan_price_id': new_price.id, 'months': '12'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data['price'], 'INR 23,988')
+        self.assertIn('Old plan credit', data['help_text'])
+        self.assertEqual(data['action_label'], 'Upgrade')
 
     def test_paid_tenant_integrity_audit_can_fix_safe_defaults(self):
         subscription = TenantSubscription.objects.create(

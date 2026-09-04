@@ -270,6 +270,28 @@ def landing_page(request):
     return render(request, 'subscriptions/landing.html', context)
 
 
+def public_plan_quote(request):
+    plan_price = get_object_or_404(
+        PlanPrice.objects.select_related('plan'),
+        pk=request.GET.get('price_id'),
+        is_active=True,
+        plan__is_active=True,
+        plan__is_current_version=True,
+    )
+    pricing = calculate_checkout_pricing(plan_price, request.GET.get('months'))
+    return JsonResponse(
+        {
+            'billing_months': pricing.billing_months,
+            'billing_label': pricing.billing_label,
+            'list_display': money_display(pricing.list_amount, pricing.currency),
+            'discount_percent': pricing.discount_percent,
+            'discount_display': money_display(pricing.discount_amount, pricing.currency),
+            'payable_display': money_display(pricing.payable_amount, pricing.currency),
+            'signup_url': f"{reverse('public_saas_signup')}?price={plan_price.id}&months={pricing.billing_months}",
+        }
+    )
+
+
 @require_http_methods(['GET', 'POST'])
 def signup(request):
     initial_price_id = request.GET.get('price')
@@ -854,6 +876,45 @@ def upgrade_plan(request):
             'invoices': invoices,
             'changes': changes,
         },
+    )
+
+
+@login_required
+def upgrade_plan_quote(request):
+    tenant, subscription, onboarding_record = _customer_tenant_context(request.user)
+    if tenant is None or subscription is None:
+        return JsonResponse({'detail': 'No active tenant subscription is linked with this account yet.'}, status=404)
+    if tenant.owner_id != request.user.id:
+        raise PermissionDenied("Only the workspace owner can review plan quotes.")
+    plan_price = get_object_or_404(
+        PlanPrice.objects.select_related('plan'),
+        pk=request.GET.get('plan_price_id'),
+        is_active=True,
+        plan__is_active=True,
+        plan__is_current_version=True,
+        billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+    )
+    quote = calculate_plan_change_quote(
+        tenant=tenant,
+        subscription=subscription,
+        plan_price=plan_price,
+        billing_months=request.GET.get('months'),
+    )
+    after_offer_amount = quote['list_amount'] - quote['discount_amount']
+    is_current_plan = subscription.plan_id == plan_price.plan_id
+    return JsonResponse(
+        {
+            'is_current_plan': is_current_plan,
+            'price': money_display(after_offer_amount, quote['currency']),
+            'plan_amount': quote['list_display'],
+            'discount': f"-{quote['discount_display']}",
+            'credit': f"-{quote['credit_display']}",
+            'credit_label': 'Renewal credit' if is_current_plan else 'Unused old-plan credit',
+            'final_payable': quote['payable_display'],
+            'period': f"{quote['period_start'].strftime('%d %b %Y')} - {quote['period_end'].strftime('%d %b %Y')}",
+            'action_label': 'Renew' if is_current_plan else 'Upgrade',
+            'help_text': 'Amount after 50% offer.' if is_current_plan else 'Amount after 50% offer. Old plan credit will be minus below.',
+        }
     )
 
 

@@ -63,6 +63,13 @@
     .plans { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); align-items: stretch; }
     .plan { display: flex; flex-direction: column; gap: 14px; min-height: 100%; }
     .plan ul { flex: 1; }
+    .plan.is-updating { opacity:.72; }
+    .plan-duration { display:grid; gap:7px; margin-top:6px; }
+    .plan-duration strong { font-size:14px; }
+    .plan-duration select { width:100%; min-height:42px; padding:10px; border:1px solid #bccbc4; border-radius:6px; background:#fff; font:inherit; }
+    .plan-calc { display:grid; gap:8px; margin-top:4px; }
+    .plan-row { display:flex; justify-content:space-between; gap:12px; padding-top:8px; border-top:1px solid var(--line); font-size:14px; }
+    .plan-row strong { text-align:right; }
     .plan-actions { display: grid; grid-template-columns: 1fr auto; gap: 10px; margin-top: auto; align-items: stretch; }
     .plan-actions .btn { width: 100%; }
     .plan-actions .chat-btn { min-width: 86px; background: #fff; color: var(--brand); }
@@ -177,21 +184,30 @@
         </div>
         <div class="grid plans">
           {% for card in plan_cards %}
-            <article class="card plan">
+            <article class="card plan" data-plan-card data-quote-url="{% url 'subscriptions:public_plan_quote' %}">
               <div>
                 <h3>{{ card.plan.name }}</h3>
                 {% if card.monthly_price %}
                   <p class="muted">Limited offer: 50% off</p>
-                  <div class="price">{{ card.offer.payable_display }}<small>monthly after offer</small></div>
+                  <div class="price" data-plan-price>{{ card.offer.payable_display }}<small data-plan-label>{{ card.offer.billing_label }} after offer</small></div>
                 {% elif card.yearly_price %}
                   <div class="price">{{ card.yearly_display }}<small>yearly</small></div>
                 {% else %}
                   <div class="price">Contact<small>pricing pending</small></div>
                 {% endif %}
                 {% if card.monthly_price %}
-                  <p class="muted">Plan price: {{ card.monthly_display }} monthly</p>
-                  <p class="muted">12 months offer: {{ card.yearly_offer.payable_display }}</p>
-                  <p class="muted">24 months offer: {{ card.two_year_offer.payable_display }}</p>
+                  <div class="plan-duration">
+                    <strong>Duration</strong>
+                    <select data-plan-duration>
+                      <option value="1">1 month</option>
+                      <option value="12">12 months</option>
+                      <option value="24">24 months</option>
+                    </select>
+                  </div>
+                  <div class="plan-calc">
+                    <div class="plan-row"><span>Plan amount</span><strong data-plan-amount>{{ card.offer.list_display }}</strong></div>
+                    <div class="plan-row"><span>50% offer discount</span><strong data-plan-discount>-{{ card.offer.discount_display }}</strong></div>
+                  </div>
                 {% elif card.yearly_price %}
                   <p class="muted">Yearly: {{ card.yearly_display }}</p>
                 {% endif %}
@@ -205,7 +221,7 @@
               </ul>
               <div class="plan-actions">
                 {% if card.signup_price %}
-                  <a class="btn" href="{% url 'public_saas_signup' %}?price={{ card.signup_price.id }}&months=1">Get Started</a>
+                  <a class="btn" data-signup-link data-price-id="{{ card.signup_price.id }}" href="{% url 'public_saas_signup' %}?price={{ card.signup_price.id }}&months=1">Get Started</a>
                 {% else %}
                   <button class="btn secondary" type="button" data-scroll-target="faq">Contact Sales</button>
                 {% endif %}
@@ -293,6 +309,36 @@
       if (history.replaceState) {
         history.replaceState(null, '', window.location.pathname + window.location.search);
       }
+    });
+  });
+  document.querySelectorAll('[data-plan-duration]').forEach(function (select) {
+    select.addEventListener('change', function () {
+      const card = select.closest('[data-plan-card]');
+      const signupLink = card ? card.querySelector('[data-signup-link]') : null;
+      if (!card || !signupLink) return;
+      const url = new URL(card.dataset.quoteUrl, window.location.origin);
+      url.searchParams.set('price_id', signupLink.dataset.priceId);
+      url.searchParams.set('months', select.value);
+      card.classList.add('is-updating');
+      fetch(url.toString(), {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      })
+        .then(function (response) {
+          if (!response.ok) throw new Error('Plan quote failed');
+          return response.json();
+        })
+        .then(function (quote) {
+          card.querySelector('[data-plan-price]').firstChild.nodeValue = quote.payable_display;
+          card.querySelector('[data-plan-label]').textContent = quote.billing_label + ' after offer';
+          card.querySelector('[data-plan-amount]').textContent = quote.list_display;
+          card.querySelector('[data-plan-discount]').textContent = '-' + quote.discount_display;
+          signupLink.href = quote.signup_url;
+        })
+        .finally(function () {
+          card.classList.remove('is-updating');
+        });
     });
   });
   </script>

@@ -29,6 +29,7 @@
 .plan-card .detail-list { gap:0; }
 .plan-card .detail-row { font-size:14px; }
 .plan-card .btn { width:100%; min-height:46px; }
+.plan-card.is-updating { opacity:.72; }
 .plan-card.is-submitting .btn { opacity:.65; cursor:wait; }
 .quote-box { display:grid; gap:8px; background:#eef6f2; border:1px solid #d5e8df; border-radius:8px; padding:14px; }
 .duration-select { width:100%; min-height:42px; margin-top:6px; }
@@ -119,7 +120,7 @@
     <h2>Choose Plan</h2>
     <div class="plan-grid">
       {% for option in plan_options %}
-        <form class="plan-card{% if option.is_selected %} is-selected{% endif %}" method="post" action="{% url 'subscriptions:upgrade_plan' %}">
+        <form class="plan-card{% if option.is_selected %} is-selected{% endif %}" method="post" action="{% url 'subscriptions:upgrade_plan' %}" data-plan-card data-quote-url="{% url 'subscriptions:upgrade_plan_quote' %}">
           {% csrf_token %}
           <input type="hidden" name="plan_price_id" value="{{ option.price.id }}">
           <h3>{{ option.plan.name }}</h3>
@@ -127,8 +128,8 @@
             {% if option.is_current_plan %}<span class="current-badge">Active plan</span>{% endif %}
             <span class="offer-badge">{{ option.quote.discount_percent }}% offer</span>
           </div>
-          <div class="price">{{ option.quote.after_offer_display }}</div>
-          <p class="muted-small">Amount after 50% offer{% if not option.is_current_plan %}. Old plan credit will be minus below{% endif %}.</p>
+          <div class="price" data-quote-price>{{ option.quote.after_offer_display }}</div>
+          <p class="muted-small" data-quote-help>Amount after 50% offer{% if not option.is_current_plan %}. Old plan credit will be minus below{% endif %}.</p>
           <ul class="feature-list">
             {% for plan_feature in option.enabled_features %}
               <li>{{ plan_feature.feature.name }}{% if plan_feature.limit_value %}: {{ plan_feature.limit_value }} {{ plan_feature.feature.default_unit }}{% endif %}</li>
@@ -145,13 +146,13 @@
             </select>
           </label>
           <div class="detail-list">
-            <div class="detail-row"><span>Plan amount</span><strong>{{ option.quote.list_display }}</strong></div>
-            <div class="detail-row"><span>50% offer discount</span><strong>-{{ option.quote.discount_display }}</strong></div>
-            <div class="detail-row"><span>{% if option.is_current_plan %}Renewal credit{% else %}Unused old-plan credit{% endif %}</span><strong>-{{ option.quote.credit_display }}</strong></div>
-            <div class="detail-row final-row"><span>Final payable</span><strong>{{ option.quote.payable_display }}</strong></div>
-            <div class="detail-row"><span>Period</span><strong>{{ option.quote.period_start|date:"d M Y" }} - {{ option.quote.period_end|date:"d M Y" }}</strong></div>
+            <div class="detail-row"><span>Plan amount</span><strong data-quote-plan-amount>{{ option.quote.list_display }}</strong></div>
+            <div class="detail-row"><span>50% offer discount</span><strong data-quote-discount>-{{ option.quote.discount_display }}</strong></div>
+            <div class="detail-row"><span data-quote-credit-label>{% if option.is_current_plan %}Renewal credit{% else %}Unused old-plan credit{% endif %}</span><strong data-quote-credit>-{{ option.quote.credit_display }}</strong></div>
+            <div class="detail-row final-row"><span>Final payable</span><strong data-quote-final>{{ option.quote.payable_display }}</strong></div>
+            <div class="detail-row"><span>Period</span><strong data-quote-period>{{ option.quote.period_start|date:"d M Y" }} - {{ option.quote.period_end|date:"d M Y" }}</strong></div>
           </div>
-          <button class="btn" type="submit">{{ option.action_label }}</button>
+          <button class="btn" type="submit" data-quote-action>{{ option.action_label }}</button>
         </form>
       {% endfor %}
     </div>
@@ -257,15 +258,41 @@
   document.querySelectorAll('.plan-card .duration-select').forEach(function (select) {
     select.addEventListener('change', function () {
       const form = select.closest('form');
-      if (!form || form.classList.contains('is-submitting')) return;
-      form.classList.add('is-submitting');
-      const button = form.querySelector('button[type="submit"]');
-      if (button) button.textContent = 'Updating...';
+      if (!form || form.classList.contains('is-updating')) return;
       const priceInput = form.querySelector('input[name="plan_price_id"]');
-      const url = new URL(window.location.href);
+      const url = new URL(form.dataset.quoteUrl, window.location.origin);
       url.searchParams.set('plan_price_id', priceInput ? priceInput.value : '');
       url.searchParams.set('months', select.value);
-      window.location.href = url.toString();
+      form.classList.add('is-updating');
+      fetch(url.toString(), {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      })
+        .then(function (response) {
+          if (!response.ok) throw new Error('Quote update failed');
+          return response.json();
+        })
+        .then(function (quote) {
+          form.querySelector('[data-quote-price]').textContent = quote.price;
+          form.querySelector('[data-quote-help]').textContent = quote.help_text;
+          form.querySelector('[data-quote-plan-amount]').textContent = quote.plan_amount;
+          form.querySelector('[data-quote-discount]').textContent = quote.discount;
+          form.querySelector('[data-quote-credit-label]').textContent = quote.credit_label;
+          form.querySelector('[data-quote-credit]').textContent = quote.credit;
+          form.querySelector('[data-quote-final]').textContent = quote.final_payable;
+          form.querySelector('[data-quote-period]').textContent = quote.period;
+          form.querySelector('[data-quote-action]').textContent = quote.action_label;
+        })
+        .catch(function () {
+          const url = new URL(window.location.href);
+          url.searchParams.set('plan_price_id', priceInput ? priceInput.value : '');
+          url.searchParams.set('months', select.value);
+          window.location.href = url.toString();
+        })
+        .finally(function () {
+          form.classList.remove('is-updating');
+        });
     });
   });
 </script>
