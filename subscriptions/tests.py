@@ -387,26 +387,37 @@ class SubscriptionTests(TestCase):
 
         self.assertRedirects(response, 'https://billing-news.live-app.in/account/profile/', fetch_redirect_response=False)
 
-    def test_billing_dashboard_renders_add_on_actions_with_uuid_urls(self):
-        TenantSubscription.objects.create(
+    def test_billing_dashboard_focuses_on_current_plan_and_invoices(self):
+        subscription = TenantSubscription.objects.create(
             tenant=self.tenant,
             plan=self.plan,
             billing_cycle=PlanPrice.BillingCycle.MONTHLY,
             status=TenantSubscription.Status.ACTIVE,
         )
-        feature = Feature.objects.create(code='video_uploads', name='Video Uploads', category='video')
-        add_on = AddOn.objects.create(
-            feature=feature,
-            name='Extra Video Pack',
-            monthly_price=99900,
-            yearly_price=999000,
+        invoice = BillingRecord.objects.create(
+            tenant=self.tenant,
+            subscription=subscription,
+            razorpay_payment_id='pay_invoice_visible',
+            amount=39900,
+            list_amount=79800,
+            discount_percent=50,
+            discount_amount=39900,
+            billing_months=1,
+            currency='INR',
+            status='paid',
         )
 
         self.client.login(username='owner', password='testpass123')
         response = self.client.get(reverse('subscriptions:billing_dashboard'))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, reverse('subscriptions:activate_add_on', kwargs={'add_on_id': add_on.uuid}))
+        self.assertContains(response, 'Current Plan')
+        self.assertContains(response, 'Invoices')
+        self.assertContains(response, 'INR 399')
+        self.assertContains(response, reverse('subscriptions:view_invoice', kwargs={'record_id': invoice.id}))
+        self.assertNotContains(response, 'Change Plan')
+        self.assertNotContains(response, 'Add-ons')
+        self.assertNotContains(response, 'Effective Features')
 
     def test_invoice_pdf_download_is_available_to_tenant_owner(self):
         subscription = TenantSubscription.objects.create(

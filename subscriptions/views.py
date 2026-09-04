@@ -667,9 +667,6 @@ def billing_dashboard(request):
                 },
             },
         )
-    plans = Plan.objects.filter(is_active=True, is_current_version=True).prefetch_related('prices')
-    add_ons = AddOn.objects.filter(is_active=True).select_related('feature').order_by('display_order', 'name')
-    entitlements = get_effective_entitlements(tenant)
     invoices = BillingRecord.objects.filter(tenant=tenant).select_related('subscription__plan').order_by('-created_at')[:20]
     return render(
         request,
@@ -678,9 +675,6 @@ def billing_dashboard(request):
             'tenant': tenant,
             'subscription': subscription,
             'onboarding': onboarding_record,
-            'plans': plans,
-            'add_ons': add_ons,
-            'entitlements': entitlements,
             'invoices': invoices,
         },
     )
