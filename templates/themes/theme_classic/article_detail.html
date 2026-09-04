@@ -105,25 +105,25 @@
         </div>
       {% endif %}
 
+      <section class="share-card">
+        <div class="share-row">
+          <div>
+            <strong>Share this story</strong>
+            <p class="caption">Send this article link to readers on WhatsApp or social media.</p>
+          </div>
+          <div class="share-actions">
+            <a class="share-btn primary" href="https://api.whatsapp.com/send?text={{ share_text|urlencode }}%20{{ share_url|urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
+            <a class="share-btn" href="https://www.facebook.com/sharer/sharer.php?u={{ share_url|urlencode }}" target="_blank" rel="noopener">Facebook</a>
+            <a class="share-btn" href="https://twitter.com/intent/tweet?text={{ share_text|urlencode }}&url={{ share_url|urlencode }}" target="_blank" rel="noopener">X</a>
+            <button class="share-btn" type="button" data-copy-url="{{ share_url }}">Copy Link</button>
+          </div>
+        </div>
+      </section>
+
       <section class="article-body">
         {{ article.content|safe }}
       </section>
     </article>
-
-    <section class="share-card">
-      <div class="share-row">
-        <div>
-          <strong>Share this story</strong>
-          <p class="caption">Send this article link to readers on WhatsApp or social media.</p>
-        </div>
-        <div class="share-actions">
-          <a class="share-btn primary" href="https://api.whatsapp.com/send?text={{ share_text|urlencode }}%20{{ share_url|urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
-          <a class="share-btn" href="https://www.facebook.com/sharer/sharer.php?u={{ share_url|urlencode }}" target="_blank" rel="noopener">Facebook</a>
-          <a class="share-btn" href="https://twitter.com/intent/tweet?text={{ share_text|urlencode }}&url={{ share_url|urlencode }}" target="_blank" rel="noopener">X</a>
-          <button class="share-btn" type="button" data-copy-url="{{ share_url }}">Copy Link</button>
-        </div>
-      </div>
-    </section>
   </main>
 
   <footer>

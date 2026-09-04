@@ -10,6 +10,7 @@ from domains.forms import PrimaryDomainSelectionForm
 from domains.middleware import TenantResolutionMiddleware
 from domains.models import TenantDomain
 from news.models import AuthorProfile, NewsArticle
+from subscriptions.models import TenantOnboarding
 from subscriptions.services import tenant_public_site_slug, tenant_public_site_url
 
 from .models import Tenant, TenantMembership
@@ -132,6 +133,7 @@ class TenantIsolationTests(TestCase):
             title='Local update',
             slug='local-update',
             content='<p>Body</p>',
+            featured_image='articles/local.jpg',
             status=NewsArticle.Status.PUBLISHED,
         )
 
@@ -141,10 +143,60 @@ class TenantIsolationTests(TestCase):
         self.assertContains(response, 'Local update')
         article = NewsArticle.objects.get(slug='local-update')
         self.assertContains(response, f'/articles/{article.uuid}/')
+        self.assertContains(response, 'src="/media/articles/local.jpg"')
         self.assertContains(response, 'Read full story')
         self.assertContains(response, 'story-card-link')
         self.assertNotContains(response, 'City Desk')
         self.assertNotContains(response, 'By ')
+
+    def test_tenant_domain_homepage_uses_most_viewed_article_as_top_story(self):
+        category = Category.objects.create(tenant=self.tenant_a, name='Local', slug='local')
+        author = AuthorProfile.objects.create(tenant=self.tenant_a, display_name='City Desk', slug='city-desk')
+        NewsArticle.objects.create(
+            tenant=self.tenant_a,
+            category=category,
+            author=author,
+            title='Fresh latest update',
+            slug='fresh-latest-update',
+            content='<p>Body</p>',
+            view_count=2,
+            status=NewsArticle.Status.PUBLISHED,
+        )
+        popular = NewsArticle.objects.create(
+            tenant=self.tenant_a,
+            category=category,
+            author=author,
+            title='Most read report',
+            slug='most-read-report',
+            short_description='Popular story summary',
+            content='<p>Body</p>',
+            featured_image='articles/popular.jpg',
+            view_count=25,
+            status=NewsArticle.Status.PUBLISHED,
+        )
+
+        response = self.client.get('/', HTTP_HOST='customera.platformdomain.com')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Most Viewed')
+        self.assertContains(response, f'/articles/{popular.uuid}/')
+        self.assertContains(response, "url('/media/articles/popular.jpg')")
+
+    def test_tenant_domain_homepage_contact_section_uses_tenant_details(self):
+        TenantOnboarding.objects.create(
+            tenant=self.tenant_a,
+            status=TenantOnboarding.Status.PUBLISHED,
+            address='101 News Street, Delhi',
+            facebook_url='https://facebook.example/a-news',
+        )
+
+        response = self.client.get('/', HTTP_HOST='customera.platformdomain.com')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Contact A Media')
+        self.assertContains(response, 'a@example.com')
+        self.assertContains(response, '101 News Street, Delhi')
+        self.assertContains(response, 'https://facebook.example/a-news')
 
     def test_tenant_domain_public_article_detail_can_be_read_and_shared(self):
         category = Category.objects.create(tenant=self.tenant_a, name='Local', slug='local')
@@ -176,6 +228,8 @@ class TenantIsolationTests(TestCase):
         self.assertContains(response, 'name="robots"')
         self.assertContains(response, 'property="og:site_name"')
         self.assertContains(response, 'City Desk')
+        content = response.content.decode()
+        self.assertLess(content.index('Share this story'), content.index('Full story body'))
 
     def test_article_view_count_tracks_one_unique_view_per_visitor(self):
         category = Category.objects.create(tenant=self.tenant_a, name='Local', slug='local')

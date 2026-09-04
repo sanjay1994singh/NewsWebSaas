@@ -170,6 +170,17 @@
       color: #fff;
       overflow: hidden;
     }
+    .lead-link {
+      background-size: cover;
+      background-position: center;
+      transition: box-shadow .16s ease, transform .16s ease;
+    }
+    .lead-link:hover,
+    .lead-link:focus-visible {
+      box-shadow: 0 18px 42px rgba(16,35,29,0.16);
+      transform: translateY(-2px);
+      outline: none;
+    }
     .label {
       display: inline-flex;
       width: fit-content;
@@ -243,11 +254,39 @@
     }
     .section-card {
       min-height: 190px;
+      overflow: hidden;
     }
     .story-card-link {
-      display: block;
+      display: grid;
+      grid-template-rows: 168px 1fr;
+      padding: 0;
       min-height: 190px;
       transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+    }
+    .story-thumb {
+      min-height: 168px;
+      background: linear-gradient(135deg, #e7f1ed, #ffffff);
+      border-bottom: 1px solid var(--line);
+      overflow: hidden;
+    }
+    .story-thumb img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .story-placeholder {
+      display: grid;
+      place-items: center;
+      width: 100%;
+      height: 100%;
+      color: var(--brand);
+      font-size: 46px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+    .story-card-body {
+      padding: 20px;
     }
     .story-card-link:hover,
     .story-card-link:focus-visible {
@@ -272,6 +311,9 @@
       margin: 28px 0 46px;
       background: linear-gradient(135deg, #fff, var(--soft));
     }
+    .content-section {
+      margin: 28px 0;
+    }
     .empty-actions {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -288,6 +330,32 @@
       display: block;
       margin-bottom: 6px;
     }
+    .contact-panel {
+      margin: 30px 0 46px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      padding: 24px;
+    }
+    .contact-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .contact-item {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+      background: var(--soft);
+      overflow-wrap: anywhere;
+    }
+    .contact-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 13px;
+      margin-bottom: 4px;
+    }
     footer {
       border-top: 1px solid var(--line);
       background: #fff;
@@ -303,7 +371,8 @@
       .masthead,
       .hero-grid,
       .section-grid,
-      .empty-actions {
+      .empty-actions,
+      .contact-grid {
         grid-template-columns: 1fr;
       }
       .masthead {
@@ -330,6 +399,9 @@
       }
       .lead-card h2 {
         font-size: 34px;
+      }
+      .story-card-link {
+        grid-template-rows: 150px 1fr;
       }
     }
   </style>
@@ -367,8 +439,8 @@
       <a href="/">Home</a>
       <a href="#latest">Latest News</a>
       <a href="#top-stories">Top Stories</a>
-      <a href="#videos">Videos</a>
-      <a href="#livetv">Live TV</a>
+      {% if has_videos %}<a href="#videos">Videos</a>{% endif %}
+      {% if has_live_tv %}<a href="#livetv">Live TV</a>{% endif %}
       <a href="#contact">Contact</a>
     </nav>
   </div>
@@ -380,11 +452,19 @@
     </div>
 
     <section class="hero-grid" id="top-stories">
-      <article class="lead-card">
-        <span class="label">Top Story</span>
-        <h2>{{ tenant.business_name|default:tenant.publication_name }} digital newsroom is live</h2>
-        <p>Fresh reports, local updates, videos, and important announcements will appear here as the editorial team starts publishing.</p>
-      </article>
+      {% if top_article %}
+        <a class="lead-card lead-link" href="/articles/{{ top_article.uuid }}/"{% if top_article.featured_image %} style="background-image: linear-gradient(180deg, rgba(16,35,29,0.08), rgba(16,35,29,0.88)), url('{{ top_article.featured_image.url }}');"{% endif %}>
+          <span class="label">Most Viewed</span>
+          <h2>{{ top_article.title }}</h2>
+          <p>{{ top_article.short_description|default:"Readers are following this update. Open the full story for complete details." }}</p>
+        </a>
+      {% else %}
+        <article class="lead-card">
+          <span class="label">Top Story</span>
+          <h2>{{ tenant.business_name|default:tenant.publication_name }} digital newsroom is live</h2>
+          <p>Fresh reports, local updates, videos, and important announcements will appear here as the editorial team starts publishing.</p>
+        </article>
+      {% endif %}
       <aside class="side-card">
         <h2>Today</h2>
         <div class="headline-list">
@@ -415,10 +495,21 @@
         {% for article in articles %}
           <a class="section-card story-card-link" href="/articles/{{ article.uuid }}/">
             <article>
-            <h2>{{ article.title }}</h2>
-            <p>{{ article.short_description|default:"Read the latest update from this newsroom." }}</p>
-            <span class="read-more">Read full story</span>
-          </article>
+              <div class="story-thumb">
+                {% if article.featured_image %}
+                  <img src="{{ article.featured_image.url }}" alt="{{ article.image_alt|default:article.title }}">
+                {% else %}
+                  {% with site_name=tenant.business_name|default:tenant.publication_name %}
+                    <div class="story-placeholder">{{ site_name|first }}</div>
+                  {% endwith %}
+                {% endif %}
+              </div>
+              <div class="story-card-body">
+                <h2>{{ article.title }}</h2>
+                <p>{{ article.short_description|default:"Read the latest update from this newsroom." }}</p>
+                <span class="read-more">Read full story</span>
+              </div>
+            </article>
           </a>
         {% endfor %}
       {% else %}
@@ -457,9 +548,47 @@
         </div>
       </div>
     </section>
+
+    {% if has_videos %}
+      <section class="empty-card content-section" id="videos">
+        <h2>Videos</h2>
+        <p>Video reports, interviews, and short clips from {{ tenant.business_name|default:tenant.publication_name }} will appear here when the newsroom publishes them.</p>
+      </section>
+    {% endif %}
+
+    {% if has_live_tv %}
+      <section class="empty-card content-section" id="livetv">
+        <h2>Live TV</h2>
+        <p>{% if onboarding.live_tv_url %}<a class="read-more" href="{{ onboarding.live_tv_url }}" target="_blank" rel="noopener">Watch Live TV</a>{% else %}Live coverage will appear here after the channel enables its live stream.{% endif %}</p>
+      </section>
+    {% endif %}
+
+    <section class="contact-panel" id="contact">
+      <h2>Contact {{ tenant.business_name|default:tenant.publication_name }}</h2>
+      <div class="contact-grid">
+        {% if tenant.email %}
+          <div class="contact-item"><span>Email</span><strong>{{ tenant.email }}</strong></div>
+        {% endif %}
+        {% if tenant.mobile %}
+          <div class="contact-item"><span>Mobile</span><strong>{{ tenant.mobile }}</strong></div>
+        {% endif %}
+        {% if onboarding.address %}
+          <div class="contact-item"><span>Office address</span><strong>{{ onboarding.address }}</strong></div>
+        {% endif %}
+        {% if onboarding.facebook_url %}
+          <a class="contact-item" href="{{ onboarding.facebook_url }}" target="_blank" rel="noopener"><span>Facebook</span><strong>Open page</strong></a>
+        {% endif %}
+        {% if onboarding.instagram_url %}
+          <a class="contact-item" href="{{ onboarding.instagram_url }}" target="_blank" rel="noopener"><span>Instagram</span><strong>Open profile</strong></a>
+        {% endif %}
+        {% if onboarding.youtube_channel_url %}
+          <a class="contact-item" href="{{ onboarding.youtube_channel_url }}" target="_blank" rel="noopener"><span>YouTube</span><strong>Open channel</strong></a>
+        {% endif %}
+      </div>
+    </section>
   </main>
 
-  <footer id="contact">
+  <footer>
     <div class="wrap">
       <strong>{{ tenant.business_name|default:tenant.publication_name }}</strong>
       <p>{{ tenant.publication_name }} is powered by Press Nexa. For updates, keep visiting this website.</p>
