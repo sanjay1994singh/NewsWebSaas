@@ -101,12 +101,12 @@
       <nav class="nav-group">
         <p class="nav-label">Workspace</p>
         <a class="active" href="{% url 'tenants:tenant_dashboard' %}">Dashboard <span>Overview</span></a>
+        {% if site_url %}<a href="{{ site_url }}" target="_blank" rel="noopener">Home <span>Website</span></a>{% endif %}
         <a href="/cms/">Create News <span>Publish</span></a>
         <a href="/cms/?type=blog">Blog Posts <span>Write</span></a>
         <a href="{% url 'news:category_list' %}">Categories <span>Manage</span></a>
         <a href="{% url 'tenants:reporter_list' %}">Reporters <span>Add</span></a>
         <a href="{% url 'subscriptions:onboarding' %}">Onboarding <span>{% if onboarding %}{{ onboarding.get_status_display }}{% else %}Update{% endif %}</span></a>
-        {% if site_url %}<a href="{{ site_url }}" target="_blank" rel="noopener">Home <span>Website</span></a>{% endif %}
         <a href="{% url 'subscriptions:billing_dashboard' %}">Billing <span>{% if subscription %}{{ subscription.get_status_display }}{% else %}Review{% endif %}</span></a>
         <a href="{% url 'tenants:tenant_settings' tenant.uuid %}">Settings <span>Brand</span></a>
         <a href="{% url 'accounts:profile' %}">Profile <span>Account</span></a>

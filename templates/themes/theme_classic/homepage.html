@@ -57,6 +57,7 @@
       place-items: center;
       width: 54px;
       height: 54px;
+      flex: 0 0 54px;
       border-radius: 6px;
       background: var(--brand);
       color: #fff;
@@ -153,6 +154,7 @@
       border-radius: 6px;
       text-align: left;
       color: var(--ink);
+      line-height: 1.2;
     }
     .account-panel a:hover,
     .account-panel button:hover {
@@ -462,33 +464,38 @@
       }
       .masthead {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 12px;
         min-height: auto;
-        padding: 18px 0;
+        padding: 16px 0;
       }
       .brand-block {
         flex: 1 1 auto;
-        gap: 12px;
-        align-items: center;
+        gap: 10px;
+        align-items: flex-start;
         min-width: 0;
       }
       .brand-mark {
-        flex: 0 0 50px;
-        width: 50px;
-        height: 50px;
-        font-size: 26px;
+        flex-basis: 44px;
+        width: 44px;
+        height: 44px;
+        font-size: 23px;
       }
       .mast-actions {
         flex: 0 0 auto;
         justify-content: flex-end;
+        padding-top: 1px;
       }
       .account-toggle {
-        width: 48px;
-        height: 48px;
-        min-width: 48px;
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
         padding: 0;
         border-radius: 50%;
+      }
+      .account-icon {
+        width: 19px;
+        height: 19px;
       }
       .account-toggle-text {
         position: absolute;
@@ -509,16 +516,17 @@
       }
       .account-panel {
         display: grid;
-        gap: 8px;
+        align-content: start;
+        gap: 10px;
         position: fixed;
         top: 0;
         right: 0;
         bottom: 0;
         left: auto;
         z-index: 30;
-        width: min(330px, 86vw);
+        width: min(300px, 82vw);
         min-width: 0;
-        padding: 18px;
+        padding: 20px 16px;
         border-radius: 0;
         transform: translateX(100%);
         transition: transform 180ms ease;
@@ -535,17 +543,30 @@
       }
       .account-panel-head {
         display: block;
-        padding-bottom: 10px;
+        padding: 0 2px 14px;
         border-bottom: 1px solid var(--line);
       }
       .account-panel-head strong {
         display: block;
-        font-size: 22px;
+        font-size: 24px;
         line-height: 1.15;
       }
       .account-panel-head span {
+        display: block;
+        margin-top: 4px;
         color: var(--muted);
-        font-size: 13px;
+        font-size: 14px;
+      }
+      .account-panel a,
+      .account-panel button {
+        display: flex;
+        align-items: center;
+        min-height: 44px;
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        font-size: 15px;
+        background: #fff;
       }
       .nav {
         min-width: max-content;
@@ -565,14 +586,12 @@
         min-height: 300px;
       }
       .site-title {
-        font-size: 32px;
+        font-size: 34px;
         line-height: 1.05;
         overflow-wrap: anywhere;
       }
       .tagline {
-        margin-top: 5px;
-        font-size: 14px;
-        line-height: 1.35;
+        display: none;
       }
       .lead-card h2 {
         font-size: 24px;
@@ -616,16 +635,20 @@
             <span>{{ tenant.business_name|default:tenant.publication_name }}</span>
           </div>
           {% if request.user.is_authenticated %}
-            <a href="/dashboard/">Dashboard</a>
+            <a href="/account/profile/">Profile</a>
+            {% if can_access_dashboard %}
+              <a href="/dashboard/">Dashboard</a>
+              <a href="/contact/">Help</a>
+              <a href="https://wa.me/918279408396" target="_blank" rel="noopener">Chat</a>
+            {% endif %}
             <form method="post" action="{% url 'accounts:logout' %}">
               {% csrf_token %}
               <button type="submit">Logout</button>
             </form>
           {% else %}
             <a href="/account/login/?next=/dashboard/">Login</a>
+            <a href="/register/">Register</a>
           {% endif %}
-          <a href="/contact/">Help</a>
-          <a href="https://wa.me/918279408396" target="_blank" rel="noopener">Chat</a>
           <button class="drawer-close" type="button">Close</button>
         </div>
       </div>

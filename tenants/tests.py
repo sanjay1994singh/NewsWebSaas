@@ -147,7 +147,38 @@ class TenantIsolationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Account')
         self.assertContains(response, '/dashboard/')
+        self.assertContains(response, 'https://wa.me/918279408396')
+        self.assertContains(response, 'Help')
         self.assertContains(response, 'Logout')
+
+    def test_tenant_domain_account_menu_hides_dashboard_help_and_chat_for_visitor(self):
+        User = get_user_model()
+        visitor_user = User.objects.create_user(username='reader', password='testpass123')
+        TenantVisitor.objects.create(
+            tenant=self.tenant_a,
+            user=visitor_user,
+            name='Reader',
+            email='reader@example.com',
+            is_active=True,
+        )
+        self.client.force_login(visitor_user)
+
+        response = self.client.get('/', HTTP_HOST='customera.platformdomain.com')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '/account/profile/')
+        self.assertContains(response, 'Logout')
+        self.assertNotContains(response, '/dashboard/')
+        self.assertNotContains(response, 'https://wa.me/918279408396')
+        self.assertNotContains(response, 'Help')
+
+    def test_tenant_domain_account_menu_shows_login_and_register_for_guest(self):
+        response = self.client.get('/', HTTP_HOST='customera.platformdomain.com')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '/account/login/?next=/dashboard/')
+        self.assertContains(response, '/register/')
+        self.assertNotContains(response, 'https://wa.me/918279408396')
 
     def test_tenant_domain_homepage_does_not_show_article_publisher_name(self):
         category = Category.objects.create(tenant=self.tenant_a, name='Local', slug='local')

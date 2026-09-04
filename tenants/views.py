@@ -288,6 +288,11 @@ def _render_public_tenant_site(request, tenant, page='home'):
         onboarding = tenant.commercial_onboarding
     except TenantOnboarding.DoesNotExist:
         onboarding = None
+    can_access_dashboard = user_can_access_tenant(request.user, tenant)
+    is_registered_visitor = (
+        request.user.is_authenticated
+        and TenantVisitor.objects.filter(tenant=tenant, user=request.user, is_active=True).exists()
+    )
     return render(request, 'themes/theme_classic/homepage.html', {
         'layout': layout,
         'blocks': blocks,
@@ -302,6 +307,8 @@ def _render_public_tenant_site(request, tenant, page='home'):
         'page': page,
         'public_site_slug': tenant_public_site_slug(tenant),
         'preview': False,
+        'can_access_dashboard': can_access_dashboard,
+        'is_registered_visitor': is_registered_visitor,
     })
 
 

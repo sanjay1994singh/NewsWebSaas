@@ -16,6 +16,10 @@
   .category-table th:nth-child(5) { width:18%; }
   .category-table tr:last-child td { border-bottom:0; }
   .status-pill { display:inline-flex; width:max-content; max-width:100%; border:1px solid var(--line); border-radius:999px; padding:4px 10px; font-size:12px; line-height:1.15; font-weight:800; background:#f8fbfa; white-space:nowrap; }
+  .row-actions { display:flex; flex-wrap:wrap; gap:8px; }
+  .icon-btn { width:40px; min-width:40px; height:40px; min-height:40px; padding:0; border-radius:8px; }
+  .icon-btn svg { width:18px; height:18px; display:block; }
+  .icon-btn.danger { border-color:var(--danger); color:var(--danger); background:#fff; }
   @media (max-width:820px) {
     .category-table, .category-table thead, .category-table tbody, .category-table tr, .category-table th, .category-table td { display:block; width:100%; }
     .category-table { border:0; background:transparent; }
@@ -27,7 +31,7 @@
   }
   @media (max-width:760px) { .category-head { display:grid; } .category-actions { width:100%; } .category-actions .btn { flex:1 1 150px; } }
   @media (max-width:560px) { .category-table td { grid-template-columns:1fr; gap:4px; } }
-  @media (max-width:520px) { .category-actions .btn { width:100%; flex-basis:100%; } }
+  @media (max-width:520px) { .category-head .category-actions .btn { width:100%; flex-basis:100%; } }
 {% endblock %}
 
 {% block content %}
@@ -63,9 +67,13 @@
               <td data-label="Status"><span class="status-pill">{% if category.is_active %}Active{% else %}Inactive{% endif %}</span></td>
               <td data-label="Menu">{% if category.show_in_menu %}Visible{% else %}Hidden{% endif %}</td>
               <td data-label="Actions">
-                <div class="category-actions">
-                  <a class="btn secondary" href="{% url 'news:category_update' category.pk %}">Edit</a>
-                  <a class="btn secondary" href="{% url 'news:category_delete' category.pk %}">Delete</a>
+                <div class="row-actions" aria-label="Category actions">
+                  <a class="btn secondary icon-btn" href="{% url 'news:category_update' category.pk %}" aria-label="Edit {{ category.name }}" title="Edit">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 16.9V20h3.1L17.8 9.3l-3.1-3.1L4 16.9Zm16.2-10.7a1.1 1.1 0 0 0 0-1.6L18.4 2.8a1.1 1.1 0 0 0-1.6 0l-1.2 1.2 3.1 3.1 1.5-.9Z" fill="currentColor"/></svg>
+                  </a>
+                  <a class="btn secondary icon-btn danger" href="{% url 'news:category_delete' category.pk %}" aria-label="Delete {{ category.name }}" title="Delete">
+                    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M8 4h8l1 2h4v2H3V6h4l1-2Zm1 6h2v8H9v-8Zm4 0h2v8h-2v-8Zm4 0h2v8h-2v-8ZM6 9h12l-1 12H7L6 9Z" fill="currentColor"/></svg>
+                  </a>
                 </div>
               </td>
             </tr>
