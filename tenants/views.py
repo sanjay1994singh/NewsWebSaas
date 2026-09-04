@@ -4,10 +4,11 @@ from django.contrib import messages
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 
+from analytics.services import record_article_view
 from core.models import user_can_access_tenant
 from domains.models import TenantDomain
 from news.models import NewsArticle
-from news.services import published_articles_for_tenant
+from news.services import article_public_path, published_articles_for_tenant
 from pages.builder import get_or_create_layout
 from pages.models import HomepageLayout
 from seo.services import article_json_ld, article_meta
@@ -137,7 +138,41 @@ def public_tenant_site(request, tenant_slug):
     })
 
 
-def public_article_detail(request, slug):
+def public_article_detail(request, uuid):
+    tenant = getattr(request, 'tenant', None)
+    if tenant is None:
+        raise Http404("Article not found.")
+    article = get_object_or_404(
+        published_articles_for_tenant(tenant),
+        uuid=uuid,
+    )
+    meta = article_meta(article)
+    if article.featured_image:
+        meta['og_image'] = request.build_absolute_uri(article.featured_image.url)
+    share_url = request.build_absolute_uri(article_public_path(article))
+    share_text = f"{article.title} - {tenant.business_name or tenant.publication_name}"
+    _, visitor_cookie = record_article_view(request, article)
+    response = render(request, 'themes/theme_classic/article_detail.html', {
+        'tenant': tenant,
+        'article': article,
+        'meta': meta,
+        'json_ld': article_json_ld(article),
+        'share_url': share_url,
+        'share_text': share_text,
+    })
+    if visitor_cookie:
+        response.set_cookie(
+            'pnx_visitor',
+            visitor_cookie,
+            max_age=60 * 60 * 24 * 365,
+            httponly=True,
+            secure=request.is_secure(),
+            samesite='Lax',
+        )
+    return response
+
+
+def public_article_slug_redirect(request, slug):
     tenant = getattr(request, 'tenant', None)
     if tenant is None:
         raise Http404("Article not found.")
@@ -145,16 +180,7 @@ def public_article_detail(request, slug):
         published_articles_for_tenant(tenant),
         slug=slug,
     )
-    share_url = request.build_absolute_uri(f"/articles/{article.slug}/")
-    share_text = f"{article.title} - {tenant.business_name or tenant.publication_name}"
-    return render(request, 'themes/theme_classic/article_detail.html', {
-        'tenant': tenant,
-        'article': article,
-        'meta': article_meta(article),
-        'json_ld': article_json_ld(article),
-        'share_url': share_url,
-        'share_text': share_text,
-    })
+    return redirect(article_public_path(article), permanent=True)
 
 
 @login_required

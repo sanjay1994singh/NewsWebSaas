@@ -244,6 +244,18 @@
     .section-card {
       min-height: 190px;
     }
+    .story-card-link {
+      display: block;
+      min-height: 190px;
+      transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
+    }
+    .story-card-link:hover,
+    .story-card-link:focus-visible {
+      border-color: var(--brand);
+      box-shadow: 0 14px 34px rgba(16,35,29,0.10);
+      transform: translateY(-2px);
+      outline: none;
+    }
     .read-more {
       display: inline-flex;
       margin-top: 14px;
@@ -379,7 +391,7 @@
           <div class="headline-item">
             <strong>
               {% if articles %}
-                <a href="/articles/{{ articles.0.slug }}/">{{ articles.0.title }}</a>
+                <a href="/articles/{{ articles.0.uuid }}/">{{ articles.0.title }}</a>
               {% else %}
                 Latest news desk is ready
               {% endif %}
@@ -401,11 +413,13 @@
     <section class="section-grid" id="latest">
       {% if articles %}
         {% for article in articles %}
-          <article class="section-card">
-            <h2><a href="/articles/{{ article.slug }}/">{{ article.title }}</a></h2>
+          <a class="section-card story-card-link" href="/articles/{{ article.uuid }}/">
+            <article>
+            <h2>{{ article.title }}</h2>
             <p>{{ article.short_description|default:"Read the latest update from this newsroom." }}</p>
-            <a class="read-more" href="/articles/{{ article.slug }}/">Read full story</a>
+            <span class="read-more">Read full story</span>
           </article>
+          </a>
         {% endfor %}
       {% else %}
         {% for block in blocks %}

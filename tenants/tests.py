@@ -139,8 +139,10 @@ class TenantIsolationTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Local update')
-        self.assertContains(response, '/articles/local-update/')
+        article = NewsArticle.objects.get(slug='local-update')
+        self.assertContains(response, f'/articles/{article.uuid}/')
         self.assertContains(response, 'Read full story')
+        self.assertContains(response, 'story-card-link')
         self.assertNotContains(response, 'City Desk')
         self.assertNotContains(response, 'By ')
 
@@ -155,10 +157,11 @@ class TenantIsolationTests(TestCase):
             slug='shareable-local-update',
             short_description='Important reader summary',
             content='<p>Full story body</p>',
+            featured_image='articles/shareable.jpg',
             status=NewsArticle.Status.PUBLISHED,
         )
 
-        response = self.client.get(f'/articles/{article.slug}/', HTTP_HOST='customera.platformdomain.com')
+        response = self.client.get(f'/articles/{article.uuid}/', HTTP_HOST='customera.platformdomain.com')
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Shareable local update')
@@ -167,8 +170,52 @@ class TenantIsolationTests(TestCase):
         self.assertContains(response, 'WhatsApp')
         self.assertContains(response, 'Facebook')
         self.assertContains(response, 'Copy Link')
-        self.assertContains(response, 'https://customera.platformdomain.com/articles/shareable-local-update/')
+        self.assertContains(response, f'https://customera.platformdomain.com/articles/{article.uuid}/')
+        self.assertContains(response, 'property="og:image"')
+        self.assertContains(response, 'https://customera.platformdomain.com/media/articles/shareable.jpg')
+        self.assertContains(response, 'name="robots"')
+        self.assertContains(response, 'property="og:site_name"')
         self.assertContains(response, 'City Desk')
+
+    def test_article_view_count_tracks_one_unique_view_per_visitor(self):
+        category = Category.objects.create(tenant=self.tenant_a, name='Local', slug='local')
+        author = AuthorProfile.objects.create(tenant=self.tenant_a, display_name='City Desk', slug='city-desk')
+        article = NewsArticle.objects.create(
+            tenant=self.tenant_a,
+            category=category,
+            author=author,
+            title='Tracked update',
+            slug='tracked-update',
+            content='<p>Body</p>',
+            status=NewsArticle.Status.PUBLISHED,
+        )
+        path = f'/articles/{article.uuid}/'
+
+        first = self.client.get(path, HTTP_HOST='customera.platformdomain.com', HTTP_USER_AGENT='reader-browser')
+        second = self.client.get(path, HTTP_HOST='customera.platformdomain.com', HTTP_USER_AGENT='reader-browser')
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 200)
+        article.refresh_from_db()
+        self.assertEqual(article.view_count, 1)
+        self.assertEqual(article.page_views.count(), 1)
+
+    def test_tenant_domain_slug_article_url_redirects_to_news_id_url(self):
+        category = Category.objects.create(tenant=self.tenant_a, name='Local', slug='local')
+        author = AuthorProfile.objects.create(tenant=self.tenant_a, display_name='City Desk', slug='city-desk')
+        article = NewsArticle.objects.create(
+            tenant=self.tenant_a,
+            category=category,
+            author=author,
+            title='Old slug link',
+            slug='old-slug-link',
+            content='<p>Body</p>',
+            status=NewsArticle.Status.PUBLISHED,
+        )
+
+        response = self.client.get(f'/articles/{article.slug}/', HTTP_HOST='customera.platformdomain.com')
+
+        self.assertRedirects(response, f'/articles/{article.uuid}/', status_code=301, fetch_redirect_response=False)
 
     def test_tenant_domain_public_article_detail_hides_unpublished_articles(self):
         category = Category.objects.create(tenant=self.tenant_a, name='Local', slug='local')
@@ -183,7 +230,7 @@ class TenantIsolationTests(TestCase):
             status=NewsArticle.Status.DRAFT,
         )
 
-        response = self.client.get(f'/articles/{article.slug}/', HTTP_HOST='customera.platformdomain.com')
+        response = self.client.get(f'/articles/{article.uuid}/', HTTP_HOST='customera.platformdomain.com')
 
         self.assertEqual(response.status_code, 404)
 

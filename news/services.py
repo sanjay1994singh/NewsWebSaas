@@ -4,6 +4,10 @@ from django.utils import timezone
 from .models import BreakingNews, NewsArticle
 
 
+def article_public_path(article):
+    return f"/articles/{article.uuid}/"
+
+
 def published_articles_for_tenant(tenant):
     return (
         NewsArticle.objects.for_tenant(tenant)

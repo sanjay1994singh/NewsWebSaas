@@ -5,12 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ meta.title|default:article.title }}</title>
   {% if meta.description %}<meta name="description" content="{{ meta.description }}">{% endif %}
+  {% if meta.robots %}<meta name="robots" content="{{ meta.robots }}">{% endif %}
   {% if meta.canonical %}<link rel="canonical" href="{{ meta.canonical }}">{% endif %}
   <meta property="og:type" content="{{ meta.og_type|default:'article' }}">
+  <meta property="og:site_name" content="{{ tenant.business_name|default:tenant.publication_name }}">
   <meta property="og:title" content="{{ meta.og_title|default:article.title }}">
   {% if meta.og_description %}<meta property="og:description" content="{{ meta.og_description }}">{% endif %}
   <meta property="og:url" content="{{ share_url }}">
+  {% if meta.og_image %}
+    <meta property="og:image" content="{{ meta.og_image }}">
+    <meta property="og:image:secure_url" content="{{ meta.og_image }}">
+    <meta property="og:image:type" content="image/jpeg">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+  {% endif %}
   <meta name="twitter:card" content="summary_large_image">
+  {% if meta.og_image %}<meta name="twitter:image" content="{{ meta.og_image }}">{% endif %}
   {% if json_ld %}<script type="application/ld+json">{{ json_ld|safe }}</script>{% endif %}
   <style>
     :root { --ink:#10231d; --muted:#5c7069; --line:#d8e5df; --soft:#f2f8f5; --paper:#fff; --brand:#0b6b57; --accent:#d71920; }

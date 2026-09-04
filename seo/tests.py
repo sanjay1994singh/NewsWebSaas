@@ -50,7 +50,7 @@ class SEOTests(TestCase):
 
     def test_canonical_uses_primary_domain(self):
         meta = article_meta(self.article)
-        self.assertEqual(meta['canonical'], 'https://primary.example.com/articles/real-headline/')
+        self.assertEqual(meta['canonical'], f'https://primary.example.com/articles/{self.article.uuid}/')
 
     def test_article_json_ld_uses_real_fields(self):
         data = json.loads(article_json_ld(self.article))
@@ -71,7 +71,7 @@ class SEOTests(TestCase):
 
     def test_sitemap_is_tenant_specific(self):
         response = self.client.get(reverse('sitemap_xml'), HTTP_HOST='primary.example.com')
-        self.assertContains(response, 'https://primary.example.com/articles/real-headline/')
+        self.assertContains(response, f'https://primary.example.com/articles/{self.article.uuid}/')
         self.assertContains(response, '<urlset')
 
     def test_news_sitemap_includes_publication_data(self):

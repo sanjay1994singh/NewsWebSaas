@@ -1,6 +1,8 @@
 from django.http import HttpResponse
 from xml.sax.saxutils import escape
 
+from news.services import article_public_path
+
 from .services import absolute_url, sitemap_items
 
 
@@ -38,7 +40,7 @@ def news_sitemap_xml(request):
     articles = NewsArticle.objects.for_tenant(tenant).filter(status=NewsArticle.Status.PUBLISHED).select_related('author')[:1000]
     for article in articles:
         rows.append(
-            f"<url><loc>{escape(absolute_url(tenant, f'/articles/{article.slug}/'))}</loc>"
+            f"<url><loc>{escape(absolute_url(tenant, article_public_path(article)))}</loc>"
             f"<news:news><news:publication><news:name>{escape(tenant.publication_name)}</news:name><news:language>{escape(tenant.default_language)}</news:language></news:publication>"
             f"<news:publication_date>{article.published_at.date().isoformat() if article.published_at else article.created_at.date().isoformat()}</news:publication_date>"
             f"<news:title>{escape(article.title)}</news:title></news:news></url>"

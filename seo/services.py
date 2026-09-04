@@ -3,6 +3,7 @@ from urllib.parse import urljoin
 
 from domains.models import TenantDomain
 from news.models import NewsArticle
+from news.services import article_public_path
 from pages.models import Page
 
 from .models import TenantSEOSettings
@@ -32,7 +33,7 @@ def article_meta(article):
     tenant = article.tenant
     title = article.seo_title or article.title
     description = article.meta_description or article.short_description
-    canonical = article.canonical_override or absolute_url(tenant, f"/articles/{article.slug}/")
+    canonical = article.canonical_override or absolute_url(tenant, article_public_path(article))
     return {
         'title': title,
         'description': description,
@@ -85,6 +86,6 @@ def sitemap_items(tenant):
     articles = NewsArticle.objects.for_tenant(tenant).filter(status=NewsArticle.Status.PUBLISHED).select_related('author')
     pages = Page.objects.for_tenant(tenant).filter(is_published=True)
     for article in articles:
-        yield absolute_url(tenant, f"/articles/{article.slug}/"), article.updated_at
+        yield absolute_url(tenant, article_public_path(article)), article.updated_at
     for page in pages:
         yield absolute_url(tenant, f"/pages/{page.slug}/"), page.updated_at

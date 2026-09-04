@@ -7,11 +7,19 @@ class PageView(TenantOwnedModel):
     path = models.CharField(max_length=500)
     article = models.ForeignKey('news.NewsArticle', on_delete=models.SET_NULL, null=True, blank=True, related_name='page_views')
     category = models.ForeignKey('categories.Category', on_delete=models.SET_NULL, null=True, blank=True, related_name='page_views')
+    unique_visitor_key = models.CharField(max_length=64, blank=True, db_index=True)
     referrer_domain = models.CharField(max_length=255, blank=True, db_index=True)
     device_type = models.CharField(max_length=40, blank=True, db_index=True)
     occurred_at = models.DateTimeField(db_index=True)
 
     class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['tenant', 'article', 'unique_visitor_key'],
+                condition=models.Q(article__isnull=False, unique_visitor_key__gt=''),
+                name='unique_article_view_per_visitor',
+            ),
+        ]
         indexes = [
             models.Index(fields=['tenant', 'occurred_at']),
             models.Index(fields=['tenant', 'article', 'occurred_at']),
