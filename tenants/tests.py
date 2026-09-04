@@ -10,7 +10,7 @@ from domains.forms import PrimaryDomainSelectionForm
 from domains.middleware import TenantResolutionMiddleware
 from domains.models import TenantDomain
 from news.models import AuthorProfile, NewsArticle
-from subscriptions.models import TenantOnboarding
+from subscriptions.models import Plan, TenantOnboarding, TenantSubscription
 from subscriptions.services import tenant_public_site_slug, tenant_public_site_url
 
 from .models import Tenant, TenantMembership, TenantVisitor
@@ -91,6 +91,27 @@ class TenantIsolationTests(TestCase):
     def test_permission_helper_allows_only_active_membership(self):
         self.assertTrue(user_can_access_tenant(self.user_a, self.tenant_a))
         self.assertFalse(user_can_access_tenant(self.user_a, self.tenant_b))
+
+    def test_dashboard_domain_feature_links_to_domain_settings(self):
+        plan = Plan.objects.create(
+            name='Domain Plan',
+            code=Plan.Code.NEWS_STARTER,
+            entitlements={'custom_domain': True},
+        )
+        TenantSubscription.objects.create(
+            tenant=self.tenant_a,
+            plan=plan,
+            status=TenantSubscription.Status.ACTIVE,
+            billing_cycle='monthly',
+        )
+        self.client.force_login(self.user_a)
+
+        response = self.client.get(reverse('tenants:tenant_dashboard'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Domain Setup')
+        self.assertContains(response, reverse('domains:domain_list'))
+        self.assertNotContains(response, '/dashboard/domains/')
 
     def test_tenant_scoped_form_rejects_foreign_domain(self):
         form = PrimaryDomainSelectionForm(

@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 
 from analytics.services import record_article_view
@@ -106,7 +107,7 @@ def tenant_dashboard(request):
         ('live_tv', 'Live TV', '/cms/live-tv/'),
         ('advertisement_manager', 'Advertisements', '/dashboard/ads/'),
         ('analytics', 'Analytics', '/dashboard/analytics/'),
-        ('custom_domain', 'Domains', '/dashboard/domains/'),
+        ('custom_domain', 'Domain Setup', reverse('domains:domain_list')),
         ('multiple_staff', 'Reporters', '/dashboard/reporters/'),
         ('mobile_app', 'Mobile App', '/dashboard/mobile-app/'),
     ]
