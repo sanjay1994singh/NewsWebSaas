@@ -644,6 +644,7 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
         ]
     )
     get_effective_entitlements(tenant)
+    ensure_platform_domain_for_tenant(tenant)
     return tenant
 
 

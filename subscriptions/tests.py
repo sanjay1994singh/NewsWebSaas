@@ -172,6 +172,10 @@ class SubscriptionTests(TestCase):
         self.assertIsNotNone(subscription.current_period_end)
         self.assertIsNotNone(subscription.charge_at)
         self.assertGreater(subscription.current_period_end, subscription.current_period_start)
+        platform_domain = tenant.domains.get(is_primary=True)
+        self.assertEqual(platform_domain.domain, 'checkout-media.live-app.in')
+        self.assertTrue(platform_domain.is_verified)
+        self.assertEqual(platform_domain.ssl_status, platform_domain.SSLStatus.ACTIVE)
 
     def test_signup_reserves_site_slug_from_channel_or_paper_name(self):
         form = CustomerSignupForm(
