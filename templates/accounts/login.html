@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Login - Press Nexa{% endblock %}
+{% block title %}Login - {{ site_brand_name|default:"Press Nexa" }}{% endblock %}
 {% block styles %}
 .login-shell { min-height:calc(100vh - 120px); display:grid; align-items:start; }
 .login-card { max-width:560px; width:100%; margin:8px auto 0; padding:0; overflow:hidden; }
@@ -36,7 +36,7 @@
     <div class="login-head">
       <p class="login-kicker">Account access</p>
       <h1>Login</h1>
-      <p class="login-copy">Continue to your publication workspace, billing, and onboarding tools.</p>
+      <p class="login-copy">Continue to your {{ site_brand_name|default:"publication" }} dashboard, billing, and publishing tools.</p>
     </div>
     <form class="login-form" method="post">
       {% csrf_token %}
@@ -63,7 +63,11 @@
       {% endfor %}
       <div class="login-actions">
         <button class="btn" type="submit">Login</button>
-        <a href="{% url 'public_saas_landing' %}">Choose a plan</a>
+        {% if is_tenant_domain %}
+          <a href="/">Back to website</a>
+        {% else %}
+          <a href="{% url 'public_saas_landing' %}">Choose a plan</a>
+        {% endif %}
       </div>
     </form>
   </section>

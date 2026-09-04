@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% block title %}Press Nexa{% endblock %}</title>
+  <title>{% block title %}{{ site_brand_name|default:"Press Nexa" }}{% endblock %}</title>
   {% block meta %}{% endblock %}
   <style>
     :root { --ink:#13201b; --muted:#66766e; --line:#d9e4de; --paper:#f6faf8; --brand:#15614f; --deep:#102f29; --danger:#9a3328; }
@@ -57,7 +57,7 @@
 <body>
   <nav class="site-nav">
     <div class="nav-wrap">
-      <a class="brand" href="{% url 'home' %}">Press Nexa</a>
+      <a class="brand" href="{% url 'home' %}">{{ site_brand_name|default:"Press Nexa" }}</a>
       <div class="nav-links">
         {% for link in customer_nav_links|slice:":3" %}
           <a class="hide-sm" href="{{ link.url }}">{{ link.label }}</a>
@@ -107,18 +107,27 @@
   <footer class="site-footer">
     <div class="footer-wrap">
       <div>
-        <div class="footer-brand">Press Nexa</div>
-        <div class="muted">Operated by SHRI INFOWAVE PRIVATE LIMITED</div>
-        <div class="small">CIN: U62012UW2026PTC257361</div>
+        <div class="footer-brand">{{ site_brand_name|default:"Press Nexa" }}</div>
+        {% if is_tenant_domain %}
+          <div class="muted">Digital publication workspace</div>
+        {% else %}
+          <div class="muted">Operated by SHRI INFOWAVE PRIVATE LIMITED</div>
+          <div class="small">CIN: U62012UW2026PTC257361</div>
+        {% endif %}
       </div>
       <div class="footer-links">
-        <a href="{% url 'about_us' %}">About Us</a>
-        <a href="{% url 'contact_us' %}">Contact Us</a>
-        <a href="{% url 'privacy_policy' %}">Privacy Policy</a>
-        <a href="{% url 'terms_and_conditions' %}">Terms</a>
-        <a href="{% url 'refund_policy' %}">Refund Policy</a>
-        <a href="{% url 'billing_policy' %}">Billing Policy</a>
-        <a href="{% url 'grievance' %}">Grievance</a>
+        {% if is_tenant_domain %}
+          <a href="/">Home</a>
+          <a href="{% url 'accounts:login' %}">Login</a>
+        {% else %}
+          <a href="{% url 'about_us' %}">About Us</a>
+          <a href="{% url 'contact_us' %}">Contact Us</a>
+          <a href="{% url 'privacy_policy' %}">Privacy Policy</a>
+          <a href="{% url 'terms_and_conditions' %}">Terms</a>
+          <a href="{% url 'refund_policy' %}">Refund Policy</a>
+          <a href="{% url 'billing_policy' %}">Billing Policy</a>
+          <a href="{% url 'grievance' %}">Grievance</a>
+        {% endif %}
       </div>
     </div>
   </footer>

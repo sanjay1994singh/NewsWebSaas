@@ -124,6 +124,17 @@ class TenantIsolationTests(TestCase):
         response = self.client.get('/admin/', HTTP_HOST='customera.platformdomain.com')
         self.assertRedirects(response, '/dashboard/', fetch_redirect_response=False)
 
+    def test_tenant_domain_login_uses_tenant_branding(self):
+        response = self.client.get('/account/login/?next=/dashboard/', HTTP_HOST='customera.platformdomain.com')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'A Media')
+        self.assertNotContains(response, 'Press Nexa')
+        self.assertContains(response, 'Back to website')
+
+    def test_tenant_domain_platform_pages_redirect_to_tenant_home(self):
+        response = self.client.get('/about-us/', HTTP_HOST='customera.platformdomain.com')
+        self.assertRedirects(response, '/', fetch_redirect_response=False)
+
     def test_main_domain_admin_is_not_redirected_by_tenant_guard(self):
         response = self.client.get('/admin/', HTTP_HOST='testserver')
         self.assertNotEqual(response.url if response.status_code in {301, 302} else '', '/dashboard/')

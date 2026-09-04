@@ -32,15 +32,20 @@ def _customer_tenant_context(user):
 
 def customer_navigation(request):
     user = request.user
+    tenant_domain_tenant = getattr(request, 'tenant', None)
+    site_brand_name = tenant_domain_tenant.business_name if tenant_domain_tenant else 'Press Nexa'
+    is_tenant_domain = tenant_domain_tenant is not None
     fallback_links = [
         {'label': 'Pricing', 'url': reverse('public_saas_landing')},
         {'label': 'Profile', 'url': reverse('accounts:profile') if user.is_authenticated else reverse('accounts:login')},
     ]
     if not user.is_authenticated:
         return {
+            'site_brand_name': site_brand_name,
+            'is_tenant_domain': is_tenant_domain,
             'customer_nav_stage': 'guest',
             'customer_nav_links': [
-                {'label': 'Pricing', 'url': reverse('public_saas_landing')},
+                {'label': 'Home', 'url': '/'} if is_tenant_domain else {'label': 'Pricing', 'url': reverse('public_saas_landing')},
                 {'label': 'Login', 'url': reverse('accounts:login')},
             ],
         }
@@ -57,6 +62,8 @@ def customer_navigation(request):
         tenant, subscription, onboarding = _customer_tenant_context(user)
     except (DatabaseError, OperationalError, ProgrammingError):
         return {
+            'site_brand_name': site_brand_name,
+            'is_tenant_domain': is_tenant_domain,
             'customer_nav_stage': 'account',
             'customer_nav_links': fallback_links,
         }
@@ -111,6 +118,8 @@ def customer_navigation(request):
         links.append({'label': 'Admin', 'url': reverse('admin:index')})
 
     return {
+        'site_brand_name': site_brand_name,
+        'is_tenant_domain': is_tenant_domain,
         'customer_nav_stage': stage,
         'customer_nav_links': links,
     }
