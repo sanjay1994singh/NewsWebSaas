@@ -757,6 +757,7 @@ def upgrade_plan(request):
         PlanPrice.objects
         .filter(is_active=True, plan__is_active=True, plan__is_current_version=True, billing_cycle=PlanPrice.BillingCycle.MONTHLY)
         .select_related('plan')
+        .prefetch_related('plan__features__feature')
         .order_by('amount', 'plan__name')
     )
     selected_months = normalize_billing_months(request.POST.get('billing_months') or request.GET.get('months') or subscription.billing_months)
@@ -806,7 +807,23 @@ def upgrade_plan(request):
             plan_price=price,
             billing_months=selected_months,
         )
-        plan_options.append({'price': price, 'plan': price.plan, 'quote': option_quote, 'is_selected': selected_price and price.id == selected_price.id})
+        enabled_features = [
+            plan_feature
+            for plan_feature in price.plan.features.all()
+            if plan_feature.is_enabled and plan_feature.feature.is_public
+        ]
+        is_current_plan = subscription.plan_id == price.plan_id
+        plan_options.append(
+            {
+                'price': price,
+                'plan': price.plan,
+                'quote': option_quote,
+                'enabled_features': enabled_features[:8],
+                'is_selected': selected_price and price.id == selected_price.id,
+                'is_current_plan': is_current_plan,
+                'action_label': 'Pay And Renew' if is_current_plan else 'Pay And Upgrade',
+            }
+        )
 
     invoices = BillingRecord.objects.filter(tenant=tenant).select_related('subscription__plan').order_by('-created_at')[:20]
     changes = (
