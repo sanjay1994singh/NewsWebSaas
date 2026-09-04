@@ -199,6 +199,45 @@ class SubscriptionTests(TestCase):
             ).exists()
         )
 
+    def test_subscription_verify_rejects_mismatched_order_id(self):
+        acquisition = CustomerAcquisition.objects.create(
+            user=self.user,
+            plan_price=self.price,
+            business_name='Checkout Media',
+            publication_name='Checkout News',
+            publication_slug='checkout-news-secure',
+            email='checkout@example.com',
+            mobile='9999999999',
+            status=CustomerAcquisition.Status.PAYMENT_PENDING,
+            provider_order_id='order_expected',
+            billing_months=1,
+            list_amount=199900,
+            discount_percent=50,
+            discount_amount=99950,
+            payable_amount=99950,
+        )
+        signature = hmac.new(b'razor_secret', b'order_wrong|pay_wrong', sha256).hexdigest()
+
+        with override_settings(RAZORPAY_KEY_SECRET='razor_secret'):
+            self.client.login(username='owner', password='testpass123')
+            response = self.client.post(
+                reverse('subscriptions:verify_subscription', kwargs={'acquisition_id': acquisition.uuid}),
+                {
+                    'razorpay_order_id': 'order_wrong',
+                    'razorpay_payment_id': 'pay_wrong',
+                    'razorpay_signature': signature,
+                },
+            )
+
+        acquisition.refresh_from_db()
+        self.assertRedirects(
+            response,
+            reverse('subscriptions:checkout', kwargs={'acquisition_id': acquisition.uuid}),
+            fetch_redirect_response=False,
+        )
+        self.assertEqual(acquisition.status, CustomerAcquisition.Status.PAYMENT_PENDING)
+        self.assertFalse(BillingRecord.objects.filter(razorpay_payment_id='pay_wrong').exists())
+
     def test_signup_reserves_site_slug_from_channel_or_paper_name(self):
         form = CustomerSignupForm(
             data={
@@ -769,6 +808,55 @@ class SubscriptionTests(TestCase):
         self.assertEqual(invoice.list_amount, quote['list_amount'])
         self.assertEqual(invoice.discount_amount, quote['discount_amount'] + quote['credit_amount'])
         self.assertEqual(BillingRecord.objects.filter(tenant=self.tenant, status='paid').count(), 2)
+
+    def test_plan_upgrade_verify_rejects_mismatched_order_id(self):
+        new_plan = Plan.objects.create(name='News Pro', code=Plan.Code.NEWS_PRO, entitlements={'news_articles': 2000})
+        new_price = PlanPrice.objects.create(plan=new_plan, billing_cycle=PlanPrice.BillingCycle.MONTHLY, amount=399800)
+        TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            billing_months=1,
+            status=TenantSubscription.Status.ACTIVE,
+            start_at=timezone.now(),
+            current_period_start=timezone.now(),
+            current_period_end=timezone.now() + timezone.timedelta(days=30),
+        )
+        plan_change = PlanChangeRequest.objects.create(
+            tenant=self.tenant,
+            from_plan=self.plan,
+            to_plan=new_plan,
+            requested_by=self.user,
+            change_type=PlanChangeRequest.ChangeType.UPGRADE,
+            status=PlanChangeRequest.Status.PENDING_PAYMENT,
+            plan_price=new_price,
+            billing_months=1,
+            list_amount=399800,
+            discount_percent=50,
+            discount_amount=199900,
+            payable_amount=199900,
+            currency='INR',
+            provider_order_id='order_expected',
+            period_start=timezone.now(),
+            period_end=timezone.now() + timezone.timedelta(days=30),
+        )
+        signature = hmac.new(b'razor_secret', b'order_wrong|pay_wrong', sha256).hexdigest()
+
+        with override_settings(RAZORPAY_KEY_SECRET='razor_secret'):
+            self.client.login(username='owner', password='testpass123')
+            response = self.client.post(
+                reverse('subscriptions:verify_plan_upgrade', kwargs={'plan_change_id': plan_change.uuid}),
+                {
+                    'razorpay_order_id': 'order_wrong',
+                    'razorpay_payment_id': 'pay_wrong',
+                    'razorpay_signature': signature,
+                },
+            )
+
+        plan_change.refresh_from_db()
+        self.assertRedirects(response, reverse('subscriptions:upgrade_plan'), fetch_redirect_response=False)
+        self.assertEqual(plan_change.status, PlanChangeRequest.Status.PENDING_PAYMENT)
+        self.assertFalse(BillingRecord.objects.filter(razorpay_payment_id='pay_wrong').exists())
 
     def test_paid_tenant_integrity_audit_can_fix_safe_defaults(self):
         subscription = TenantSubscription.objects.create(

@@ -454,6 +454,9 @@ def verify_subscription(request, acquisition_id):
     if not order_id or not payment_id or not signature:
         messages.error(request, 'Verified Razorpay payment response is required.')
         return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
+    if acquisition.status != CustomerAcquisition.Status.PAYMENT_PENDING or order_id != acquisition.provider_order_id:
+        messages.error(request, 'This payment response does not match the active checkout.')
+        return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
     try:
         verify_razorpay_checkout_signature(
             payment_id=payment_id,
@@ -870,6 +873,9 @@ def verify_plan_upgrade(request, plan_change_id):
     signature = request.POST.get('razorpay_signature', '').strip()
     if not order_id or not payment_id or not signature:
         messages.error(request, 'Verified Razorpay payment response is required.')
+        return redirect('subscriptions:upgrade_plan')
+    if plan_change.status != PlanChangeRequest.Status.PENDING_PAYMENT or order_id != plan_change.provider_order_id:
+        messages.error(request, 'This payment request does not match the selected plan checkout.')
         return redirect('subscriptions:upgrade_plan')
     try:
         verify_razorpay_checkout_signature(
