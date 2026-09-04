@@ -1,1 +1,141 @@
-{% extends "themes/shared/page.html" %}{% block content %}<article>{{ article.content|safe }}</article>{% endblock %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ meta.title|default:article.title }}</title>
+  {% if meta.description %}<meta name="description" content="{{ meta.description }}">{% endif %}
+  {% if meta.canonical %}<link rel="canonical" href="{{ meta.canonical }}">{% endif %}
+  <meta property="og:type" content="{{ meta.og_type|default:'article' }}">
+  <meta property="og:title" content="{{ meta.og_title|default:article.title }}">
+  {% if meta.og_description %}<meta property="og:description" content="{{ meta.og_description }}">{% endif %}
+  <meta property="og:url" content="{{ share_url }}">
+  <meta name="twitter:card" content="summary_large_image">
+  {% if json_ld %}<script type="application/ld+json">{{ json_ld|safe }}</script>{% endif %}
+  <style>
+    :root { --ink:#10231d; --muted:#5c7069; --line:#d8e5df; --soft:#f2f8f5; --paper:#fff; --brand:#0b6b57; --accent:#d71920; }
+    * { box-sizing:border-box; }
+    body { margin:0; color:var(--ink); background:#f7fbf9; font-family:Arial, Helvetica, sans-serif; line-height:1.6; }
+    a { color:inherit; text-decoration:none; }
+    .wrap { width:min(980px, calc(100% - 32px)); margin:0 auto; }
+    .topbar { background:var(--ink); color:#fff; font-size:13px; }
+    .topbar .wrap, .masthead, .share-row, .footer-row { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .topbar .wrap { min-height:34px; }
+    .masthead { min-height:84px; }
+    .brand { display:flex; align-items:center; gap:12px; font-weight:900; font-size:26px; }
+    .brand-mark { display:grid; place-items:center; width:46px; height:46px; border-radius:6px; background:var(--brand); color:#fff; text-transform:uppercase; }
+    .login-link, .share-btn, .back-link { display:inline-flex; align-items:center; justify-content:center; min-height:38px; border:1px solid var(--brand); border-radius:999px; padding:8px 14px; color:var(--brand); background:#fff; font-size:14px; font-weight:800; }
+    .article-shell { display:grid; gap:22px; margin:26px auto 44px; }
+    .article-head, .article-body, .share-card { border:1px solid var(--line); border-radius:8px; background:var(--paper); }
+    .article-head { padding:28px; }
+    .kicker { margin:0 0 12px; color:var(--brand); font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
+    h1 { max-width:850px; margin:0; font-size:44px; line-height:1.08; letter-spacing:0; }
+    .summary { max-width:820px; margin:16px 0 0; color:#40564f; font-size:18px; }
+    .meta-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; color:var(--muted); font-size:14px; }
+    .pill { display:inline-flex; border:1px solid var(--line); border-radius:999px; padding:6px 10px; background:#fff; }
+    .hero-image { width:100%; max-height:480px; object-fit:cover; border-radius:8px; border:1px solid var(--line); }
+    .caption { margin:8px 0 0; color:var(--muted); font-size:13px; }
+    .article-body { padding:28px; font-size:18px; }
+    .article-body img { max-width:100%; height:auto; border-radius:8px; }
+    .article-body p:first-child { margin-top:0; }
+    .share-card { padding:18px; }
+    .share-row { align-items:flex-start; }
+    .share-actions { display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-end; }
+    .share-btn.primary { background:var(--brand); color:#fff; }
+    footer { border-top:1px solid var(--line); background:#fff; padding:26px 0; color:var(--muted); font-size:14px; }
+    footer strong { color:var(--ink); font-size:18px; }
+    @media (max-width:760px) {
+      .masthead, .share-row, .footer-row { display:grid; justify-content:start; }
+      h1 { font-size:32px; }
+      .article-head, .article-body { padding:20px; }
+      .share-actions { justify-content:flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="wrap">
+      <span>{{ tenant.business_name|default:tenant.publication_name }} News Network</span>
+      <span>Trusted digital updates</span>
+    </div>
+  </div>
+
+  <header class="wrap masthead">
+    <a class="brand" href="/">
+      {% with site_name=tenant.business_name|default:tenant.publication_name %}
+        <span class="brand-mark">{{ site_name|first }}</span>
+        <span>{{ site_name }}</span>
+      {% endwith %}
+    </a>
+    {% if request.user.is_authenticated %}
+      <a class="login-link" href="/dashboard/">Dashboard</a>
+    {% else %}
+      <a class="login-link" href="/account/login/?next=/dashboard/">Login</a>
+    {% endif %}
+  </header>
+
+  <main class="wrap article-shell">
+    <a class="back-link" href="/">Back to Home</a>
+
+    <article>
+      <header class="article-head">
+        <p class="kicker">{{ article.category.name }}{% if article.city %} / {{ article.city }}{% endif %}</p>
+        <h1>{{ article.title }}</h1>
+        {% if article.short_description %}<p class="summary">{{ article.short_description }}</p>{% endif %}
+        <div class="meta-row">
+          <span class="pill">{{ article.published_at|default:article.created_at|date:"d M Y" }}</span>
+          {% if article.public_publisher_name %}<span class="pill">{{ article.public_publisher_name }}</span>{% endif %}
+        </div>
+      </header>
+
+      {% if article.featured_image %}
+        <div>
+          <img class="hero-image" src="{{ article.featured_image.url }}" alt="{{ article.image_alt|default:article.title }}">
+          {% if article.image_caption %}<p class="caption">{{ article.image_caption }}</p>{% endif %}
+        </div>
+      {% endif %}
+
+      <section class="article-body">
+        {{ article.content|safe }}
+      </section>
+    </article>
+
+    <section class="share-card">
+      <div class="share-row">
+        <div>
+          <strong>Share this story</strong>
+          <p class="caption">Send this article link to readers on WhatsApp or social media.</p>
+        </div>
+        <div class="share-actions">
+          <a class="share-btn primary" href="https://api.whatsapp.com/send?text={{ share_text|urlencode }}%20{{ share_url|urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
+          <a class="share-btn" href="https://www.facebook.com/sharer/sharer.php?u={{ share_url|urlencode }}" target="_blank" rel="noopener">Facebook</a>
+          <a class="share-btn" href="https://twitter.com/intent/tweet?text={{ share_text|urlencode }}&url={{ share_url|urlencode }}" target="_blank" rel="noopener">X</a>
+          <button class="share-btn" type="button" data-copy-url="{{ share_url }}">Copy Link</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap footer-row">
+      <strong>{{ tenant.business_name|default:tenant.publication_name }}</strong>
+      <span>For updates, keep visiting this website.</span>
+    </div>
+  </footer>
+
+  <script>
+    document.querySelectorAll('[data-copy-url]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        const url = button.getAttribute('data-copy-url');
+        if (navigator.clipboard) {
+          navigator.clipboard.writeText(url).then(function () {
+            button.textContent = 'Copied';
+          });
+        } else {
+          window.prompt('Copy this article link', url);
+        }
+      });
+    });
+  </script>
+</body>
+</html>

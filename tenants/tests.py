@@ -139,8 +139,53 @@ class TenantIsolationTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Local update')
+        self.assertContains(response, '/articles/local-update/')
+        self.assertContains(response, 'Read full story')
         self.assertNotContains(response, 'City Desk')
         self.assertNotContains(response, 'By ')
+
+    def test_tenant_domain_public_article_detail_can_be_read_and_shared(self):
+        category = Category.objects.create(tenant=self.tenant_a, name='Local', slug='local')
+        author = AuthorProfile.objects.create(tenant=self.tenant_a, display_name='City Desk', slug='city-desk')
+        article = NewsArticle.objects.create(
+            tenant=self.tenant_a,
+            category=category,
+            author=author,
+            title='Shareable local update',
+            slug='shareable-local-update',
+            short_description='Important reader summary',
+            content='<p>Full story body</p>',
+            status=NewsArticle.Status.PUBLISHED,
+        )
+
+        response = self.client.get(f'/articles/{article.slug}/', HTTP_HOST='customera.platformdomain.com')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Shareable local update')
+        self.assertContains(response, 'Full story body')
+        self.assertContains(response, 'Share this story')
+        self.assertContains(response, 'WhatsApp')
+        self.assertContains(response, 'Facebook')
+        self.assertContains(response, 'Copy Link')
+        self.assertContains(response, 'https://customera.platformdomain.com/articles/shareable-local-update/')
+        self.assertContains(response, 'City Desk')
+
+    def test_tenant_domain_public_article_detail_hides_unpublished_articles(self):
+        category = Category.objects.create(tenant=self.tenant_a, name='Local', slug='local')
+        author = AuthorProfile.objects.create(tenant=self.tenant_a, display_name='City Desk', slug='city-desk')
+        article = NewsArticle.objects.create(
+            tenant=self.tenant_a,
+            category=category,
+            author=author,
+            title='Draft update',
+            slug='draft-update',
+            content='<p>Draft story body</p>',
+            status=NewsArticle.Status.DRAFT,
+        )
+
+        response = self.client.get(f'/articles/{article.slug}/', HTTP_HOST='customera.platformdomain.com')
+
+        self.assertEqual(response.status_code, 404)
 
     def test_tenant_domain_admin_redirects_to_customer_dashboard(self):
         response = self.client.get('/admin/', HTTP_HOST='customera.platformdomain.com')

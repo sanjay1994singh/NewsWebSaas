@@ -10,6 +10,7 @@ from news.models import NewsArticle
 from news.services import published_articles_for_tenant
 from pages.builder import get_or_create_layout
 from pages.models import HomepageLayout
+from seo.services import article_json_ld, article_meta
 from subscriptions.entitlements import get_effective_entitlements
 from subscriptions.models import CustomerAcquisition, TenantOnboarding, TenantSubscription
 from subscriptions.services import tenant_public_site_slug, tenant_public_site_url
@@ -133,6 +134,26 @@ def public_tenant_site(request, tenant_slug):
         'articles': articles,
         'tenant': tenant,
         'preview': False,
+    })
+
+
+def public_article_detail(request, slug):
+    tenant = getattr(request, 'tenant', None)
+    if tenant is None:
+        raise Http404("Article not found.")
+    article = get_object_or_404(
+        published_articles_for_tenant(tenant),
+        slug=slug,
+    )
+    share_url = request.build_absolute_uri(f"/articles/{article.slug}/")
+    share_text = f"{article.title} - {tenant.business_name or tenant.publication_name}"
+    return render(request, 'themes/theme_classic/article_detail.html', {
+        'tenant': tenant,
+        'article': article,
+        'meta': article_meta(article),
+        'json_ld': article_json_ld(article),
+        'share_url': share_url,
+        'share_text': share_text,
     })
 
 

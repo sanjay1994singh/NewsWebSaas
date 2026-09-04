@@ -224,6 +224,11 @@
       display: block;
       font-size: 16px;
     }
+    .headline-item a,
+    .section-card a {
+      color: inherit;
+      text-decoration: none;
+    }
     .headline-item span {
       display: block;
       margin-top: 5px;
@@ -238,6 +243,13 @@
     }
     .section-card {
       min-height: 190px;
+    }
+    .read-more {
+      display: inline-flex;
+      margin-top: 14px;
+      color: var(--brand);
+      font-size: 13px;
+      font-weight: 800;
     }
     .section-card p,
     .empty-card p {
@@ -365,7 +377,13 @@
         <h2>Today</h2>
         <div class="headline-list">
           <div class="headline-item">
-            <strong>{% if articles %}{{ articles.0.title }}{% else %}Latest news desk is ready{% endif %}</strong>
+            <strong>
+              {% if articles %}
+                <a href="/articles/{{ articles.0.slug }}/">{{ articles.0.title }}</a>
+              {% else %}
+                Latest news desk is ready
+              {% endif %}
+            </strong>
             <span>{% if articles %}Latest published update{% else %}New articles will be listed here automatically.{% endif %}</span>
           </div>
           <div class="headline-item">
@@ -384,8 +402,9 @@
       {% if articles %}
         {% for article in articles %}
           <article class="section-card">
-            <h2>{{ article.title }}</h2>
+            <h2><a href="/articles/{{ article.slug }}/">{{ article.title }}</a></h2>
             <p>{{ article.short_description|default:"Read the latest update from this newsroom." }}</p>
+            <a class="read-more" href="/articles/{{ article.slug }}/">Read full story</a>
           </article>
         {% endfor %}
       {% else %}
