@@ -3,22 +3,401 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ tenant.publication_name }}</title>
+  <title>{{ tenant.business_name|default:tenant.publication_name }}</title>
+  <meta name="description" content="{{ tenant.business_name|default:tenant.publication_name }} news, updates, videos, and local stories.">
+  <style>
+    :root {
+      --ink: #10231d;
+      --muted: #5c7069;
+      --line: #d8e5df;
+      --soft: #f2f8f5;
+      --paper: #ffffff;
+      --brand: #0b6b57;
+      --accent: #d71920;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      color: var(--ink);
+      background: #f7fbf9;
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.5;
+    }
+    a { color: inherit; text-decoration: none; }
+    .wrap {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+    .topbar {
+      background: var(--ink);
+      color: #fff;
+      font-size: 13px;
+    }
+    .topbar .wrap,
+    .masthead,
+    .nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .topbar .wrap { min-height: 36px; }
+    .masthead {
+      min-height: 92px;
+      padding: 18px 0;
+    }
+    .brand-block {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      min-width: 0;
+    }
+    .brand-mark {
+      display: grid;
+      place-items: center;
+      width: 54px;
+      height: 54px;
+      border-radius: 6px;
+      background: var(--brand);
+      color: #fff;
+      font-size: 28px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .site-title {
+      margin: 0;
+      font-size: 44px;
+      line-height: 1;
+      letter-spacing: 0;
+      text-transform: capitalize;
+    }
+    .tagline {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .date-pill {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 9px 14px;
+      color: var(--muted);
+      white-space: nowrap;
+      background: #fff;
+    }
+    .nav-shell {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(8px);
+    }
+    .nav {
+      min-height: 48px;
+      overflow-x: auto;
+    }
+    .nav a {
+      flex: 0 0 auto;
+      font-weight: 700;
+      font-size: 14px;
+      color: #294039;
+    }
+    .breaking {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      margin: 22px 0;
+      border: 1px solid #f0c7ca;
+      background: #fff;
+    }
+    .breaking strong {
+      align-self: stretch;
+      display: flex;
+      align-items: center;
+      padding: 10px 14px;
+      color: #fff;
+      background: var(--accent);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .breaking span {
+      color: #3b514a;
+      font-size: 14px;
+      padding-right: 14px;
+    }
+    .hero-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
+      gap: 24px;
+      margin-bottom: 26px;
+    }
+    .lead-card,
+    .side-card,
+    .section-card,
+    .empty-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+    }
+    .lead-card {
+      min-height: 360px;
+      display: grid;
+      align-content: end;
+      padding: 30px;
+      background:
+        linear-gradient(180deg, rgba(16,35,29,0.04), rgba(16,35,29,0.86)),
+        linear-gradient(135deg, #eaf4ef, #ffffff 45%, #f7ece5);
+      color: #fff;
+      overflow: hidden;
+    }
+    .label {
+      display: inline-flex;
+      width: fit-content;
+      margin-bottom: 12px;
+      border-radius: 999px;
+      padding: 7px 11px;
+      background: rgba(255,255,255,0.16);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .lead-card h2 {
+      max-width: 760px;
+      margin: 0;
+      font-size: 52px;
+      line-height: 1.02;
+      letter-spacing: 0;
+    }
+    .lead-card p {
+      max-width: 680px;
+      margin: 16px 0 0;
+      color: rgba(255,255,255,0.86);
+      font-size: 17px;
+    }
+    .side-card,
+    .section-card,
+    .empty-card {
+      padding: 22px;
+    }
+    .side-card h2,
+    .section-card h2,
+    .empty-card h2 {
+      margin: 0 0 16px;
+      font-size: 24px;
+      line-height: 1.2;
+    }
+    .headline-list {
+      display: grid;
+      gap: 14px;
+    }
+    .headline-item {
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 14px;
+    }
+    .headline-item:last-child {
+      border-bottom: 0;
+      padding-bottom: 0;
+    }
+    .headline-item strong {
+      display: block;
+      font-size: 16px;
+    }
+    .headline-item span {
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .section-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin: 26px 0;
+    }
+    .section-card {
+      min-height: 190px;
+    }
+    .section-card p,
+    .empty-card p {
+      margin: 0;
+      color: var(--muted);
+    }
+    .empty-card {
+      margin: 28px 0 46px;
+      background: linear-gradient(135deg, #fff, var(--soft));
+    }
+    .empty-actions {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 20px;
+    }
+    .empty-actions div {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      background: #fff;
+    }
+    .empty-actions strong {
+      display: block;
+      margin-bottom: 6px;
+    }
+    footer {
+      border-top: 1px solid var(--line);
+      background: #fff;
+      color: var(--muted);
+      padding: 28px 0;
+      font-size: 14px;
+    }
+    footer strong {
+      color: var(--ink);
+      font-size: 18px;
+    }
+    @media (max-width: 800px) {
+      .masthead,
+      .hero-grid,
+      .section-grid,
+      .empty-actions {
+        grid-template-columns: 1fr;
+      }
+      .masthead {
+        display: grid;
+        align-items: start;
+      }
+      .date-pill {
+        width: fit-content;
+      }
+      .breaking {
+        align-items: stretch;
+        flex-direction: column;
+        gap: 0;
+      }
+      .breaking span {
+        padding: 12px 14px;
+      }
+      .lead-card {
+        min-height: 300px;
+        padding: 24px;
+      }
+      .site-title {
+        font-size: 34px;
+      }
+      .lead-card h2 {
+        font-size: 34px;
+      }
+    }
+  </style>
 </head>
 <body>
-  <header>
-    <h1>{{ tenant.publication_name }}</h1>
-    {% if preview %}<p>Draft Preview</p>{% endif %}
+  <div class="topbar">
+    <div class="wrap">
+      <span>{{ tenant.business_name|default:tenant.publication_name }} News Network</span>
+      {% if preview %}<span>Draft Preview</span>{% else %}<span>Trusted digital updates</span>{% endif %}
+    </div>
+  </div>
+
+  <header class="wrap masthead">
+    <div class="brand-block">
+      {% with site_name=tenant.business_name|default:tenant.publication_name %}
+        <div class="brand-mark">{{ site_name|first }}</div>
+      {% endwith %}
+      <div>
+        <h1 class="site-title">{{ tenant.business_name|default:tenant.publication_name }}</h1>
+        <p class="tagline">{{ tenant.publication_name }} brings you news, updates, videos, and public-interest stories.</p>
+      </div>
+    </div>
+    <div class="date-pill">Latest updates</div>
   </header>
-  <main>
-    {% for block in blocks %}
-      <section data-block-type="{{ block.block_type }}">
-        <h2>{{ block.heading|default:block.get_block_type_display }}</h2>
-        {% if block.category %}<p>{{ block.category.name }}</p>{% endif %}
-      </section>
-    {% empty %}
-      <section><h2>No homepage sections enabled.</h2></section>
-    {% endfor %}
+
+  <div class="nav-shell">
+    <nav class="wrap nav" aria-label="Primary navigation">
+      <a href="/">Home</a>
+      <a href="#latest">Latest News</a>
+      <a href="#top-stories">Top Stories</a>
+      <a href="#videos">Videos</a>
+      <a href="#livetv">Live TV</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </div>
+
+  <main class="wrap">
+    <div class="breaking">
+      <strong>Breaking</strong>
+      <span>{{ tenant.business_name|default:tenant.publication_name }} is getting ready to publish verified local news and important public updates.</span>
+    </div>
+
+    <section class="hero-grid" id="top-stories">
+      <article class="lead-card">
+        <span class="label">Top Story</span>
+        <h2>{{ tenant.business_name|default:tenant.publication_name }} digital newsroom is live</h2>
+        <p>Fresh reports, local updates, videos, and important announcements will appear here as the editorial team starts publishing.</p>
+      </article>
+      <aside class="side-card">
+        <h2>Today</h2>
+        <div class="headline-list">
+          <div class="headline-item">
+            <strong>Latest news desk is ready</strong>
+            <span>New articles will be listed here automatically.</span>
+          </div>
+          <div class="headline-item">
+            <strong>Video and Live TV sections available</strong>
+            <span>Media updates can be enabled from the publisher dashboard.</span>
+          </div>
+          <div class="headline-item">
+            <strong>Local coverage coming soon</strong>
+            <span>Follow this site for upcoming reports and announcements.</span>
+          </div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="section-grid" id="latest">
+      {% for block in blocks %}
+        <article class="section-card" data-block-type="{{ block.block_type }}">
+          <h2>{{ block.heading|default:block.get_block_type_display }}</h2>
+          {% if block.category %}
+            <p>{{ block.category.name }} stories and updates will appear in this section.</p>
+          {% elif block.block_type == "videos" %}
+            <p>Watch newsroom videos, interviews, and field reports here.</p>
+          {% elif block.block_type == "live_tv" %}
+            <p>Live broadcasts and streaming updates will be available here.</p>
+          {% else %}
+            <p>Published stories will automatically populate this section.</p>
+          {% endif %}
+        </article>
+      {% endfor %}
+    </section>
+
+    <section class="empty-card">
+      <h2>News publishing will begin shortly</h2>
+      <p>{{ tenant.business_name|default:tenant.publication_name }} is live. Articles, categories, photos, videos, and live updates will be shown here as soon as the publisher adds content.</p>
+      <div class="empty-actions">
+        <div>
+          <strong>Latest News</strong>
+          <span>Fresh stories and public updates.</span>
+        </div>
+        <div>
+          <strong>Videos</strong>
+          <span>Reports, interviews, and short clips.</span>
+        </div>
+        <div>
+          <strong>Live TV</strong>
+          <span>Live coverage when enabled.</span>
+        </div>
+      </div>
+    </section>
   </main>
+
+  <footer id="contact">
+    <div class="wrap">
+      <strong>{{ tenant.business_name|default:tenant.publication_name }}</strong>
+      <p>{{ tenant.publication_name }} is powered by Press Nexa. For updates, keep visiting this website.</p>
+    </div>
+  </footer>
 </body>
 </html>
