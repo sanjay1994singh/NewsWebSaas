@@ -16,7 +16,7 @@ from subscriptions.services import tenant_public_site_slug, tenant_public_site_u
 from .models import Tenant, TenantMembership, TenantVisitor
 
 
-@override_settings(ALLOWED_HOSTS=['testserver', 'customera.platformdomain.com', 'www.customera.platformdomain.com', 'customerb.platformdomain.com', 'unknown.platformdomain.com'])
+@override_settings(ALLOWED_HOSTS=['testserver', 'customera.platformdomain.com', 'www.customera.platformdomain.com', 'customerb.platformdomain.com', 'newdomain.platformdomain.com', 'unknown.platformdomain.com'])
 class TenantIsolationTests(TestCase):
     def setUp(self):
         User = get_user_model()
@@ -226,6 +226,45 @@ class TenantIsolationTests(TestCase):
         self.assertContains(response, 'story-card-link')
         self.assertNotContains(response, 'City Desk')
         self.assertNotContains(response, 'By ')
+
+    def test_content_and_reporters_survive_primary_domain_change(self):
+        reporter = get_user_model().objects.create_user(username='field-reporter', password='testpass123')
+        TenantMembership.objects.create(
+            tenant=self.tenant_a,
+            user=reporter,
+            role=TenantMembership.Role.REPORTER,
+            status=TenantMembership.Status.ACTIVE,
+            joined_at=timezone.now(),
+        )
+        category = Category.objects.create(tenant=self.tenant_a, name='Local', slug='local')
+        author = AuthorProfile.objects.create(tenant=self.tenant_a, display_name='City Desk', slug='city-desk')
+        article = NewsArticle.objects.create(
+            tenant=self.tenant_a,
+            category=category,
+            author=author,
+            title='Domain independent story',
+            slug='domain-independent-story',
+            content='<p>Body</p>',
+            status=NewsArticle.Status.PUBLISHED,
+            published_at=timezone.now(),
+        )
+        self.domain_a.is_primary = False
+        self.domain_a.save(update_fields=['is_primary', 'updated_at'])
+        TenantDomain.objects.create(
+            tenant=self.tenant_a,
+            domain='newdomain.platformdomain.com',
+            domain_type=TenantDomain.DomainType.PLATFORM_SUBDOMAIN,
+            is_primary=True,
+            is_verified=True,
+            status=TenantDomain.Status.ACTIVE,
+        )
+
+        response = self.client.get(f'/articles/{article.uuid}/', HTTP_HOST='newdomain.platformdomain.com')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Domain independent story')
+        self.assertTrue(TenantMembership.objects.filter(tenant=self.tenant_a, user=reporter, role=TenantMembership.Role.REPORTER).exists())
+        self.assertTrue(NewsArticle.objects.filter(tenant=self.tenant_a, title='Domain independent story').exists())
 
     def test_tenant_domain_homepage_uses_most_viewed_article_as_top_story(self):
         category = Category.objects.create(tenant=self.tenant_a, name='Local', slug='local')

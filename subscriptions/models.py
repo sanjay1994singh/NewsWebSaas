@@ -334,6 +334,8 @@ class BillingRecord(TimeStampedModel):
     list_amount = models.PositiveIntegerField(default=0)
     discount_percent = models.PositiveIntegerField(default=0)
     discount_amount = models.PositiveIntegerField(default=0)
+    period_start = models.DateTimeField(null=True, blank=True, db_index=True)
+    period_end = models.DateTimeField(null=True, blank=True, db_index=True)
     currency = models.CharField(max_length=3, default='INR')
     status = models.CharField(max_length=60, db_index=True)
     payload = JSONTextField(blank=True)

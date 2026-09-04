@@ -34,6 +34,8 @@ def build_invoice_pdf(record):
     list_amount = record.list_amount or record.amount
     discount_amount = record.discount_amount or 0
     issued_on = timezone.localtime(record.created_at)
+    period_start = record.period_start or getattr(subscription, 'current_period_start', None) or getattr(subscription, 'start_at', None)
+    period_end = record.period_end or getattr(subscription, 'current_period_end', None) or getattr(subscription, 'charge_at', None)
     return _invoice_pdf(
         {
             'number': invoice_number(record),
@@ -46,6 +48,8 @@ def build_invoice_pdf(record):
             'mobile': tenant.mobile or '-',
             'plan': plan_name,
             'cycle': cycle,
+            'period_start': date_filter(timezone.localtime(period_start), 'd M Y') if period_start else '-',
+            'period_end': date_filter(timezone.localtime(period_end), 'd M Y') if period_end else '-',
             'list_amount': money_display(list_amount, record.currency),
             'discount_percent': f"{record.discount_percent or 0}%",
             'discount_amount': money_display(discount_amount, record.currency),
@@ -113,8 +117,9 @@ def _invoice_pdf(data):
         _compact_label_value(60, 557, 'Email', _short(data['email'], 38)),
         _compact_label_value(60, 539, 'Mobile', _short(data['mobile'], 24)),
         _label_value(331, 596, 'Payment reference', _short(data['payment_reference'], 32)),
-        _label_value(331, 565, 'Billing cycle', data['cycle']),
-        _label_value(331, 534, 'Status', data['status']),
+        _label_value(331, 572, 'Billing cycle', data['cycle']),
+        _label_value(331, 548, 'Plan starts', data['period_start']),
+        _label_value(331, 524, 'Plan ends', data['period_end']),
         '0.965 0.973 0.969 rg',
         '44 426 496 30 re f',
         '0.851 0.894 0.871 RG',

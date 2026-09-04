@@ -38,6 +38,7 @@ from .services import (
     create_tenant_after_verified_subscription,
     ensure_paid_tenant_integrity,
     process_webhook,
+    record_successful_subscription_payment,
     subscription_period_for_cycle,
     verify_razorpay_signature,
 )
@@ -539,6 +540,99 @@ class SubscriptionTests(TestCase):
         self.assertIn('Backfilled 1 subscription period(s).', out.value)
         self.assertEqual(subscription.current_period_end.date(), timezone.datetime(2026, 10, 3).date())
         self.assertEqual(subscription.charge_at, subscription.current_period_end)
+
+    def test_successful_renewals_create_billing_history_and_extend_period(self):
+        start = timezone.datetime(2026, 9, 4, 10, 0, tzinfo=timezone.get_current_timezone())
+        subscription = TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            status=TenantSubscription.Status.ACTIVE,
+            start_at=start,
+            current_period_start=start,
+            current_period_end=timezone.datetime(2026, 10, 4, 10, 0, tzinfo=timezone.get_current_timezone()),
+        )
+
+        first = record_successful_subscription_payment(
+            tenant=self.tenant,
+            subscription=subscription,
+            plan_price=self.price,
+            billing_months=1,
+            provider_order_id='order_renew_1',
+            payment_reference='pay_renew_1',
+            amount=39900,
+            list_amount=79800,
+            discount_percent=50,
+            discount_amount=39900,
+        )
+        subscription.refresh_from_db()
+
+        self.assertEqual(first.period_start, timezone.datetime(2026, 10, 4, 10, 0, tzinfo=timezone.get_current_timezone()))
+        self.assertEqual(first.period_end, timezone.datetime(2026, 11, 4, 10, 0, tzinfo=timezone.get_current_timezone()))
+        self.assertEqual(subscription.current_period_end, first.period_end)
+
+        second = record_successful_subscription_payment(
+            tenant=self.tenant,
+            subscription=subscription,
+            plan_price=self.price,
+            billing_months=12,
+            provider_order_id='order_renew_2',
+            payment_reference='pay_renew_2',
+            amount=478800,
+            list_amount=957600,
+            discount_percent=50,
+            discount_amount=478800,
+        )
+        subscription.refresh_from_db()
+
+        self.assertEqual(BillingRecord.objects.filter(tenant=self.tenant, status='paid').count(), 2)
+        self.assertEqual(second.period_start, first.period_end)
+        self.assertEqual(second.period_end, timezone.datetime(2027, 11, 4, 10, 0, tzinfo=timezone.get_current_timezone()))
+        self.assertEqual(subscription.current_period_end, second.period_end)
+
+    def test_duplicate_payment_reference_does_not_duplicate_or_extend_history(self):
+        start = timezone.datetime(2026, 9, 4, 10, 0, tzinfo=timezone.get_current_timezone())
+        subscription = TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            status=TenantSubscription.Status.ACTIVE,
+            start_at=start,
+            current_period_start=start,
+            current_period_end=timezone.datetime(2026, 10, 4, 10, 0, tzinfo=timezone.get_current_timezone()),
+        )
+
+        record_successful_subscription_payment(
+            tenant=self.tenant,
+            subscription=subscription,
+            plan_price=self.price,
+            billing_months=1,
+            provider_order_id='order_same',
+            payment_reference='pay_same',
+            amount=39900,
+            list_amount=79800,
+            discount_percent=50,
+            discount_amount=39900,
+        )
+        subscription.refresh_from_db()
+        period_end = subscription.current_period_end
+
+        record_successful_subscription_payment(
+            tenant=self.tenant,
+            subscription=subscription,
+            plan_price=self.price,
+            billing_months=1,
+            provider_order_id='order_same',
+            payment_reference='pay_same',
+            amount=39900,
+            list_amount=79800,
+            discount_percent=50,
+            discount_amount=39900,
+        )
+        subscription.refresh_from_db()
+
+        self.assertEqual(BillingRecord.objects.filter(tenant=self.tenant, razorpay_payment_id='pay_same').count(), 1)
+        self.assertEqual(subscription.current_period_end, period_end)
 
     def test_paid_tenant_integrity_audit_can_fix_safe_defaults(self):
         subscription = TenantSubscription.objects.create(

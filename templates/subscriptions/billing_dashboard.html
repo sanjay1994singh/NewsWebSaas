@@ -80,6 +80,7 @@
               <tr>
                 <th>Date</th>
                 <th>Plan</th>
+                <th>Period</th>
                 <th>Plan amount</th>
                 <th>Discount</th>
                 <th>Paid</th>
@@ -92,6 +93,13 @@
                 <tr>
                   <td data-label="Date">{{ invoice.created_at|date:"d M Y" }}</td>
                   <td data-label="Plan">{% if invoice.subscription %}{{ invoice.subscription.plan.name }}{% else %}Subscription{% endif %}</td>
+                  <td data-label="Period">
+                    {% if invoice.period_start and invoice.period_end %}
+                      {{ invoice.period_start|date:"d M Y" }} - {{ invoice.period_end|date:"d M Y" }}
+                    {% else %}
+                      {{ invoice.billing_months }} month{% if invoice.billing_months != 1 %}s{% endif %}
+                    {% endif %}
+                  </td>
                   <td data-label="Plan amount">{{ invoice.currency }} {{ invoice.list_amount|default:invoice.amount|paise_to_rupees }}</td>
                   <td data-label="Discount">{{ invoice.discount_percent|default:0 }}% / {{ invoice.currency }} {{ invoice.discount_amount|default:0|paise_to_rupees }}</td>
                   <td data-label="Paid">{{ invoice.currency }} {{ invoice.amount|paise_to_rupees }}</td>

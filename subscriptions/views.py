@@ -656,6 +656,8 @@ def billing_dashboard(request):
                 'list_amount': plan_price.amount if plan_price else 0,
                 'discount_percent': 0,
                 'discount_amount': 0,
+                'period_start': subscription.current_period_start or subscription.start_at,
+                'period_end': subscription.current_period_end or subscription.charge_at,
                 'currency': plan_price.currency if plan_price else 'INR',
                 'status': 'paid',
                 'payload': {

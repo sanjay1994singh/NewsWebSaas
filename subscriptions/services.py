@@ -54,6 +54,104 @@ def subscription_period_for_cycle(start_at, billing_cycle, billing_months=None):
     return start_at, end_at, end_at
 
 
+def next_subscription_period_start(subscription, now=None):
+    now = now or timezone.now()
+    if (
+        subscription
+        and subscription.status == TenantSubscription.Status.ACTIVE
+        and subscription.current_period_end
+        and subscription.current_period_end > now
+    ):
+        return subscription.current_period_end
+    return now
+
+
+def record_successful_subscription_payment(
+    *,
+    tenant,
+    subscription,
+    plan_price,
+    billing_months,
+    provider_order_id='',
+    payment_reference='',
+    provider_signature='',
+    amount=0,
+    list_amount=0,
+    discount_percent=0,
+    discount_amount=0,
+    period_start=None,
+    provider_payload=None,
+):
+    payment_id = payment_reference or provider_order_id
+    if not payment_id:
+        raise ValidationError("A payment reference is required to record billing history.")
+    period_start = period_start or next_subscription_period_start(subscription)
+    period_start, period_end, charge_at = subscription_period_for_cycle(
+        period_start,
+        plan_price.billing_cycle,
+        billing_months,
+    )
+    record, created = BillingRecord.objects.update_or_create(
+        tenant=tenant,
+        razorpay_payment_id=payment_id,
+        defaults={
+            'subscription': subscription,
+            'razorpay_order_id': provider_order_id,
+            'razorpay_invoice_id': '',
+            'razorpay_signature': provider_signature,
+            'amount': amount,
+            'billing_months': billing_months,
+            'list_amount': list_amount,
+            'discount_percent': discount_percent,
+            'discount_amount': discount_amount,
+            'period_start': period_start,
+            'period_end': period_end,
+            'currency': plan_price.currency,
+            'status': 'paid',
+            'payload': {
+                'provider_order_id': provider_order_id,
+                'provider_payment_id': payment_reference,
+                'provider_signature_present': bool(provider_signature),
+                'plan': plan_price.plan.name,
+                'plan_id': plan_price.plan_id,
+                'billing_cycle': plan_price.billing_cycle,
+                'billing_months': billing_months,
+                'list_amount': list_amount,
+                'discount_percent': discount_percent,
+                'discount_amount': discount_amount,
+                'payable_amount': amount,
+                'period_start': period_start.isoformat() if period_start else '',
+                'period_end': period_end.isoformat() if period_end else '',
+                'checkout': provider_payload or {},
+            },
+        },
+    )
+    if created:
+        subscription.plan = plan_price.plan
+        subscription.billing_cycle = plan_price.billing_cycle
+        subscription.billing_months = billing_months
+        subscription.razorpay_payment_reference = payment_id
+        subscription.status = TenantSubscription.Status.ACTIVE
+        if not subscription.start_at:
+            subscription.start_at = period_start
+        subscription.current_period_start = period_start
+        subscription.current_period_end = period_end
+        subscription.charge_at = charge_at
+        subscription.save(update_fields=[
+            'plan',
+            'billing_cycle',
+            'billing_months',
+            'razorpay_payment_reference',
+            'status',
+            'start_at',
+            'current_period_start',
+            'current_period_end',
+            'charge_at',
+            'updated_at',
+        ])
+    return record
+
+
 def platform_root_domain():
     configured = getattr(settings, 'TENANT_PLATFORM_ROOT_DOMAIN', '').strip().lower()
     if configured:
@@ -609,12 +707,7 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
             'joined_at': timezone.now(),
         },
     )
-    period_start, period_end, charge_at = subscription_period_for_cycle(
-        timezone.now(),
-        acquisition.plan_price.billing_cycle,
-        acquisition.billing_months,
-    )
-    subscription, _ = TenantSubscription.objects.update_or_create(
+    subscription, _ = TenantSubscription.objects.get_or_create(
         tenant=tenant,
         defaults={
             'plan': acquisition.plan_price.plan,
@@ -622,41 +715,23 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
             'billing_months': acquisition.billing_months,
             'razorpay_payment_reference': payment_reference or provider_order_id,
             'status': TenantSubscription.Status.ACTIVE,
-            'start_at': period_start,
-            'current_period_start': period_start,
-            'current_period_end': period_end,
-            'charge_at': charge_at,
         },
     )
-    BillingRecord.objects.update_or_create(
+    record_successful_subscription_payment(
         tenant=tenant,
-        razorpay_payment_id=payment_reference or provider_order_id,
-        defaults={
-            'subscription': subscription,
-            'razorpay_order_id': provider_order_id,
-            'razorpay_invoice_id': '',
-            'razorpay_signature': provider_signature,
-            'amount': acquisition.payable_amount or checkout_pricing.payable_amount,
-            'billing_months': acquisition.billing_months,
-            'list_amount': acquisition.list_amount or checkout_pricing.list_amount,
-            'discount_percent': acquisition.discount_percent or checkout_pricing.discount_percent,
-            'discount_amount': acquisition.discount_amount or checkout_pricing.discount_amount,
-            'currency': acquisition.plan_price.currency,
-            'status': 'paid',
-            'payload': {
-                'provider_order_id': provider_order_id,
-                'provider_payment_id': payment_reference,
-                'provider_signature_present': bool(provider_signature),
-                'acquisition_uuid': str(acquisition.uuid),
-                'plan': acquisition.plan_price.plan.name,
-                'billing_cycle': acquisition.plan_price.billing_cycle,
-                'billing_months': acquisition.billing_months,
-                'list_amount': acquisition.list_amount or checkout_pricing.list_amount,
-                'discount_percent': acquisition.discount_percent or checkout_pricing.discount_percent,
-                'discount_amount': acquisition.discount_amount or checkout_pricing.discount_amount,
-                'payable_amount': acquisition.payable_amount or checkout_pricing.payable_amount,
-                'checkout': provider_payload or {},
-            },
+        subscription=subscription,
+        plan_price=acquisition.plan_price,
+        billing_months=acquisition.billing_months,
+        provider_order_id=provider_order_id,
+        payment_reference=payment_reference,
+        provider_signature=provider_signature,
+        amount=acquisition.payable_amount or checkout_pricing.payable_amount,
+        list_amount=acquisition.list_amount or checkout_pricing.list_amount,
+        discount_percent=acquisition.discount_percent or checkout_pricing.discount_percent,
+        discount_amount=acquisition.discount_amount or checkout_pricing.discount_amount,
+        provider_payload={
+            **(provider_payload or {}),
+            'acquisition_uuid': str(acquisition.uuid),
         },
     )
     from .models import TenantOnboarding
