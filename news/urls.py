@@ -14,6 +14,7 @@ urlpatterns = [
     path('categories/add/', views.category_create, name='category_create'),
     path('categories/<int:pk>/edit/', views.category_update, name='category_update'),
     path('categories/<int:pk>/delete/', views.category_delete, name='category_delete'),
+    path('uploads/ckeditor/', views.ckeditor_image_upload, name='ckeditor_image_upload'),
     path('search/', views.tenant_article_search, name='tenant_article_search'),
     path('breaking/', views.tenant_breaking_news, name='tenant_breaking_news'),
 ]

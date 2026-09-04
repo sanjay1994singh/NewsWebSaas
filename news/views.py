@@ -1,6 +1,9 @@
+import uuid
+
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
+from django.core.files.storage import default_storage
 from django.db.models import ProtectedError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -50,6 +53,29 @@ def _article_dashboard_url(content_type):
     if content_type == NewsArticle.ContentType.BLOG:
         return f"{redirect('news:article_dashboard').url}?type=blog"
     return redirect('news:article_dashboard').url
+
+
+@login_required
+def ckeditor_image_upload(request):
+    tenant = _active_tenant_for_user(request)
+    if tenant is None:
+        return JsonResponse({'error': {'message': 'Workspace not available.'}}, status=403)
+    if request.method != 'POST':
+        return JsonResponse({'error': {'message': 'Only image upload is allowed.'}}, status=405)
+    upload = request.FILES.get('upload')
+    if upload is None:
+        return JsonResponse({'error': {'message': 'Please choose an image.'}}, status=400)
+    if not (upload.content_type or '').startswith('image/'):
+        return JsonResponse({'error': {'message': 'Only image files can be uploaded.'}}, status=400)
+    if upload.size > 5 * 1024 * 1024:
+        return JsonResponse({'error': {'message': 'Image size must be under 5 MB.'}}, status=400)
+
+    extension = upload.name.rsplit('.', 1)[-1].lower() if '.' in upload.name else 'jpg'
+    if extension not in {'jpg', 'jpeg', 'png', 'gif', 'webp'}:
+        extension = 'jpg'
+    path = f'articles/editor/{tenant.id}/{uuid.uuid4().hex}.{extension}'
+    saved_path = default_storage.save(path, upload)
+    return JsonResponse({'url': default_storage.url(saved_path)})
 
 
 @login_required

@@ -12,6 +12,8 @@
   .field-help { margin-top:4px; color:var(--muted); font-size:13px; }
   .required-note { color:var(--muted); font-size:13px; }
   .ck-editor__editable { min-height:320px; }
+  .current-image { display:grid; gap:8px; margin-bottom:10px; }
+  .current-image img { max-width:280px; max-height:170px; object-fit:contain; border:1px solid var(--line); border-radius:8px; background:#fff; }
   .check-row { display:flex; align-items:center; gap:8px; margin:12px 0; }
   .check-row input { width:auto; }
   .side-card { position:sticky; top:86px; }
@@ -80,6 +82,12 @@
           </div>
           <div class="field full">
             <label for="{{ form.featured_image.id_for_label }}">Featured image *</label>
+            {% if article and article.featured_image %}
+              <div class="current-image">
+                <span class="field-help">Current featured image</span>
+                <img src="{{ article.featured_image.url }}" alt="{{ article.image_alt|default:article.title }}">
+              </div>
+            {% endif %}
             {{ form.featured_image }}
             {{ form.featured_image.errors }}
           </div>
@@ -143,8 +151,44 @@
   </main>
   <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script>
   <script>
+    class TenantUploadAdapter {
+      constructor(loader) {
+        this.loader = loader;
+      }
+      upload() {
+        return this.loader.file.then((file) => new Promise((resolve, reject) => {
+          const data = new FormData();
+          data.append('upload', file);
+          fetch("{% url 'news:ckeditor_image_upload' %}", {
+            method: 'POST',
+            body: data,
+            headers: { 'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value },
+            credentials: 'same-origin'
+          })
+            .then((response) => response.json().then((payload) => ({ ok: response.ok, payload })))
+            .then(({ ok, payload }) => {
+              if (!ok || !payload.url) {
+                reject((payload.error && payload.error.message) || 'Image upload failed.');
+                return;
+              }
+              resolve({ default: payload.url });
+            })
+            .catch(() => reject('Image upload failed.'));
+        }));
+      }
+      abort() {}
+    }
+
+    function tenantUploadPlugin(editor) {
+      editor.plugins.get('FileRepository').createUploadAdapter = function (loader) {
+        return new TenantUploadAdapter(loader);
+      };
+    }
+
     document.querySelectorAll('.rich-text-editor').forEach(function (field) {
-      ClassicEditor.create(field).catch(function () {});
+      ClassicEditor.create(field, {
+        extraPlugins: [tenantUploadPlugin]
+      }).catch(function () {});
     });
   </script>
 {% endblock %}

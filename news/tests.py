@@ -254,6 +254,37 @@ class TenantNewsCMSTests(TestCase):
         self.assertIn('author', form.errors)
         self.assertIn('tags', form.errors)
 
+    def test_category_list_is_tenant_scoped(self):
+        self.client.force_login(self.user_a)
+        response = self.client.get(reverse('news:category_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.category_a.name)
+        self.assertContains(response, reverse('news:category_update', args=[self.category_a.pk]))
+        self.assertNotContains(response, reverse('news:category_update', args=[self.category_b.pk]))
+
+    def test_ckeditor_upload_is_saved_inside_current_tenant_folder(self):
+        self.client.force_login(self.user_a)
+        upload = tiny_gif('editor.gif')
+
+        response = self.client.post(reverse('news:ckeditor_image_upload'), {'upload': upload})
+
+        self.assertEqual(response.status_code, 200)
+        url = response.json()['url']
+        self.assertIn(f'/media/articles/editor/{self.tenant_a.id}/', url)
+        self.assertNotIn(f'/media/articles/editor/{self.tenant_b.id}/', url)
+
+    def test_article_update_shows_current_featured_image_preview(self):
+        self.client.force_login(self.user_a)
+        self.article_a.featured_image = 'articles/current.jpg'
+        self.article_a.save(update_fields=['featured_image', 'updated_at'])
+
+        response = self.client.get(reverse('news:article_update', args=[self.article_a.uuid]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Current featured image')
+        self.assertContains(response, 'src="/media/articles/current.jpg"')
+
     def test_search_never_returns_other_tenant_content(self):
         results = list(search_articles(tenant=self.tenant_a, query='competitor'))
         self.assertEqual(results, [])
