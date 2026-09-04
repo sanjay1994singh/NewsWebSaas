@@ -71,8 +71,12 @@ def platform_domain_for_name(name):
     return f'{subdomain}.{root_domain}'
 
 
+def tenant_public_site_slug(tenant):
+    return slugify(tenant.business_name or tenant.publication_name or tenant.slug).strip('-') or tenant.slug
+
+
 def tenant_public_site_url(tenant):
-    return f"{settings.SITE_BASE_URL}/site/{tenant.slug}/"
+    return f"{settings.SITE_BASE_URL}/site/{tenant_public_site_slug(tenant)}/"
 
 
 def ensure_platform_domain_for_tenant(tenant):

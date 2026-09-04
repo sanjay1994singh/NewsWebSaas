@@ -57,14 +57,6 @@ class CustomerSignupForm(forms.Form):
             'password': 'Create password',
             'confirm_password': 'Confirm password',
         }
-        autocomplete = {
-            'business_name': 'organization',
-            'publication_name': 'organization-title',
-            'email': 'email',
-            'mobile': 'tel',
-            'password': 'new-password',
-            'confirm_password': 'new-password',
-        }
         disable_autofill(self.fields)
         for name, field in self.fields.items():
             if name in placeholders:
@@ -82,11 +74,11 @@ class CustomerSignupForm(forms.Form):
 
     def clean(self):
         cleaned_data = super().clean()
-        publication_name = cleaned_data.get('publication_name')
-        if publication_name:
-            slug = slugify(publication_name)[:160]
+        business_name = cleaned_data.get('business_name')
+        if business_name:
+            slug = slugify(business_name)[:160]
             if Tenant.objects.filter(slug=slug).exists() or CustomerAcquisition.objects.filter(publication_slug=slug).exists():
-                self.add_error('publication_name', 'A publication with this name is already reserved.')
+                self.add_error('business_name', 'A channel or paper URL with this name is already reserved.')
             cleaned_data['publication_slug'] = slug
         password = cleaned_data.get('password')
         confirm_password = cleaned_data.get('confirm_password')
@@ -114,12 +106,6 @@ class CustomerWorkspaceForm(forms.Form):
             'email': 'owner@example.com',
             'mobile': 'WhatsApp mobile number',
         }
-        autocomplete = {
-            'business_name': 'organization',
-            'publication_name': 'organization-title',
-            'email': 'email',
-            'mobile': 'tel',
-        }
         disable_autofill(self.fields)
         for name, field in self.fields.items():
             if name in placeholders:
@@ -145,9 +131,9 @@ class CustomerWorkspaceForm(forms.Form):
 
     def clean(self):
         cleaned_data = super().clean()
-        publication_name = cleaned_data.get('publication_name')
-        if publication_name:
-            slug = slugify(publication_name)[:160]
+        business_name = cleaned_data.get('business_name')
+        if business_name:
+            slug = slugify(business_name)[:160]
             existing_acquisition = (
                 CustomerAcquisition.objects
                 .filter(
@@ -162,7 +148,7 @@ class CustomerWorkspaceForm(forms.Form):
             if existing_acquisition:
                 self.existing_acquisition = existing_acquisition
             elif Tenant.objects.filter(slug=slug).exists() or CustomerAcquisition.objects.filter(publication_slug=slug).exists():
-                self.add_error('publication_name', 'A publication with this name is already reserved.')
+                self.add_error('business_name', 'A channel or paper URL with this name is already reserved.')
             cleaned_data['publication_slug'] = slug
         return cleaned_data
 

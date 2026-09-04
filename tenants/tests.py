@@ -8,6 +8,7 @@ from core.models import user_can_access_tenant
 from domains.forms import PrimaryDomainSelectionForm
 from domains.middleware import TenantResolutionMiddleware
 from domains.models import TenantDomain
+from subscriptions.services import tenant_public_site_slug, tenant_public_site_url
 
 from .models import Tenant, TenantMembership
 
@@ -108,6 +109,10 @@ class TenantIsolationTests(TestCase):
         self.assertIsNone(request.tenant)
 
     def test_public_site_path_opens_without_custom_ssl_domain(self):
-        response = self.client.get(reverse('tenants:public_tenant_site', args=[self.tenant_a.slug]))
+        response = self.client.get(reverse('tenants:public_tenant_site', args=[tenant_public_site_slug(self.tenant_a)]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.tenant_a.publication_name)
+
+    @override_settings(SITE_BASE_URL='https://pressnexa.live-app.in')
+    def test_public_site_url_uses_channel_or_paper_name(self):
+        self.assertEqual(tenant_public_site_url(self.tenant_a), 'https://pressnexa.live-app.in/site/a-media/')

@@ -1,6 +1,7 @@
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import PermissionDenied
 from django.contrib import messages
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 
 from core.models import user_can_access_tenant
@@ -10,7 +11,7 @@ from pages.builder import get_or_create_layout
 from pages.models import HomepageLayout
 from subscriptions.entitlements import get_effective_entitlements
 from subscriptions.models import CustomerAcquisition, TenantOnboarding, TenantSubscription
-from subscriptions.services import tenant_public_site_url
+from subscriptions.services import tenant_public_site_slug, tenant_public_site_url
 
 from .forms import TenantSettingsForm
 from .models import Tenant, TenantMembership
@@ -116,11 +117,12 @@ def tenant_dashboard(request):
 
 
 def public_tenant_site(request, tenant_slug):
-    tenant = get_object_or_404(
-        Tenant.objects.select_related('owner'),
-        slug=tenant_slug,
-        status__in=[Tenant.Status.TRIAL, Tenant.Status.ACTIVE],
-    )
+    public_tenants = Tenant.objects.select_related('owner').filter(status__in=[Tenant.Status.TRIAL, Tenant.Status.ACTIVE])
+    tenant = public_tenants.filter(slug=tenant_slug).first()
+    if tenant is None:
+        tenant = next((item for item in public_tenants if tenant_public_site_slug(item) == tenant_slug), None)
+    if tenant is None:
+        raise Http404("Publication site not found.")
     request.tenant = tenant
     layout = get_or_create_layout(tenant, HomepageLayout.Status.PUBLISHED)
     return render(request, 'themes/theme_classic/homepage.html', {

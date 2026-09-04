@@ -16,6 +16,7 @@ from tenants.models import Tenant, TenantMembership
 from themes.models import TenantBranding, ThemeActivation
 
 from .entitlements import get_feature_limit, tenant_has_feature, tenant_feature_limit
+from .forms import CustomerSignupForm
 from .models import (
     AddOn,
     BillingRecord,
@@ -171,6 +172,47 @@ class SubscriptionTests(TestCase):
         self.assertIsNotNone(subscription.current_period_end)
         self.assertIsNotNone(subscription.charge_at)
         self.assertGreater(subscription.current_period_end, subscription.current_period_start)
+
+    def test_signup_reserves_site_slug_from_channel_or_paper_name(self):
+        form = CustomerSignupForm(
+            data={
+                'business_name': 'Aaj Tak',
+                'publication_name': 'Geeta',
+                'email': 'owner@example.com',
+                'mobile': '9999999999',
+                'password': 'testpass123',
+                'confirm_password': 'testpass123',
+                'price_id': self.price.id,
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['publication_slug'], 'aaj-tak')
+
+    def test_sync_tenant_site_slugs_command_uses_channel_or_paper_name(self):
+        self.tenant.business_name = 'Aaj Tak'
+        self.tenant.publication_name = 'Geeta'
+        self.tenant.slug = 'geeta'
+        self.tenant.save(update_fields=['business_name', 'publication_name', 'slug', 'updated_at'])
+        CustomerAcquisition.objects.create(
+            user=self.user,
+            plan_price=self.price,
+            tenant=self.tenant,
+            business_name='Aaj Tak',
+            publication_name='Geeta',
+            publication_slug='geeta',
+            email='owner@example.com',
+            mobile='9999999999',
+            status=CustomerAcquisition.Status.TENANT_CREATED,
+        )
+
+        out = type('Stream', (), {'write': lambda self, value: setattr(self, 'value', value)})()
+        call_command('sync_tenant_site_slugs', stdout=out)
+
+        self.tenant.refresh_from_db()
+        acquisition = CustomerAcquisition.objects.get(tenant=self.tenant)
+        self.assertEqual(self.tenant.slug, 'aaj-tak')
+        self.assertEqual(acquisition.publication_slug, 'aaj-tak')
 
     def test_subscription_period_calculation_respects_billing_cycle(self):
         start = timezone.datetime(2026, 9, 3, 9, 0, tzinfo=timezone.get_current_timezone())
