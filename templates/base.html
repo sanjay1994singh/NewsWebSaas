@@ -145,6 +145,22 @@
         loader.setAttribute('aria-hidden', 'false');
       }
 
+      function hideLoader() {
+        if (!loader) return;
+        loader.classList.remove('is-visible');
+        loader.setAttribute('aria-hidden', 'true');
+        document.querySelectorAll('form.is-submitting').forEach(function (form) {
+          form.classList.remove('is-submitting');
+          delete form.dataset.submitting;
+        });
+      }
+
+      window.addEventListener('pageshow', hideLoader);
+      window.addEventListener('pagehide', hideLoader);
+      document.addEventListener('visibilitychange', function () {
+        if (!document.hidden) hideLoader();
+      });
+
       document.querySelectorAll('form').forEach(function (form) {
         form.setAttribute('autocomplete', 'off');
         form.querySelectorAll('input, textarea, select').forEach(function (field) {

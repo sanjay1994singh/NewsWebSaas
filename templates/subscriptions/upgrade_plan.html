@@ -240,6 +240,16 @@
 </div>
 
 <script>
+  const upgradeOverlay = document.getElementById('pay-overlay');
+  function hideUpgradeOverlay() {
+    if (upgradeOverlay) upgradeOverlay.classList.remove('is-active');
+  }
+  window.addEventListener('pageshow', hideUpgradeOverlay);
+  window.addEventListener('pagehide', hideUpgradeOverlay);
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) hideUpgradeOverlay();
+  });
+
   document.querySelectorAll('.plan-card .duration-select').forEach(function (select) {
     select.addEventListener('change', function () {
       const form = select.closest('form');
