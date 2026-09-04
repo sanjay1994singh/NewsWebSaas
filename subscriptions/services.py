@@ -76,6 +76,9 @@ def tenant_public_site_slug(tenant):
 
 
 def tenant_public_site_url(tenant):
+    primary_domain = tenant.domains.filter(is_primary=True, status=TenantDomain.Status.ACTIVE).first()
+    if primary_domain:
+        return f"https://{primary_domain.domain}/"
     return f"{settings.SITE_BASE_URL}/site/{tenant_public_site_slug(tenant)}/"
 
 
