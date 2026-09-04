@@ -1,5 +1,6 @@
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.core.exceptions import PermissionDenied
+from django.conf import settings
 from django.contrib import messages
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
@@ -60,6 +61,9 @@ def tenant_dashboard(request):
         messages.info(request, 'Choose a plan to create your publication workspace before opening the dashboard.')
         return redirect('subscriptions:account_status')
     if not user_can_access_tenant(request.user, tenant):
+        if getattr(request, 'tenant_domain', None):
+            messages.info(request, 'Please open your dashboard from the main Press Nexa account area.')
+            return redirect(f"{settings.SITE_BASE_URL}/dashboard/")
         raise PermissionDenied("You do not have access to this tenant.")
 
     try:

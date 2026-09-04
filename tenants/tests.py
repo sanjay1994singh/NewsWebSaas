@@ -82,10 +82,11 @@ class TenantIsolationTests(TestCase):
         response = self.client.get(reverse('api:tenant_summary', args=[self.tenant_b.uuid]))
         self.assertEqual(response.status_code, 403)
 
-    def test_dashboard_requires_membership_for_resolved_tenant(self):
+    @override_settings(SITE_BASE_URL='https://pressnexa.live-app.in')
+    def test_dashboard_on_foreign_tenant_domain_redirects_to_main_account_area(self):
         self.client.force_login(self.user_a)
         response = self.client.get(reverse('tenants:tenant_dashboard'), HTTP_HOST='customerb.platformdomain.com')
-        self.assertEqual(response.status_code, 403)
+        self.assertRedirects(response, 'https://pressnexa.live-app.in/dashboard/', fetch_redirect_response=False)
 
     def test_permission_helper_allows_only_active_membership(self):
         self.assertTrue(user_can_access_tenant(self.user_a, self.tenant_a))
@@ -121,8 +122,18 @@ class TenantIsolationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.tenant_a.business_name)
         self.assertNotContains(response, 'A News brings you')
+        self.assertContains(response, 'Account')
         self.assertContains(response, '/account/login/?next=/dashboard/')
         self.assertNotContains(response, 'Launch Your Digital News Platform')
+
+    def test_tenant_domain_account_menu_shows_dashboard_and_logout_for_logged_in_owner(self):
+        self.client.force_login(self.user_a)
+        response = self.client.get('/', HTTP_HOST='customera.platformdomain.com')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Account')
+        self.assertContains(response, '/dashboard/')
+        self.assertContains(response, 'Logout')
 
     def test_tenant_domain_homepage_does_not_show_article_publisher_name(self):
         category = Category.objects.create(tenant=self.tenant_a, name='Local', slug='local')
@@ -289,9 +300,10 @@ class TenantIsolationTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
 
-    def test_tenant_domain_admin_redirects_to_customer_dashboard(self):
+    @override_settings(SITE_BASE_URL='https://pressnexa.live-app.in')
+    def test_tenant_domain_admin_redirects_to_main_account_area(self):
         response = self.client.get('/admin/', HTTP_HOST='customera.platformdomain.com')
-        self.assertRedirects(response, '/dashboard/', fetch_redirect_response=False)
+        self.assertRedirects(response, 'https://pressnexa.live-app.in/dashboard/', fetch_redirect_response=False)
 
     def test_tenant_domain_login_uses_tenant_branding(self):
         response = self.client.get('/account/login/?next=/dashboard/', HTTP_HOST='customera.platformdomain.com')

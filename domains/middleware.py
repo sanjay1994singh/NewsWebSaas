@@ -1,4 +1,5 @@
 from django.core.exceptions import DisallowedHost
+from django.conf import settings
 from django.shortcuts import redirect
 
 from .models import TenantDomain, normalize_hostname
@@ -40,7 +41,7 @@ class TenantResolutionMiddleware:
                 request.tenant = domain.tenant
         if request.tenant:
             if request.path_info.startswith('/admin/'):
-                return redirect('/dashboard/')
+                return redirect(f"{settings.SITE_BASE_URL}/dashboard/")
             if request.path_info in self.PLATFORM_ONLY_PATHS:
                 return redirect('/')
         return self.get_response(request)

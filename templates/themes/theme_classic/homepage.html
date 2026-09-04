@@ -91,6 +91,12 @@
       flex-wrap: wrap;
       justify-content: flex-end;
     }
+    .account-menu {
+      position: relative;
+    }
+    .account-toggle,
+    .account-panel a,
+    .account-panel button,
     .login-link {
       border: 1px solid var(--brand);
       border-radius: 999px;
@@ -100,6 +106,38 @@
       font-size: 14px;
       font-weight: 800;
       white-space: nowrap;
+      cursor: pointer;
+    }
+    .account-panel {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 48px;
+      z-index: 10;
+      min-width: 190px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 18px 44px rgba(16,35,29,0.16);
+    }
+    .account-menu:hover .account-panel,
+    .account-menu:focus-within .account-panel {
+      display: grid;
+      gap: 6px;
+    }
+    .account-panel a,
+    .account-panel button {
+      display: block;
+      width: 100%;
+      border-color: transparent;
+      border-radius: 6px;
+      text-align: left;
+      color: var(--ink);
+    }
+    .account-panel a:hover,
+    .account-panel button:hover {
+      background: var(--soft);
     }
     .nav-shell {
       position: sticky;
@@ -408,13 +446,16 @@
         width: fit-content;
       }
       .mast-actions,
-      .login-link {
+      .login-link,
+      .account-menu,
+      .account-toggle {
         width: 100%;
       }
       .mast-actions {
         justify-content: flex-start;
       }
-      .login-link {
+      .login-link,
+      .account-menu {
         max-width: 260px;
       }
       .nav a {
@@ -463,11 +504,20 @@
     </div>
     <div class="mast-actions">
       <div class="date-pill">Latest updates</div>
-      {% if request.user.is_authenticated %}
-        <a class="login-link" href="/dashboard/">Dashboard</a>
-      {% else %}
-        <a class="login-link" href="/account/login/?next=/dashboard/">Login</a>
-      {% endif %}
+      <div class="account-menu">
+        <button class="account-toggle" type="button">Account</button>
+        <div class="account-panel">
+          {% if request.user.is_authenticated %}
+            <a href="/dashboard/">Dashboard</a>
+            <form method="post" action="{% url 'accounts:logout' %}">
+              {% csrf_token %}
+              <button type="submit">Logout</button>
+            </form>
+          {% else %}
+            <a href="/account/login/?next=/dashboard/">Login</a>
+          {% endif %}
+        </div>
+      </div>
     </div>
   </header>
 
