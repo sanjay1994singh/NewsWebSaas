@@ -153,6 +153,56 @@ class TenantNewsCMSTests(TestCase):
         self.assertRedirects(delete_response, reverse('news:article_dashboard'))
         self.assertFalse(NewsArticle.objects.filter(pk=article.pk).exists())
 
+    def test_article_form_uses_post_specific_publisher_name(self):
+        self.client.force_login(self.user_a)
+        response = self.client.post(
+            reverse('news:article_create'),
+            {
+                'category': self.category_a.pk,
+                'publisher_name': 'City Desk',
+                'title': 'Byline update',
+                'slug': '',
+                'content': '<p>Body</p>',
+                'status': NewsArticle.Status.PUBLISHED,
+                'allow_comments': 'on',
+                'robots_index': 'on',
+                'robots_follow': 'on',
+            },
+        )
+
+        self.assertRedirects(response, reverse('news:article_dashboard'))
+        article = NewsArticle.objects.get(tenant=self.tenant_a, slug='byline-update')
+        self.assertEqual(article.public_publisher_name, 'City Desk')
+
+    def test_default_editor_name_is_not_public_publisher_name(self):
+        default_author = AuthorProfile.objects.create(
+            tenant=self.tenant_a,
+            user=self.user_a,
+            display_name=self.tenant_a.publication_name,
+            slug='editor',
+        )
+        article = NewsArticle.objects.create(
+            tenant=self.tenant_a,
+            category=self.category_a,
+            author=default_author,
+            title='No public owner byline',
+            slug='no-public-owner-byline',
+            content='<p>Body</p>',
+            status=NewsArticle.Status.PUBLISHED,
+        )
+
+        self.assertEqual(article.public_publisher_name, '')
+
+    def test_article_detail_only_shows_selected_publisher_name(self):
+        self.client.force_login(self.user_a)
+        response = self.client.get(reverse('news:article_detail', args=[self.article_a.uuid]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Reporter A')
+        article_section = response.content.decode().split('<main class="page article-view">', 1)[1].split('</main>', 1)[0]
+        self.assertNotIn('owner-a', article_section)
+        self.assertNotIn('A Media', article_section)
+
     def test_article_rejects_cross_tenant_category_and_author(self):
         article = NewsArticle(
             tenant=self.tenant_a,

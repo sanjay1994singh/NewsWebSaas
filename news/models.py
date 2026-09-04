@@ -123,6 +123,24 @@ class NewsArticle(TenantOwnedModel):
             self.published_at = timezone.now()
         super().save(*args, **kwargs)
 
+    @property
+    def public_publisher_name(self):
+        if not self.author_id or not self.author:
+            return ''
+        name = (self.author.display_name or '').strip()
+        if not name:
+            return ''
+        tenant_names = {
+            (self.tenant.publication_name or '').strip().casefold(),
+            (self.tenant.business_name or '').strip().casefold(),
+            (self.tenant.owner.get_username() or '').strip().casefold() if self.tenant_id and self.tenant.owner_id else '',
+        }
+        if self.author.slug == 'editor' and name.casefold() in tenant_names:
+            return ''
+        if self.author.user_id and self.tenant_id and self.author.user_id == self.tenant.owner_id and name.casefold() in tenant_names:
+            return ''
+        return name
+
     def __str__(self):
         return self.title
 

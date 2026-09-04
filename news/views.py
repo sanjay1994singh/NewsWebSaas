@@ -41,7 +41,7 @@ def _ensure_publishing_defaults(tenant, user):
     AuthorProfile.objects.get_or_create(
         tenant=tenant,
         slug='editor',
-        defaults={'user': user, 'display_name': tenant.publication_name or user.get_username()},
+        defaults={'user': user, 'display_name': 'Editorial Desk', 'is_public': False},
     )
 
 

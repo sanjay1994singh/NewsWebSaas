@@ -7,6 +7,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from core.models import user_can_access_tenant
 from domains.models import TenantDomain
 from news.models import NewsArticle
+from news.services import published_articles_for_tenant
 from pages.builder import get_or_create_layout
 from pages.models import HomepageLayout
 from subscriptions.entitlements import get_effective_entitlements
@@ -125,9 +126,11 @@ def public_tenant_site(request, tenant_slug):
         raise Http404("Publication site not found.")
     request.tenant = tenant
     layout = get_or_create_layout(tenant, HomepageLayout.Status.PUBLISHED)
+    articles = published_articles_for_tenant(tenant).order_by('-published_at', '-created_at')[:12]
     return render(request, 'themes/theme_classic/homepage.html', {
         'layout': layout,
         'blocks': layout.blocks.filter(is_enabled=True).select_related('category'),
+        'articles': articles,
         'tenant': tenant,
         'preview': False,
     })

@@ -22,7 +22,7 @@
         <h1>{{ article.title }}</h1>
         <div class="article-meta">
           <span class="pill">{{ article.get_status_display }}</span>
-          <span class="pill">{{ article.author.display_name }}</span>
+          {% if article.public_publisher_name %}<span class="pill">{{ article.public_publisher_name }}</span>{% endif %}
           <span class="pill">Updated {{ article.updated_at|date:"d M Y" }}</span>
         </div>
       </div>

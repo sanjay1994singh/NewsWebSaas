@@ -244,6 +244,12 @@
       margin: 0;
       color: var(--muted);
     }
+    .story-byline {
+      margin-top: 12px !important;
+      color: var(--ink) !important;
+      font-size: 13px;
+      font-weight: 800;
+    }
     .empty-card {
       margin: 28px 0 46px;
       background: linear-gradient(135deg, #fff, var(--soft));
@@ -365,12 +371,12 @@
         <h2>Today</h2>
         <div class="headline-list">
           <div class="headline-item">
-            <strong>Latest news desk is ready</strong>
-            <span>New articles will be listed here automatically.</span>
+            <strong>{% if articles %}{{ articles.0.title }}{% else %}Latest news desk is ready{% endif %}</strong>
+            <span>{% if articles and articles.0.public_publisher_name %}By {{ articles.0.public_publisher_name }}{% else %}New articles will be listed here automatically.{% endif %}</span>
           </div>
           <div class="headline-item">
             <strong>Video and Live TV sections available</strong>
-            <span>Media updates can be enabled from the publisher dashboard.</span>
+            <span>Media updates can be enabled from the dashboard.</span>
           </div>
           <div class="headline-item">
             <strong>Local coverage coming soon</strong>
@@ -381,25 +387,35 @@
     </section>
 
     <section class="section-grid" id="latest">
-      {% for block in blocks %}
-        <article class="section-card" data-block-type="{{ block.block_type }}">
-          <h2>{{ block.heading|default:block.get_block_type_display }}</h2>
-          {% if block.category %}
-            <p>{{ block.category.name }} stories and updates will appear in this section.</p>
-          {% elif block.block_type == "videos" %}
-            <p>Watch newsroom videos, interviews, and field reports here.</p>
-          {% elif block.block_type == "live_tv" %}
-            <p>Live broadcasts and streaming updates will be available here.</p>
-          {% else %}
-            <p>Published stories will automatically populate this section.</p>
-          {% endif %}
-        </article>
-      {% endfor %}
+      {% if articles %}
+        {% for article in articles %}
+          <article class="section-card">
+            <h2>{{ article.title }}</h2>
+            <p>{{ article.short_description|default:"Read the latest update from this newsroom." }}</p>
+            {% if article.public_publisher_name %}<p class="story-byline">By {{ article.public_publisher_name }}</p>{% endif %}
+          </article>
+        {% endfor %}
+      {% else %}
+        {% for block in blocks %}
+          <article class="section-card" data-block-type="{{ block.block_type }}">
+            <h2>{{ block.heading|default:block.get_block_type_display }}</h2>
+            {% if block.category %}
+              <p>{{ block.category.name }} stories and updates will appear in this section.</p>
+            {% elif block.block_type == "videos" %}
+              <p>Watch newsroom videos, interviews, and field reports here.</p>
+            {% elif block.block_type == "live_tv" %}
+              <p>Live broadcasts and streaming updates will be available here.</p>
+            {% else %}
+              <p>Published stories will automatically populate this section.</p>
+            {% endif %}
+          </article>
+        {% endfor %}
+      {% endif %}
     </section>
 
     <section class="empty-card">
-      <h2>News publishing will begin shortly</h2>
-      <p>{{ tenant.business_name|default:tenant.publication_name }} is live. Articles, categories, photos, videos, and live updates will be shown here as soon as the publisher adds content.</p>
+      <h2>{% if articles %}More updates are coming{% else %}News publishing will begin shortly{% endif %}</h2>
+      <p>{{ tenant.business_name|default:tenant.publication_name }} is live. Articles, categories, photos, videos, and live updates will be shown here as soon as the newsroom adds content.</p>
       <div class="empty-actions">
         <div>
           <strong>Latest News</strong>
