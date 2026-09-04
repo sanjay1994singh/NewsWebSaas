@@ -116,10 +116,10 @@ def _invoice_pdf(data):
         _compact_label_value(60, 575, 'Channel / Paper', _short(data['business_name'], 34)),
         _compact_label_value(60, 557, 'Email', _short(data['email'], 38)),
         _compact_label_value(60, 539, 'Mobile', _short(data['mobile'], 24)),
-        _label_value(331, 596, 'Payment reference', _short(data['payment_reference'], 32)),
-        _label_value(331, 572, 'Billing cycle', data['cycle']),
-        _label_value(331, 548, 'Plan starts', data['period_start']),
-        _label_value(331, 524, 'Plan ends', data['period_end']),
+        _compact_label_value(331, 596, 'Payment ref', _short(data['payment_reference'], 28), value_x=424),
+        _compact_label_value(331, 574, 'Billing cycle', data['cycle'], value_x=424),
+        _compact_label_value(331, 552, 'Plan starts', data['period_start'], value_x=424),
+        _compact_label_value(331, 530, 'Plan ends', data['period_end'], value_x=424),
         '0.965 0.973 0.969 rg',
         '44 426 496 30 re f',
         '0.851 0.894 0.871 RG',
@@ -208,12 +208,13 @@ def _label_value(x, y, label, value):
     )
 
 
-def _compact_label_value(x, y, label, value):
+def _compact_label_value(x, y, label, value, *, value_x=None):
+    value_x = value_x if value_x is not None else x + 58
     return '\n'.join(
         [
             '0.388 0.463 0.431 rg',
             _text(x, y, 7, label.upper(), bold=True),
             '0 0 0 rg',
-            _text(x + 58, y, 8, value),
+            _text(value_x, y, 8, value),
         ]
     )

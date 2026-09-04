@@ -74,7 +74,9 @@
               {% if field.name == 'password' or field.name == 'confirm_password' %}
                 <div class="password-wrap">
                   {{ field }}
-                  <button class="password-toggle" type="button" data-password-toggle aria-controls="{{ field.id_for_label }}">Show</button>
+                  {% if field.name == 'password' %}
+                    <button class="password-toggle" type="button" data-password-toggle data-password-targets="id_password,id_confirm_password">Show</button>
+                  {% endif %}
                 </div>
               {% else %}
                 {{ field }}
@@ -95,10 +97,11 @@
 <script>
   document.querySelectorAll('[data-password-toggle]').forEach(function (button) {
     button.addEventListener('click', function () {
-      const input = document.getElementById(button.getAttribute('aria-controls'));
-      if (!input) return;
-      const isHidden = input.type === 'password';
-      input.type = isHidden ? 'text' : 'password';
+      const targetIds = (button.dataset.passwordTargets || button.getAttribute('aria-controls') || '').split(',');
+      const inputs = targetIds.map(function (id) { return document.getElementById(id.trim()); }).filter(Boolean);
+      if (!inputs.length) return;
+      const isHidden = inputs.some(function (input) { return input.type === 'password'; });
+      inputs.forEach(function (input) { input.type = isHidden ? 'text' : 'password'; });
       button.textContent = isHidden ? 'Hide' : 'Show';
     });
   });
