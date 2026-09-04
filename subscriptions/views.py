@@ -807,6 +807,9 @@ def upgrade_plan(request):
             plan_price=price,
             billing_months=selected_months,
         )
+        after_offer_amount = option_quote['list_amount'] - option_quote['discount_amount']
+        option_quote['after_offer_amount'] = after_offer_amount
+        option_quote['after_offer_display'] = money_display(after_offer_amount, option_quote['currency'])
         enabled_features = [
             plan_feature
             for plan_feature in price.plan.features.all()

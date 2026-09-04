@@ -20,6 +20,8 @@
 .plan-card.is-selected { border-color:var(--brand); box-shadow:0 14px 34px rgba(19,32,27,.08); }
 .plan-card h3 { margin:0; font-size:22px; line-height:1.18; }
 .plan-card .price { font-size:32px; line-height:1; font-weight:900; }
+.final-row { margin-top:2px; padding-top:10px; border-top:2px solid #cfe2d8; }
+.final-row strong { color:var(--brand); font-size:16px; }
 .current-badge { display:inline-flex; width:max-content; align-items:center; min-height:26px; padding:5px 8px; border:1px solid #bcd8cc; border-radius:999px; background:#eef6f2; color:var(--brand); font-size:12px; font-weight:900; }
 .offer-badge { display:inline-flex; width:max-content; align-items:center; min-height:28px; padding:6px 9px; border-radius:999px; background:#fff7e8; color:#8a5714; border:1px solid #ecd0a0; font-size:12px; font-weight:900; }
 .feature-list { flex:1; align-content:start; margin:0; padding-left:18px; color:var(--muted); display:grid; gap:6px; font-size:15px; }
@@ -125,8 +127,8 @@
             {% if option.is_current_plan %}<span class="current-badge">Active plan</span>{% endif %}
             <span class="offer-badge">{{ option.quote.discount_percent }}% offer</span>
           </div>
-          <div class="price">{{ option.quote.payable_display }}</div>
-          <p class="muted-small">{% if option.is_current_plan %}After 50% offer. Renewal starts after current expiry.{% else %}After 50% offer and active-plan credit.{% endif %}</p>
+          <div class="price">{{ option.quote.after_offer_display }}</div>
+          <p class="muted-small">Amount after 50% offer{% if not option.is_current_plan %}. Old plan credit will be minus below{% endif %}.</p>
           <ul class="feature-list">
             {% for plan_feature in option.enabled_features %}
               <li>{{ plan_feature.feature.name }}{% if plan_feature.limit_value %}: {{ plan_feature.limit_value }} {{ plan_feature.feature.default_unit }}{% endif %}</li>
@@ -144,7 +146,10 @@
           </label>
           <div class="detail-list">
             <div class="detail-row"><span>Plan amount</span><strong>{{ option.quote.list_display }}</strong></div>
-            <div class="detail-row"><span>{% if option.is_current_plan %}Renewal credit{% else %}Credit{% endif %}</span><strong>{{ option.quote.credit_display }}</strong></div>
+            <div class="detail-row"><span>50% offer discount</span><strong>-{{ option.quote.discount_display }}</strong></div>
+            <div class="detail-row"><span>After offer amount</span><strong>{{ option.quote.after_offer_display }}</strong></div>
+            <div class="detail-row"><span>{% if option.is_current_plan %}Renewal credit{% else %}Unused old-plan credit{% endif %}</span><strong>-{{ option.quote.credit_display }}</strong></div>
+            <div class="detail-row final-row"><span>Final payable</span><strong>{{ option.quote.payable_display }}</strong></div>
             <div class="detail-row"><span>Period</span><strong>{{ option.quote.period_start|date:"d M Y" }} - {{ option.quote.period_end|date:"d M Y" }}</strong></div>
           </div>
           <button class="btn" type="submit">{{ option.action_label }}</button>
