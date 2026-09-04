@@ -117,7 +117,16 @@ class TenantIsolationTests(TestCase):
         response = self.client.get('/', HTTP_HOST='customera.platformdomain.com')
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.tenant_a.publication_name)
+        self.assertContains(response, '/account/login/?next=/dashboard/')
         self.assertNotContains(response, 'Launch Your Digital News Platform')
+
+    def test_tenant_domain_admin_redirects_to_customer_dashboard(self):
+        response = self.client.get('/admin/', HTTP_HOST='customera.platformdomain.com')
+        self.assertRedirects(response, '/dashboard/', fetch_redirect_response=False)
+
+    def test_main_domain_admin_is_not_redirected_by_tenant_guard(self):
+        response = self.client.get('/admin/', HTTP_HOST='testserver')
+        self.assertNotEqual(response.url if response.status_code in {301, 302} else '', '/dashboard/')
 
     @override_settings(SITE_BASE_URL='https://pressnexa.live-app.in')
     def test_public_site_url_uses_channel_or_paper_name(self):

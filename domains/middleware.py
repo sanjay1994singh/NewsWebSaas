@@ -1,4 +1,5 @@
 from django.core.exceptions import DisallowedHost
+from django.shortcuts import redirect
 
 from .models import TenantDomain, normalize_hostname
 
@@ -26,4 +27,6 @@ class TenantResolutionMiddleware:
             if domain and domain.tenant.status in {'trial', 'active', 'past_due'}:
                 request.tenant_domain = domain
                 request.tenant = domain.tenant
+        if request.tenant and request.path_info.startswith('/admin/'):
+            return redirect('/dashboard/')
         return self.get_response(request)
