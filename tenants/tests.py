@@ -113,6 +113,12 @@ class TenantIsolationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, self.tenant_a.publication_name)
 
+    def test_tenant_domain_root_opens_public_site(self):
+        response = self.client.get('/', HTTP_HOST='customera.platformdomain.com')
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.tenant_a.publication_name)
+        self.assertNotContains(response, 'Launch Your Digital News Platform')
+
     @override_settings(SITE_BASE_URL='https://pressnexa.live-app.in')
     def test_public_site_url_uses_channel_or_paper_name(self):
         self.assertEqual(tenant_public_site_url(self.tenant_a), 'https://pressnexa.live-app.in/site/a-media/')

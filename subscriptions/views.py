@@ -11,6 +11,8 @@ from django.views.decorators.http import require_http_methods
 from django.views.decorators.http import require_POST
 
 from core.models import user_can_access_tenant
+from pages.builder import get_or_create_layout
+from pages.models import HomepageLayout
 from tenants.models import Tenant
 
 from .entitlements import get_effective_entitlement, get_effective_entitlements
@@ -87,6 +89,15 @@ def _customer_tenant_context(user):
 
 
 def customer_home(request):
+    if getattr(request, 'tenant', None) is not None:
+        layout = get_or_create_layout(request.tenant, HomepageLayout.Status.PUBLISHED)
+        return render(request, 'themes/theme_classic/homepage.html', {
+            'layout': layout,
+            'blocks': layout.blocks.filter(is_enabled=True).select_related('category'),
+            'tenant': request.tenant,
+            'preview': False,
+        })
+
     if not request.user.is_authenticated:
         return landing_page(request)
 
