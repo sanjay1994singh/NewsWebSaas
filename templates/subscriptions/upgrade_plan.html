@@ -21,11 +21,13 @@
 .plan-card h3 { margin:0; font-size:22px; line-height:1.18; }
 .plan-card .price { font-size:32px; line-height:1; font-weight:900; }
 .current-badge { display:inline-flex; width:max-content; align-items:center; min-height:26px; padding:5px 8px; border:1px solid #bcd8cc; border-radius:999px; background:#eef6f2; color:var(--brand); font-size:12px; font-weight:900; }
+.offer-badge { display:inline-flex; width:max-content; align-items:center; min-height:28px; padding:6px 9px; border-radius:999px; background:#fff7e8; color:#8a5714; border:1px solid #ecd0a0; font-size:12px; font-weight:900; }
 .feature-list { flex:1; align-content:start; margin:0; padding-left:18px; color:var(--muted); display:grid; gap:6px; font-size:15px; }
 .plan-card label { display:grid; gap:7px; margin-top:auto; }
 .plan-card .detail-list { gap:0; }
 .plan-card .detail-row { font-size:14px; }
 .plan-card .btn { width:100%; min-height:46px; }
+.plan-card.is-submitting .btn { opacity:.65; cursor:wait; }
 .quote-box { display:grid; gap:8px; background:#eef6f2; border:1px solid #d5e8df; border-radius:8px; padding:14px; }
 .duration-select { width:100%; min-height:42px; margin-top:6px; }
 .btn-row { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
@@ -119,9 +121,12 @@
           {% csrf_token %}
           <input type="hidden" name="plan_price_id" value="{{ option.price.id }}">
           <h3>{{ option.plan.name }}</h3>
-          {% if option.is_current_plan %}<span class="current-badge">Active plan</span>{% endif %}
+          <div class="btn-row">
+            {% if option.is_current_plan %}<span class="current-badge">Active plan</span>{% endif %}
+            <span class="offer-badge">{{ option.quote.discount_percent }}% offer</span>
+          </div>
           <div class="price">{{ option.quote.payable_display }}</div>
-          <p class="muted-small">{% if option.is_current_plan %}Renewal starts after current expiry.{% else %}After offer and active-plan credit.{% endif %}</p>
+          <p class="muted-small">{% if option.is_current_plan %}After 50% offer. Renewal starts after current expiry.{% else %}After 50% offer and active-plan credit.{% endif %}</p>
           <ul class="feature-list">
             {% for plan_feature in option.enabled_features %}
               <li>{{ plan_feature.feature.name }}{% if plan_feature.limit_value %}: {{ plan_feature.limit_value }} {{ plan_feature.feature.default_unit }}{% endif %}</li>
@@ -233,6 +238,23 @@
     <p class="muted-small">Please wait while we verify and save your billing history.</p>
   </div>
 </div>
+
+<script>
+  document.querySelectorAll('.plan-card .duration-select').forEach(function (select) {
+    select.addEventListener('change', function () {
+      const form = select.closest('form');
+      if (!form || form.classList.contains('is-submitting')) return;
+      form.classList.add('is-submitting');
+      const button = form.querySelector('button[type="submit"]');
+      if (button) button.textContent = 'Updating...';
+      const priceInput = form.querySelector('input[name="plan_price_id"]');
+      const url = new URL(window.location.href);
+      url.searchParams.set('plan_price_id', priceInput ? priceInput.value : '');
+      url.searchParams.set('months', select.value);
+      window.location.href = url.toString();
+    });
+  });
+</script>
 
 {% if checkout.order_id and plan_change %}
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>

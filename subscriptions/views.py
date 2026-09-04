@@ -821,7 +821,7 @@ def upgrade_plan(request):
                 'enabled_features': enabled_features[:8],
                 'is_selected': selected_price and price.id == selected_price.id,
                 'is_current_plan': is_current_plan,
-                'action_label': 'Pay And Renew' if is_current_plan else 'Pay And Upgrade',
+                'action_label': 'Renew' if is_current_plan else 'Upgrade',
             }
         )
 
