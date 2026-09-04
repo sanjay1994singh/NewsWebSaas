@@ -147,7 +147,6 @@
           <div class="detail-list">
             <div class="detail-row"><span>Plan amount</span><strong>{{ option.quote.list_display }}</strong></div>
             <div class="detail-row"><span>50% offer discount</span><strong>-{{ option.quote.discount_display }}</strong></div>
-            <div class="detail-row"><span>After offer amount</span><strong>{{ option.quote.after_offer_display }}</strong></div>
             <div class="detail-row"><span>{% if option.is_current_plan %}Renewal credit{% else %}Unused old-plan credit{% endif %}</span><strong>-{{ option.quote.credit_display }}</strong></div>
             <div class="detail-row final-row"><span>Final payable</span><strong>{{ option.quote.payable_display }}</strong></div>
             <div class="detail-row"><span>Period</span><strong>{{ option.quote.period_start|date:"d M Y" }} - {{ option.quote.period_end|date:"d M Y" }}</strong></div>
