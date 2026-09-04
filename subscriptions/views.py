@@ -15,6 +15,7 @@ from news.services import published_articles_for_tenant
 from pages.builder import get_or_create_layout
 from pages.models import HomepageBlock, HomepageLayout
 from tenants.models import Tenant
+from tenants.views import _render_public_tenant_site
 
 from .entitlements import get_effective_entitlement, get_effective_entitlements
 from .forms import CustomerSignupForm, CustomerWorkspaceForm, OnboardingForm, ReviewActionForm
@@ -91,26 +92,7 @@ def _customer_tenant_context(user):
 
 def customer_home(request):
     if getattr(request, 'tenant', None) is not None:
-        layout = get_or_create_layout(request.tenant, HomepageLayout.Status.PUBLISHED)
-        blocks = list(layout.blocks.filter(is_enabled=True).select_related('category'))
-        article_queryset = published_articles_for_tenant(request.tenant)
-        articles = list(article_queryset.order_by('-published_at', '-created_at')[:12])
-        top_article = article_queryset.order_by('-view_count', '-published_at', '-created_at').first()
-        try:
-            onboarding = request.tenant.commercial_onboarding
-        except TenantOnboarding.DoesNotExist:
-            onboarding = None
-        return render(request, 'themes/theme_classic/homepage.html', {
-            'layout': layout,
-            'blocks': blocks,
-            'articles': articles,
-            'top_article': top_article,
-            'tenant': request.tenant,
-            'onboarding': onboarding,
-            'has_videos': any(block.block_type == HomepageBlock.BlockType.VIDEOS for block in blocks),
-            'has_live_tv': any(block.block_type == HomepageBlock.BlockType.LIVE_TV for block in blocks),
-            'preview': False,
-        })
+        return _render_public_tenant_site(request, request.tenant, 'home')
 
     if not request.user.is_authenticated:
         return landing_page(request)

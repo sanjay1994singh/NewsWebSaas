@@ -114,12 +114,13 @@ class TenantIsolationTests(TestCase):
     def test_public_site_path_opens_without_custom_ssl_domain(self):
         response = self.client.get(reverse('tenants:public_tenant_site', args=[tenant_public_site_slug(self.tenant_a)]))
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.tenant_a.publication_name)
+        self.assertContains(response, self.tenant_a.business_name)
 
     def test_tenant_domain_root_opens_public_site(self):
         response = self.client.get('/', HTTP_HOST='customera.platformdomain.com')
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.tenant_a.publication_name)
+        self.assertContains(response, self.tenant_a.business_name)
+        self.assertNotContains(response, 'A News brings you')
         self.assertContains(response, '/account/login/?next=/dashboard/')
         self.assertNotContains(response, 'Launch Your Digital News Platform')
 
@@ -180,7 +181,7 @@ class TenantIsolationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Most Viewed')
         self.assertContains(response, f'/articles/{popular.uuid}/')
-        self.assertContains(response, "url('/media/articles/popular.jpg')")
+        self.assertContains(response, "background-image: url('/media/articles/popular.jpg')")
 
     def test_tenant_domain_homepage_contact_section_uses_tenant_details(self):
         TenantOnboarding.objects.create(
@@ -190,7 +191,7 @@ class TenantIsolationTests(TestCase):
             facebook_url='https://facebook.example/a-news',
         )
 
-        response = self.client.get('/', HTTP_HOST='customera.platformdomain.com')
+        response = self.client.get('/contact/', HTTP_HOST='customera.platformdomain.com')
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Contact A Media')

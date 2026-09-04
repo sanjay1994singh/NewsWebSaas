@@ -145,6 +145,10 @@
       font-size: 14px;
       padding-right: 14px;
     }
+    .breaking a {
+      font-weight: 800;
+      color: var(--ink);
+    }
     .hero-grid {
       display: grid;
       grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
@@ -160,14 +164,13 @@
       background: var(--paper);
     }
     .lead-card {
-      min-height: 360px;
-      display: grid;
-      align-content: end;
-      padding: 30px;
+      min-height: 340px;
+      display: block;
+      padding: 0;
       background:
         linear-gradient(180deg, rgba(16,35,29,0.04), rgba(16,35,29,0.86)),
         linear-gradient(135deg, #eaf4ef, #ffffff 45%, #f7ece5);
-      color: #fff;
+      color: var(--ink);
       overflow: hidden;
     }
     .lead-link {
@@ -184,28 +187,34 @@
     .label {
       display: inline-flex;
       width: fit-content;
-      margin-bottom: 12px;
       border-radius: 999px;
       padding: 7px 11px;
-      background: rgba(255,255,255,0.16);
-      color: #fff;
+      background: var(--soft);
+      color: var(--brand);
       font-size: 12px;
       font-weight: 800;
       letter-spacing: 0.08em;
       text-transform: uppercase;
     }
     .lead-card h2 {
-      max-width: 760px;
-      margin: 0;
-      font-size: 52px;
-      line-height: 1.02;
+      margin: 12px 0 0;
+      font-size: 28px;
+      line-height: 1.15;
       letter-spacing: 0;
     }
     .lead-card p {
-      max-width: 680px;
-      margin: 16px 0 0;
-      color: rgba(255,255,255,0.86);
-      font-size: 17px;
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+    .lead-media {
+      min-height: 230px;
+      background-size: cover;
+      background-position: center;
+      background-image: linear-gradient(135deg, #e7f1ed, #ffffff);
+    }
+    .lead-copy {
+      padding: 22px;
     }
     .side-card,
     .section-card,
@@ -392,13 +401,12 @@
       }
       .lead-card {
         min-height: 300px;
-        padding: 24px;
       }
       .site-title {
         font-size: 34px;
       }
       .lead-card h2 {
-        font-size: 34px;
+        font-size: 24px;
       }
       .story-card-link {
         grid-template-rows: 150px 1fr;
@@ -421,7 +429,7 @@
       {% endwith %}
       <div>
         <h1 class="site-title">{{ tenant.business_name|default:tenant.publication_name }}</h1>
-        <p class="tagline">{{ tenant.publication_name }} brings you news, updates, videos, and public-interest stories.</p>
+        <p class="tagline">{{ onboarding.tagline|default:"Trusted news, updates, videos, and public-interest stories." }}</p>
       </div>
     </div>
     <div class="mast-actions">
@@ -436,33 +444,55 @@
 
   <div class="nav-shell">
     <nav class="wrap nav" aria-label="Primary navigation">
-      <a href="/">Home</a>
-      <a href="#latest">Latest News</a>
-      <a href="#top-stories">Top Stories</a>
-      {% if has_videos %}<a href="#videos">Videos</a>{% endif %}
-      {% if has_live_tv %}<a href="#livetv">Live TV</a>{% endif %}
-      <a href="#contact">Contact</a>
+      {% if request.tenant %}
+        <a href="/">Home</a>
+        <a href="/latest-news/">Latest News</a>
+        <a href="/top-stories/">Top Stories</a>
+        {% if has_videos %}<a href="/videos/">Videos</a>{% endif %}
+        {% if has_live_tv %}<a href="/live-tv/">Live TV</a>{% endif %}
+        <a href="/contact/">Contact</a>
+      {% else %}
+        <a href="/site/{{ public_site_slug }}/">Home</a>
+        <a href="/site/{{ public_site_slug }}/latest-news/">Latest News</a>
+        <a href="/site/{{ public_site_slug }}/top-stories/">Top Stories</a>
+        {% if has_videos %}<a href="/site/{{ public_site_slug }}/videos/">Videos</a>{% endif %}
+        {% if has_live_tv %}<a href="/site/{{ public_site_slug }}/live-tv/">Live TV</a>{% endif %}
+        <a href="/site/{{ public_site_slug }}/contact/">Contact</a>
+      {% endif %}
     </nav>
   </div>
 
   <main class="wrap">
     <div class="breaking">
       <strong>Breaking</strong>
-      <span>{{ tenant.business_name|default:tenant.publication_name }} is getting ready to publish verified local news and important public updates.</span>
+      <span>
+        {% if latest_articles %}
+          {% for article in latest_articles %}
+            <a href="/articles/{{ article.uuid }}/">{{ article.title }}</a>{% if not forloop.last %} &nbsp;|&nbsp; {% endif %}
+          {% endfor %}
+        {% else %}
+          Latest verified local news and important public updates will appear here.
+        {% endif %}
+      </span>
     </div>
 
-    <section class="hero-grid" id="top-stories">
+    {% if page == "home" or page == "top-stories" %}
+    <section class="hero-grid">
       {% if top_article %}
-        <a class="lead-card lead-link" href="/articles/{{ top_article.uuid }}/"{% if top_article.featured_image %} style="background-image: linear-gradient(180deg, rgba(16,35,29,0.08), rgba(16,35,29,0.88)), url('{{ top_article.featured_image.url }}');"{% endif %}>
-          <span class="label">Most Viewed</span>
-          <h2>{{ top_article.title }}</h2>
-          <p>{{ top_article.short_description|default:"Readers are following this update. Open the full story for complete details." }}</p>
+        <a class="lead-card lead-link" href="/articles/{{ top_article.uuid }}/">
+          <div class="lead-media"{% if top_article.featured_image %} style="background-image: url('{{ top_article.featured_image.url }}');"{% endif %}></div>
+          <div class="lead-copy">
+            <span class="label">Most Viewed</span>
+            <h2>{{ top_article.title }}</h2>
+          </div>
         </a>
       {% else %}
         <article class="lead-card">
-          <span class="label">Top Story</span>
-          <h2>{{ tenant.business_name|default:tenant.publication_name }} digital newsroom is live</h2>
-          <p>Fresh reports, local updates, videos, and important announcements will appear here as the editorial team starts publishing.</p>
+          <div class="lead-media"></div>
+          <div class="lead-copy">
+            <span class="label">Top Story</span>
+            <h2>{{ tenant.business_name|default:tenant.publication_name }} digital newsroom is live</h2>
+          </div>
         </article>
       {% endif %}
       <aside class="side-card">
@@ -489,8 +519,10 @@
         </div>
       </aside>
     </section>
+    {% endif %}
 
-    <section class="section-grid" id="latest">
+    {% if page == "home" or page == "latest-news" or page == "top-stories" %}
+    <section class="section-grid">
       {% if articles %}
         {% for article in articles %}
           <a class="section-card story-card-link" href="/articles/{{ article.uuid }}/">
@@ -506,7 +538,7 @@
               </div>
               <div class="story-card-body">
                 <h2>{{ article.title }}</h2>
-                <p>{{ article.short_description|default:"Read the latest update from this newsroom." }}</p>
+                <p>{{ article.title }}</p>
                 <span class="read-more">Read full story</span>
               </div>
             </article>
@@ -529,7 +561,9 @@
         {% endfor %}
       {% endif %}
     </section>
+    {% endif %}
 
+    {% if page == "home" %}
     <section class="empty-card">
       <h2>{% if articles %}More updates are coming{% else %}News publishing will begin shortly{% endif %}</h2>
       <p>{{ tenant.business_name|default:tenant.publication_name }} is live. Articles, categories, photos, videos, and live updates will be shown here as soon as the newsroom adds content.</p>
@@ -548,22 +582,24 @@
         </div>
       </div>
     </section>
+    {% endif %}
 
-    {% if has_videos %}
-      <section class="empty-card content-section" id="videos">
+    {% if has_videos and page == "videos" %}
+      <section class="empty-card content-section">
         <h2>Videos</h2>
         <p>Video reports, interviews, and short clips from {{ tenant.business_name|default:tenant.publication_name }} will appear here when the newsroom publishes them.</p>
       </section>
     {% endif %}
 
-    {% if has_live_tv %}
-      <section class="empty-card content-section" id="livetv">
+    {% if has_live_tv and page == "live-tv" %}
+      <section class="empty-card content-section">
         <h2>Live TV</h2>
         <p>{% if onboarding.live_tv_url %}<a class="read-more" href="{{ onboarding.live_tv_url }}" target="_blank" rel="noopener">Watch Live TV</a>{% else %}Live coverage will appear here after the channel enables its live stream.{% endif %}</p>
       </section>
     {% endif %}
 
-    <section class="contact-panel" id="contact">
+    {% if page == "contact" %}
+    <section class="contact-panel">
       <h2>Contact {{ tenant.business_name|default:tenant.publication_name }}</h2>
       <div class="contact-grid">
         {% if tenant.email %}
@@ -586,12 +622,13 @@
         {% endif %}
       </div>
     </section>
+    {% endif %}
   </main>
 
   <footer>
     <div class="wrap">
       <strong>{{ tenant.business_name|default:tenant.publication_name }}</strong>
-      <p>{{ tenant.publication_name }} is powered by Press Nexa. For updates, keep visiting this website.</p>
+      <p>For updates, keep visiting this website.</p>
     </div>
   </footer>
 </body>

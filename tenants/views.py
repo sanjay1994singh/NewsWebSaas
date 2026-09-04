@@ -126,11 +126,39 @@ def public_tenant_site(request, tenant_slug):
         tenant = next((item for item in public_tenants if tenant_public_site_slug(item) == tenant_slug), None)
     if tenant is None:
         raise Http404("Publication site not found.")
+    return _render_public_tenant_site(request, tenant, 'home')
+
+
+def public_tenant_page(request, tenant_slug, page):
+    public_tenants = Tenant.objects.select_related('owner').filter(status__in=[Tenant.Status.TRIAL, Tenant.Status.ACTIVE])
+    tenant = public_tenants.filter(slug=tenant_slug).first()
+    if tenant is None:
+        tenant = next((item for item in public_tenants if tenant_public_site_slug(item) == tenant_slug), None)
+    if tenant is None:
+        raise Http404("Publication site not found.")
+    return _render_public_tenant_site(request, tenant, page)
+
+
+def public_domain_page(request, page):
+    tenant = getattr(request, 'tenant', None)
+    if tenant is None:
+        raise Http404("Publication site not found.")
+    return _render_public_tenant_site(request, tenant, page)
+
+
+def _render_public_tenant_site(request, tenant, page='home'):
+    allowed_pages = {'home', 'latest-news', 'top-stories', 'videos', 'live-tv', 'contact'}
+    if page not in allowed_pages:
+        raise Http404("Publication page not found.")
     request.tenant = tenant
     layout = get_or_create_layout(tenant, HomepageLayout.Status.PUBLISHED)
     blocks = list(layout.blocks.filter(is_enabled=True).select_related('category'))
     article_queryset = published_articles_for_tenant(tenant)
-    articles = list(article_queryset.order_by('-published_at', '-created_at')[:12])
+    if page == 'top-stories':
+        articles = list(article_queryset.order_by('-view_count', '-published_at', '-created_at')[:12])
+    else:
+        articles = list(article_queryset.order_by('-published_at', '-created_at')[:12])
+    latest_articles = list(article_queryset.order_by('-published_at', '-created_at')[:3])
     top_article = article_queryset.order_by('-view_count', '-published_at', '-created_at').first()
     try:
         onboarding = tenant.commercial_onboarding
@@ -140,11 +168,14 @@ def public_tenant_site(request, tenant_slug):
         'layout': layout,
         'blocks': blocks,
         'articles': articles,
+        'latest_articles': latest_articles,
         'top_article': top_article,
         'tenant': tenant,
         'onboarding': onboarding,
         'has_videos': any(block.block_type == HomepageBlock.BlockType.VIDEOS for block in blocks),
         'has_live_tv': any(block.block_type == HomepageBlock.BlockType.LIVE_TV for block in blocks),
+        'page': page,
+        'public_site_slug': tenant_public_site_slug(tenant),
         'preview': False,
     })
 
