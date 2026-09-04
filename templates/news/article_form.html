@@ -20,7 +20,7 @@
   .form-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
   .errorlist { color:var(--danger); margin:6px 0 0; padding-left:18px; }
   @media (max-width:900px) { .editor-form { grid-template-columns:1fr; } .side-card { position:static; } }
-  @media (max-width:640px) { .editor-head, .form-grid { display:block; } }
+  @media (max-width:640px) { .editor-head, .form-grid { display:block; } .editor-head .btn, .form-actions .btn { width:100%; } .ck-editor__editable { min-height:240px; } }
 {% endblock %}
 
 {% block content %}

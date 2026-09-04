@@ -19,7 +19,8 @@
   .status-pill { display:inline-flex; border:1px solid var(--line); border-radius:999px; padding:4px 10px; font-size:12px; font-weight:800; color:var(--deep); background:#f8fbfa; }
   .empty-state { min-height:220px; display:grid; place-items:center; text-align:center; }
   .empty-state h2 { margin:0 0 8px; }
-  @media (max-width:760px) { .cms-hero { display:grid; } .stats { grid-template-columns:repeat(2,minmax(0,1fr)); } .article-table { display:block; overflow-x:auto; } }
+  @media (max-width:760px) { .cms-hero { display:grid; } .cms-actions, .tabs { width:100%; } .cms-actions .btn, .tabs a { flex:1 1 160px; } .stats { grid-template-columns:repeat(2,minmax(0,1fr)); } .article-table { display:block; overflow-x:auto; } .article-table th, .article-table td { min-width:130px; } }
+  @media (max-width:520px) { .stats { grid-template-columns:1fr; } .cms-actions .btn, .tabs a { width:100%; flex-basis:100%; } }
 {% endblock %}
 
 {% block content %}

@@ -11,7 +11,8 @@
   .category-table th { background:#eef6f2; color:var(--deep); font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
   .category-table tr:last-child td { border-bottom:0; }
   .status-pill { display:inline-flex; border:1px solid var(--line); border-radius:999px; padding:4px 10px; font-size:12px; font-weight:800; background:#f8fbfa; }
-  @media (max-width:760px) { .category-head { display:grid; } .category-table { display:block; overflow-x:auto; } }
+  @media (max-width:760px) { .category-head { display:grid; } .category-actions { width:100%; } .category-actions .btn { flex:1 1 150px; } .category-table { display:block; overflow-x:auto; } .category-table th, .category-table td { min-width:120px; } }
+  @media (max-width:520px) { .category-actions .btn { width:100%; flex-basis:100%; } }
 {% endblock %}
 
 {% block content %}

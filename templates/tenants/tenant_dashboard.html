@@ -70,6 +70,8 @@
       .hero, .content-grid, .welcome { grid-template-columns:1fr; }
       .quick-grid { grid-template-columns:1fr; }
       .stats { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .site-url-card { grid-template-columns:1fr; }
+      .site-url-actions { justify-content:flex-start; }
     }
     @media (max-width:640px) {
       .main { padding:18px; }
@@ -79,7 +81,8 @@
       .stats, .feature-grid, .nav-group { grid-template-columns:1fr; }
       .status-row { align-items:flex-start; flex-direction:column; gap:3px; }
       .status-row strong { text-align:left; }
-      .actions .btn { width:100%; }
+      .actions .btn, .site-url-actions .btn { width:100%; }
+      .sidebar a, .logout-btn { align-items:flex-start; flex-direction:column; }
     }
   </style>
 </head>

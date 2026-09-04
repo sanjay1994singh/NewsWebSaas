@@ -22,7 +22,8 @@
   .step-dot { display:grid; place-items:center; width:30px; height:30px; border-radius:999px; background:#e6f3ee; color:var(--brand); font-weight:900; }
   .empty { display:grid; place-items:center; min-height:220px; text-align:center; }
   .copy-box { display:flex; gap:8px; align-items:center; justify-content:space-between; border:1px solid var(--line); border-radius:8px; padding:12px; background:#f8fbfa; font-weight:800; overflow-wrap:anywhere; }
-  @media (max-width:860px) { .domain-hero, .domain-grid { display:grid; grid-template-columns:1fr; } .domain-table { display:block; overflow-x:auto; } }
+  @media (max-width:860px) { .domain-hero, .domain-grid { display:grid; grid-template-columns:1fr; } .hero-actions, .row-actions, .row-actions form { width:100%; } .domain-table { display:block; overflow-x:auto; } .domain-table th, .domain-table td { min-width:132px; } }
+  @media (max-width:520px) { .hero-actions .btn, .row-actions .btn { width:100%; } .copy-box { display:grid; } }
 {% endblock %}
 
 {% block content %}

@@ -21,7 +21,8 @@
   .badge.warn { border-color:#ead6a7; background:#fff8e6; color:#7a5700; }
   .help-list { margin:0; padding-left:18px; color:var(--muted); }
   .help-list li { margin:8px 0; }
-  @media (max-width:860px) { .detail-hero, .detail-grid, .status-grid { display:grid; grid-template-columns:1fr; } }
+  @media (max-width:860px) { .detail-hero, .detail-grid, .status-grid { display:grid; grid-template-columns:1fr; } .detail-actions, .detail-actions form { width:100%; } }
+  @media (max-width:520px) { .detail-actions .btn { width:100%; } }
 {% endblock %}
 
 {% block content %}
