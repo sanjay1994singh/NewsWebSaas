@@ -94,6 +94,14 @@
     .account-menu {
       position: relative;
     }
+    .account-drawer-backdrop,
+    .account-panel-head {
+      display: none;
+    }
+    .account-menu.is-open .account-panel {
+      display: grid;
+      gap: 6px;
+    }
     .account-toggle,
     .account-panel a,
     .account-panel button,
@@ -107,6 +115,17 @@
       font-weight: 800;
       white-space: nowrap;
       cursor: pointer;
+    }
+    .account-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .account-icon {
+      display: block;
+      width: 18px;
+      height: 18px;
     }
     .account-panel {
       display: none;
@@ -138,6 +157,10 @@
     .account-panel a:hover,
     .account-panel button:hover {
       background: var(--soft);
+    }
+    .drawer-close {
+      border-color: var(--line) !important;
+      text-align: center !important;
     }
     .nav-shell {
       position: sticky;
@@ -432,34 +455,103 @@
       }
     }
     @media (max-width: 800px) {
-      .masthead,
       .section-grid,
       .empty-actions,
       .contact-grid {
         grid-template-columns: 1fr;
       }
       .masthead {
-        display: grid;
-        align-items: start;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: auto;
+        padding: 18px 0;
       }
-      .date-pill {
-        width: fit-content;
+      .brand-block {
+        flex: 1 1 auto;
+        gap: 12px;
+        align-items: center;
+        min-width: 0;
       }
-      .mast-actions,
-      .login-link,
-      .account-menu,
-      .account-toggle {
-        width: 100%;
+      .brand-mark {
+        flex: 0 0 50px;
+        width: 50px;
+        height: 50px;
+        font-size: 26px;
       }
       .mast-actions {
-        justify-content: flex-start;
+        flex: 0 0 auto;
+        justify-content: flex-end;
       }
-      .login-link,
-      .account-menu {
-        max-width: 260px;
+      .account-toggle {
+        width: 48px;
+        height: 48px;
+        min-width: 48px;
+        padding: 0;
+        border-radius: 50%;
+      }
+      .account-toggle-text {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+      }
+      .account-drawer-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 29;
+        background: rgba(16, 35, 29, 0.4);
+      }
+      .account-menu.is-open .account-drawer-backdrop {
+        display: block;
+      }
+      .account-panel {
+        display: grid;
+        gap: 8px;
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: auto;
+        z-index: 30;
+        width: min(330px, 86vw);
+        min-width: 0;
+        padding: 18px;
+        border-radius: 0;
+        transform: translateX(100%);
+        transition: transform 180ms ease;
+        overflow-y: auto;
+        visibility: hidden;
+      }
+      .account-menu:hover .account-panel,
+      .account-menu:focus-within .account-panel {
+        display: grid;
+      }
+      .account-menu.is-open .account-panel {
+        transform: translateX(0);
+        visibility: visible;
+      }
+      .account-panel-head {
+        display: block;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--line);
+      }
+      .account-panel-head strong {
+        display: block;
+        font-size: 22px;
+        line-height: 1.15;
+      }
+      .account-panel-head span {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .nav {
+        min-width: max-content;
       }
       .nav a {
-        padding: 0 4px;
+        padding: 0 10px;
       }
       .breaking {
         align-items: stretch;
@@ -473,7 +565,14 @@
         min-height: 300px;
       }
       .site-title {
-        font-size: 34px;
+        font-size: 32px;
+        line-height: 1.05;
+        overflow-wrap: anywhere;
+      }
+      .tagline {
+        margin-top: 5px;
+        font-size: 14px;
+        line-height: 1.35;
       }
       .lead-card h2 {
         font-size: 24px;
@@ -503,10 +602,19 @@
       </div>
     </div>
     <div class="mast-actions">
-      <div class="date-pill">Latest updates</div>
       <div class="account-menu">
-        <button class="account-toggle" type="button">Account</button>
+        <button class="account-toggle" type="button" aria-label="Open account menu">
+          <svg class="account-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 12c2.7 0 4.75-2.05 4.75-4.75S14.7 2.5 12 2.5 7.25 4.55 7.25 7.25 9.3 12 12 12Zm0 2.25c-3.45 0-7.25 1.9-7.25 4.75v1.25h14.5V19c0-2.85-3.8-4.75-7.25-4.75Z" fill="currentColor"/>
+          </svg>
+          <span class="account-toggle-text">Account</span>
+        </button>
+        <span class="account-drawer-backdrop" aria-hidden="true"></span>
         <div class="account-panel">
+          <div class="account-panel-head">
+            <strong>Account</strong>
+            <span>{{ tenant.business_name|default:tenant.publication_name }}</span>
+          </div>
           {% if request.user.is_authenticated %}
             <a href="/dashboard/">Dashboard</a>
             <form method="post" action="{% url 'accounts:logout' %}">
@@ -516,6 +624,9 @@
           {% else %}
             <a href="/account/login/?next=/dashboard/">Login</a>
           {% endif %}
+          <a href="/contact/">Help</a>
+          <a href="https://wa.me/918279408396" target="_blank" rel="noopener">Chat</a>
+          <button class="drawer-close" type="button">Close</button>
         </div>
       </div>
     </div>
@@ -591,10 +702,12 @@
             </strong>
             <span>{% if articles %}Latest published update{% else %}New articles will be listed here automatically.{% endif %}</span>
           </div>
-          <div class="headline-item">
-            <strong>Video and Live TV sections available</strong>
-            <span>Media updates can be enabled from the dashboard.</span>
-          </div>
+          {% if has_videos or has_live_tv %}
+            <div class="headline-item">
+              <strong>{% if has_videos and has_live_tv %}Video and Live TV sections available{% elif has_videos %}Video section available{% else %}Live TV section available{% endif %}</strong>
+              <span>Media updates can be managed from the dashboard.</span>
+            </div>
+          {% endif %}
           <div class="headline-item">
             <strong>Local coverage coming soon</strong>
             <span>Follow this site for upcoming reports and announcements.</span>
@@ -649,20 +762,24 @@
     {% if page == "home" %}
     <section class="empty-card">
       <h2>{% if articles %}More updates are coming{% else %}News publishing will begin shortly{% endif %}</h2>
-      <p>{{ tenant.business_name|default:tenant.publication_name }} is live. Articles, categories, photos, videos, and live updates will be shown here as soon as the newsroom adds content.</p>
+      <p>{{ tenant.business_name|default:tenant.publication_name }} is live. Articles, categories, and photos will be shown here as soon as the newsroom adds content{% if has_videos %}, along with videos{% endif %}{% if has_live_tv %}, live updates{% endif %}.</p>
       <div class="empty-actions">
         <div>
           <strong>Latest News</strong>
           <span>Fresh stories and public updates.</span>
         </div>
-        <div>
-          <strong>Videos</strong>
-          <span>Reports, interviews, and short clips.</span>
-        </div>
-        <div>
-          <strong>Live TV</strong>
-          <span>Live coverage when enabled.</span>
-        </div>
+        {% if has_videos %}
+          <div>
+            <strong>Videos</strong>
+            <span>Reports, interviews, and short clips.</span>
+          </div>
+        {% endif %}
+        {% if has_live_tv %}
+          <div>
+            <strong>Live TV</strong>
+            <span>Live coverage when enabled.</span>
+          </div>
+        {% endif %}
       </div>
     </section>
     {% endif %}
@@ -714,5 +831,42 @@
       <p>For updates, keep visiting this website.</p>
     </div>
   </footer>
+  <script>
+    (function () {
+      const accountMenu = document.querySelector('.account-menu');
+      const accountToggle = document.querySelector('.account-toggle');
+      const accountBackdrop = document.querySelector('.account-drawer-backdrop');
+      const drawerClose = document.querySelector('.drawer-close');
+      if (!accountMenu || !accountToggle) return;
+      function setAccountMenu(open) {
+        accountMenu.classList.toggle('is-open', open);
+        accountToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+      accountToggle.setAttribute('aria-expanded', 'false');
+      accountToggle.addEventListener('click', function (event) {
+        event.preventDefault();
+        setAccountMenu(!accountMenu.classList.contains('is-open'));
+      });
+      if (accountBackdrop) {
+        accountBackdrop.addEventListener('click', function () {
+          setAccountMenu(false);
+        });
+      }
+      if (drawerClose) {
+        drawerClose.addEventListener('click', function () {
+          setAccountMenu(false);
+        });
+      }
+      document.addEventListener('click', function (event) {
+        if (accountMenu.contains(event.target)) return;
+        setAccountMenu(false);
+      });
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') {
+          setAccountMenu(false);
+        }
+      });
+    })();
+  </script>
 </body>
 </html>

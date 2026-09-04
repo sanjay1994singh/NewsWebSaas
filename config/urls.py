@@ -19,6 +19,7 @@ from subscriptions import views as subscription_views
 
 urlpatterns = [
     path('', subscription_views.customer_home, name='home'),
+    path('profile/', subscription_views.tenant_profile_redirect, name='tenant_profile_redirect'),
     path('saas/', subscription_views.landing_page, name='public_saas_landing'),
     path('saas/signup/', subscription_views.signup, name='public_saas_signup'),
     path('about-us/', subscription_views.about_us, name='about_us'),

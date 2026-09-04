@@ -181,13 +181,20 @@
               <div>
                 <h3>{{ card.plan.name }}</h3>
                 {% if card.monthly_price %}
-                  <div class="price">{{ card.monthly_display }}<small>monthly</small></div>
+                  <p class="muted">Limited offer: 50% off</p>
+                  <div class="price">{{ card.offer.payable_display }}<small>monthly after offer</small></div>
                 {% elif card.yearly_price %}
                   <div class="price">{{ card.yearly_display }}<small>yearly</small></div>
                 {% else %}
                   <div class="price">Contact<small>pricing pending</small></div>
                 {% endif %}
-                {% if card.yearly_price %}<p class="muted">Yearly: {{ card.yearly_display }}</p>{% endif %}
+                {% if card.monthly_price %}
+                  <p class="muted">Plan price: {{ card.monthly_display }} monthly</p>
+                  <p class="muted">12 months offer: {{ card.yearly_offer.payable_display }}</p>
+                  <p class="muted">24 months offer: {{ card.two_year_offer.payable_display }}</p>
+                {% elif card.yearly_price %}
+                  <p class="muted">Yearly: {{ card.yearly_display }}</p>
+                {% endif %}
               </div>
               <ul>
                 {% for plan_feature in card.enabled_features %}
@@ -198,7 +205,7 @@
               </ul>
               <div class="plan-actions">
                 {% if card.signup_price %}
-                  <a class="btn" href="{% url 'public_saas_signup' %}?price={{ card.signup_price.id }}">Get Started</a>
+                  <a class="btn" href="{% url 'public_saas_signup' %}?price={{ card.signup_price.id }}&months=1">Get Started</a>
                 {% else %}
                   <button class="btn secondary" type="button" data-scroll-target="faq">Contact Sales</button>
                 {% endif %}

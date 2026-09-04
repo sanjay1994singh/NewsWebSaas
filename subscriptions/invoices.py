@@ -3,6 +3,8 @@ from django.core.mail import EmailMessage
 from django.template.defaultfilters import date as date_filter
 from django.utils import timezone
 
+from .pricing import money_display
+
 
 COMPANY = {
     'brand': 'Press Nexa',
@@ -27,8 +29,10 @@ def build_invoice_pdf(record):
     tenant = record.tenant
     subscription = record.subscription
     plan_name = subscription.plan.name if subscription else 'Press Nexa subscription'
-    cycle = subscription.get_billing_cycle_display() if subscription else '-'
-    amount = record.amount / 100
+    billing_months = record.billing_months or getattr(subscription, 'billing_months', 1) or 1
+    cycle = f"{billing_months} month" if billing_months == 1 else f"{billing_months} months"
+    list_amount = record.list_amount or record.amount
+    discount_amount = record.discount_amount or 0
     issued_on = timezone.localtime(record.created_at)
     return _invoice_pdf(
         {
@@ -42,7 +46,10 @@ def build_invoice_pdf(record):
             'mobile': tenant.mobile or '-',
             'plan': plan_name,
             'cycle': cycle,
-            'amount': f"{record.currency} {amount:,.2f}",
+            'list_amount': money_display(list_amount, record.currency),
+            'discount_percent': f"{record.discount_percent or 0}%",
+            'discount_amount': money_display(discount_amount, record.currency),
+            'amount': money_display(record.amount, record.currency),
         }
     )
 
@@ -96,7 +103,7 @@ def _invoice_pdf(data):
         '0.851 0.894 0.871 RG',
         '44 512 236 132 re S',
         '315 512 225 132 re S',
-        '44 348 496 108 re S',
+        '44 314 496 142 re S',
         '0.063 0.184 0.161 rg',
         _text(60, 620, 9, 'BILL TO', bold=True),
         _text(331, 620, 9, 'PAYMENT DETAILS', bold=True),
@@ -119,16 +126,20 @@ def _invoice_pdf(data):
         '0 0 0 rg',
         _text(60, 399, 10, _short(data['plan'], 46), bold=True),
         _text(322, 399, 9, data['cycle']),
-        _text(440, 399, 10, data['amount'], bold=True),
+        _text(440, 399, 10, data['list_amount'], bold=True),
         '0.851 0.894 0.871 RG',
         '60 378 m 524 378 l S',
+        _text(60, 360, 9, 'Offer discount'),
+        _text(322, 360, 9, data['discount_percent']),
+        _text(440, 360, 9, f"-{data['discount_amount']}"),
+        '60 342 m 524 342 l S',
         '0.965 0.973 0.969 rg',
-        '340 348 184 34 re f',
+        '340 314 184 34 re f',
         '0.851 0.894 0.871 RG',
-        '340 348 184 34 re S',
+        '340 314 184 34 re S',
         '0.063 0.184 0.161 rg',
-        _text(358, 360, 10, 'Total Paid', bold=True),
-        _text(440, 360, 10, data['amount'], bold=True),
+        _text(358, 326, 10, 'Final Paid', bold=True),
+        _text(440, 326, 10, data['amount'], bold=True),
         '0.388 0.463 0.431 rg',
         _text(44, 286, 8, 'This invoice is generated electronically for the verified Press Nexa subscription payment.'),
         _text(44, 272, 8, 'For corrections, contact support with your invoice number and payment reference.'),

@@ -23,11 +23,12 @@
   .invoice-table { width:100%; table-layout:fixed; border-collapse:collapse; overflow:hidden; border:1px solid var(--line); border-radius:8px; background:#fff; }
   .invoice-table th, .invoice-table td { padding:10px; border-bottom:1px solid var(--line); text-align:left; font-size:13px; }
   .invoice-table th { background:#eef6f2; color:var(--deep); font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
-  .invoice-table th:nth-child(1) { width:16%; }
-  .invoice-table th:nth-child(2) { width:24%; }
+  .invoice-table th:nth-child(1) { width:14%; }
+  .invoice-table th:nth-child(2) { width:20%; }
   .invoice-table th:nth-child(3) { width:16%; }
-  .invoice-table th:nth-child(4) { width:14%; }
-  .invoice-table th:nth-child(5) { width:30%; }
+  .invoice-table th:nth-child(4) { width:16%; }
+  .invoice-table th:nth-child(5) { width:12%; }
+  .invoice-table th:nth-child(6) { width:22%; }
   .invoice-table tr:last-child td { border-bottom:0; }
   .invoice-actions { display:flex; gap:8px; flex-wrap:wrap; }
   .invoice-actions .btn { min-height:34px; padding:7px 10px; font-size:12px; }
@@ -79,7 +80,9 @@
               <tr>
                 <th>Date</th>
                 <th>Plan</th>
-                <th>Amount</th>
+                <th>Plan amount</th>
+                <th>Discount</th>
+                <th>Paid</th>
                 <th>Status</th>
                 <th>Actions</th>
               </tr>
@@ -89,7 +92,9 @@
                 <tr>
                   <td data-label="Date">{{ invoice.created_at|date:"d M Y" }}</td>
                   <td data-label="Plan">{% if invoice.subscription %}{{ invoice.subscription.plan.name }}{% else %}Subscription{% endif %}</td>
-                  <td data-label="Amount">{{ invoice.currency }} {{ invoice.amount|paise_to_rupees }}</td>
+                  <td data-label="Plan amount">{{ invoice.currency }} {{ invoice.list_amount|default:invoice.amount|paise_to_rupees }}</td>
+                  <td data-label="Discount">{{ invoice.discount_percent|default:0 }}% / {{ invoice.currency }} {{ invoice.discount_amount|default:0|paise_to_rupees }}</td>
+                  <td data-label="Paid">{{ invoice.currency }} {{ invoice.amount|paise_to_rupees }}</td>
                   <td data-label="Status">{{ invoice.status|title }}</td>
                   <td data-label="Actions">
                     <div class="invoice-actions">

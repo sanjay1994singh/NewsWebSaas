@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Register - {{ tenant.business_name|default:tenant.publication_name }}{% endblock %}
+{% block styles %}
+.visitor-shell { min-height:calc(100vh - 120px); display:grid; align-items:start; }
+.visitor-card { max-width:560px; width:100%; margin:8px auto 0; padding:0; overflow:hidden; }
+.visitor-head { padding:28px 32px 20px; background:linear-gradient(135deg,#f3fbf8 0%,#ffffff 62%,#eef7f2 100%); border-bottom:1px solid var(--line); }
+.visitor-kicker { margin:0 0 8px; color:var(--brand); font-weight:900; font-size:13px; text-transform:uppercase; letter-spacing:.08em; }
+.visitor-head h1 { margin:0; font-size:34px; line-height:1.05; }
+.visitor-copy { margin:10px 0 0; color:var(--muted); }
+.visitor-form { padding:24px 32px 30px; }
+.form-actions { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:20px; padding-top:18px; border-top:1px solid var(--line); }
+.form-actions a { color:var(--brand); font-weight:900; text-decoration:none; }
+.field-error { margin:6px 0 0; color:var(--danger); font-size:13px; }
+@media (max-width:760px) {
+  .visitor-head, .visitor-form { padding-left:20px; padding-right:20px; }
+  .visitor-head h1 { font-size:29px; }
+  .form-actions { align-items:stretch; flex-direction:column; }
+  .form-actions .btn { width:100%; }
+}
+{% endblock %}
+{% block content %}
+<main class="page visitor-shell">
+  <section class="card visitor-card">
+    <div class="visitor-head">
+      <p class="visitor-kicker">Visitor account</p>
+      <h1>Register</h1>
+      <p class="visitor-copy">Create a visitor account for {{ tenant.business_name|default:tenant.publication_name }} updates. This account does not include dashboard access.</p>
+    </div>
+    <form class="visitor-form" method="post">
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="form-error-box">{{ form.non_field_errors }}</div>{% endif %}
+      {% for field in form %}
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+      {% endfor %}
+      <div class="form-actions">
+        <button class="btn" type="submit">Create Visitor Account</button>
+        <a href="{% url 'accounts:login' %}">Login</a>
+      </div>
+    </form>
+  </section>
+</main>
+{% endblock %}

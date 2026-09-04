@@ -1,9 +1,11 @@
 from django.contrib.auth.decorators import login_required, user_passes_test
+from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied
 from django.conf import settings
 from django.contrib import messages
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
 
 from analytics.services import record_article_view
 from core.models import user_can_access_tenant
@@ -17,12 +19,30 @@ from subscriptions.entitlements import get_effective_entitlements
 from subscriptions.models import CustomerAcquisition, TenantOnboarding, TenantSubscription
 from subscriptions.services import tenant_public_site_slug, tenant_public_site_url
 
-from .forms import TenantSettingsForm
-from .models import Tenant, TenantMembership
+from .forms import ReporterCreateForm, TenantSettingsForm, VisitorRegistrationForm
+from .models import Tenant, TenantMembership, TenantVisitor
 
 
 def is_platform_admin(user):
     return user.is_authenticated and (user.is_superuser or user.is_super_admin or user.is_support_admin)
+
+
+def _tenant_for_user(user):
+    membership = (
+        TenantMembership.objects
+        .select_related('tenant')
+        .filter(user=user, status=TenantMembership.Status.ACTIVE)
+        .order_by('role', 'created_at')
+        .first()
+    )
+    return membership.tenant if membership else Tenant.objects.filter(owner=user).first()
+
+
+def _user_can_manage_reporters(user, tenant):
+    return user_can_access_tenant(user, tenant, roles=[
+        TenantMembership.Role.OWNER,
+        TenantMembership.Role.ADMINISTRATOR,
+    ])
 
 
 @login_required
@@ -36,14 +56,7 @@ def saas_admin_dashboard(request):
 def tenant_dashboard(request):
     tenant = getattr(request, 'tenant', None)
     if tenant is None:
-        membership = (
-            TenantMembership.objects
-            .select_related('tenant')
-            .filter(user=request.user, status=TenantMembership.Status.ACTIVE)
-            .order_by('role', 'created_at')
-            .first()
-        )
-        tenant = membership.tenant if membership else Tenant.objects.filter(owner=request.user).first()
+        tenant = _tenant_for_user(request.user)
     if tenant is None:
         pending_acquisition = (
             CustomerAcquisition.objects
@@ -94,6 +107,7 @@ def tenant_dashboard(request):
         ('advertisement_manager', 'Advertisements', '/dashboard/ads/'),
         ('analytics', 'Analytics', '/dashboard/analytics/'),
         ('custom_domain', 'Domains', '/dashboard/domains/'),
+        ('multiple_staff', 'Reporters', '/dashboard/reporters/'),
         ('mobile_app', 'Mobile App', '/dashboard/mobile-app/'),
     ]
     visible_menu = [
@@ -150,13 +164,117 @@ def public_domain_page(request, page):
     return _render_public_tenant_site(request, tenant, page)
 
 
+def visitor_register(request):
+    tenant = getattr(request, 'tenant', None)
+    if tenant is None:
+        raise Http404("Publication site not found.")
+    if request.method == 'POST':
+        form = VisitorRegistrationForm(request.POST)
+        if form.is_valid():
+            User = get_user_model()
+            email = form.cleaned_data.get('email') or ''
+            mobile = form.cleaned_data.get('mobile') or ''
+            base = (email.split('@', 1)[0] if email else f"visitor{mobile[-4:]}").lower() or 'visitor'
+            username = base[:140]
+            index = 1
+            while User.objects.filter(username=username).exists():
+                index += 1
+                username = f"{base[:135]}{index}"
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=form.cleaned_data['password'],
+                first_name=form.cleaned_data['name'],
+            )
+            TenantVisitor.objects.create(
+                tenant=tenant,
+                user=user,
+                name=form.cleaned_data['name'],
+                email=email,
+                mobile=mobile,
+            )
+            messages.success(request, 'Visitor account registered. This account is for reading and updates only; dashboard access is managed by the publication owner.')
+            return redirect('accounts:login')
+    else:
+        form = VisitorRegistrationForm()
+    return render(request, 'tenants/visitor_register.html', {'tenant': tenant, 'form': form})
+
+
+@login_required
+def reporter_list(request):
+    tenant = _tenant_for_user(request.user)
+    if tenant is None or not _user_can_manage_reporters(request.user, tenant):
+        raise PermissionDenied("Only tenant owners or administrators can manage reporters.")
+    reporters = (
+        TenantMembership.objects
+        .select_related('user')
+        .filter(tenant=tenant, role__in=[TenantMembership.Role.REPORTER, TenantMembership.Role.EDITOR])
+        .order_by('role', 'user__first_name', 'user__username')
+    )
+    return render(request, 'tenants/reporter_list.html', {'tenant': tenant, 'reporters': reporters})
+
+
+@login_required
+def reporter_create(request):
+    tenant = _tenant_for_user(request.user)
+    if tenant is None or not _user_can_manage_reporters(request.user, tenant):
+        raise PermissionDenied("Only tenant owners or administrators can manage reporters.")
+    if request.method == 'POST':
+        form = ReporterCreateForm(request.POST)
+        if form.is_valid():
+            User = get_user_model()
+            email = form.cleaned_data['email']
+            username_base = email.split('@', 1)[0].lower() or 'reporter'
+            username = username_base[:140]
+            index = 1
+            while User.objects.filter(username=username).exists():
+                index += 1
+                username = f"{username_base[:135]}{index}"
+            full_name = form.cleaned_data['full_name'].strip()
+            first_name, _, last_name = full_name.partition(' ')
+            user = User.objects.create_user(
+                username=username,
+                email=email,
+                password=form.cleaned_data['password'],
+                first_name=first_name,
+                last_name=last_name,
+            )
+            TenantMembership.objects.create(
+                tenant=tenant,
+                user=user,
+                role=form.cleaned_data['role'],
+                status=TenantMembership.Status.ACTIVE,
+                joined_at=timezone.now(),
+            )
+            messages.success(request, 'Reporter account created.')
+            return redirect('tenants:reporter_list')
+    else:
+        form = ReporterCreateForm()
+    return render(request, 'tenants/reporter_form.html', {'tenant': tenant, 'form': form})
+
+
 def _render_public_tenant_site(request, tenant, page='home'):
     allowed_pages = {'home', 'latest-news', 'top-stories', 'blogs', 'videos', 'live-tv', 'contact'}
     if page not in allowed_pages:
         raise Http404("Publication page not found.")
     request.tenant = tenant
+    entitlements = get_effective_entitlements(tenant)
+    has_videos = entitlements.get('youtube_videos', {}).get('is_enabled') or entitlements.get('youtube_shorts', {}).get('is_enabled')
+    has_live_tv = entitlements.get('live_tv', {}).get('is_enabled')
+    if page == 'videos' and not has_videos:
+        raise Http404("Publication page not found.")
+    if page == 'live-tv' and not has_live_tv:
+        raise Http404("Publication page not found.")
     layout = get_or_create_layout(tenant, HomepageLayout.Status.PUBLISHED)
     blocks = list(layout.blocks.filter(is_enabled=True).select_related('category'))
+    blocks = [
+        block
+        for block in blocks
+        if not (
+            (block.block_type == HomepageBlock.BlockType.VIDEOS and not has_videos)
+            or (block.block_type == HomepageBlock.BlockType.LIVE_TV and not has_live_tv)
+        )
+    ]
     published_queryset = published_articles_for_tenant(tenant)
     article_queryset = published_queryset.filter(content_type=NewsArticle.ContentType.BLOG if page == 'blogs' else NewsArticle.ContentType.NEWS)
     if page == 'top-stories':
@@ -178,8 +296,8 @@ def _render_public_tenant_site(request, tenant, page='home'):
         'top_article': top_article,
         'tenant': tenant,
         'onboarding': onboarding,
-        'has_videos': any(block.block_type == HomepageBlock.BlockType.VIDEOS for block in blocks),
-        'has_live_tv': any(block.block_type == HomepageBlock.BlockType.LIVE_TV for block in blocks),
+        'has_videos': has_videos,
+        'has_live_tv': has_live_tv,
         'has_blogs': has_blogs,
         'page': page,
         'public_site_slug': tenant_public_site_slug(tenant),

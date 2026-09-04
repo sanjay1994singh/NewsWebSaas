@@ -13,7 +13,7 @@ from news.models import AuthorProfile, NewsArticle
 from subscriptions.models import TenantOnboarding
 from subscriptions.services import tenant_public_site_slug, tenant_public_site_url
 
-from .models import Tenant, TenantMembership
+from .models import Tenant, TenantMembership, TenantVisitor
 
 
 @override_settings(ALLOWED_HOSTS=['testserver', 'customera.platformdomain.com', 'www.customera.platformdomain.com', 'customerb.platformdomain.com', 'unknown.platformdomain.com'])
@@ -124,7 +124,21 @@ class TenantIsolationTests(TestCase):
         self.assertNotContains(response, 'A News brings you')
         self.assertContains(response, 'Account')
         self.assertContains(response, '/account/login/?next=/dashboard/')
+        self.assertNotContains(response, 'Latest updates')
+        self.assertNotContains(response, 'href="/videos/"')
+        self.assertNotContains(response, 'href="/live-tv/"')
+        self.assertNotContains(response, 'data-block-type="videos"')
+        self.assertNotContains(response, 'data-block-type="live_tv"')
+        self.assertNotContains(response, 'Video and Live TV sections available')
+        self.assertNotContains(response, '<strong>Videos</strong>', html=True)
+        self.assertNotContains(response, '<strong>Live TV</strong>', html=True)
         self.assertNotContains(response, 'Launch Your Digital News Platform')
+
+    def test_disabled_video_and_live_tv_public_pages_return_404(self):
+        response = self.client.get('/videos/', HTTP_HOST='customera.platformdomain.com')
+        self.assertEqual(response.status_code, 404)
+        response = self.client.get('/live-tv/', HTTP_HOST='customera.platformdomain.com')
+        self.assertEqual(response.status_code, 404)
 
     def test_tenant_domain_account_menu_shows_dashboard_and_logout_for_logged_in_owner(self):
         self.client.force_login(self.user_a)
@@ -311,6 +325,65 @@ class TenantIsolationTests(TestCase):
         self.assertContains(response, 'A Media')
         self.assertNotContains(response, 'Press Nexa')
         self.assertContains(response, 'Back to website')
+
+    @override_settings(SITE_BASE_URL='https://pressnexa.live-app.in')
+    def test_tenant_domain_login_rejects_user_from_other_tenant(self):
+        response = self.client.post(
+            '/account/login/?next=/dashboard/',
+            {'username': 'owner-b', 'password': 'testpass123'},
+            HTTP_HOST='customera.platformdomain.com',
+            follow=True,
+        )
+
+        self.assertRedirects(response, '/account/login/?next=/dashboard/')
+        self.assertContains(response, 'Aapka account is site par registered nahi hai')
+
+    @override_settings(SITE_BASE_URL='https://pressnexa.live-app.in')
+    def test_tenant_domain_login_shows_registration_link(self):
+        response = self.client.get('/account/login/?next=/dashboard/', HTTP_HOST='customera.platformdomain.com')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Register as visitor')
+        self.assertContains(response, '/register/')
+
+    def test_tenant_domain_visitor_register_creates_visitor_without_membership(self):
+        response = self.client.post(
+            '/register/',
+            {
+                'name': 'Reader One',
+                'email': 'reader@example.com',
+                'mobile': '9876543210',
+                'password': 'testpass123',
+                'confirm_password': 'testpass123',
+            },
+            HTTP_HOST='customera.platformdomain.com',
+            follow=True,
+        )
+
+        self.assertContains(response, 'Visitor account registered')
+        visitor = TenantVisitor.objects.get(email='reader@example.com')
+        self.assertEqual(visitor.tenant, self.tenant_a)
+        self.assertFalse(TenantMembership.objects.filter(tenant=self.tenant_a, user=visitor.user).exists())
+
+    def test_owner_can_create_reporter_membership(self):
+        self.client.force_login(self.user_a)
+        response = self.client.post(
+            reverse('tenants:reporter_create'),
+            {
+                'full_name': 'Field Reporter',
+                'email': 'field@example.com',
+                'mobile': '9999999999',
+                'password': 'testpass123',
+                'confirm_password': 'testpass123',
+                'role': TenantMembership.Role.REPORTER,
+            },
+            follow=True,
+        )
+
+        self.assertContains(response, 'Reporter account created')
+        membership = TenantMembership.objects.get(user__email='field@example.com', tenant=self.tenant_a)
+        self.assertEqual(membership.role, TenantMembership.Role.REPORTER)
+        self.assertEqual(membership.status, TenantMembership.Status.ACTIVE)
 
     def test_tenant_domain_platform_pages_redirect_to_tenant_home(self):
         response = self.client.get('/about-us/', HTTP_HOST='customera.platformdomain.com')

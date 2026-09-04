@@ -22,6 +22,7 @@ from .models import (
     BillingRecord,
     CustomerAcquisition,
     Feature,
+    OnboardingReviewEvent,
     Plan,
     PlanFeature,
     PlanPrice,
@@ -31,6 +32,7 @@ from .models import (
     TenantSubscription,
     WebhookEvent,
 )
+from .pricing import calculate_checkout_pricing
 from .services import (
     auto_publish_paid_onboardings,
     create_tenant_after_verified_subscription,
@@ -39,6 +41,7 @@ from .services import (
     subscription_period_for_cycle,
     verify_razorpay_signature,
 )
+from .whatsapp import normalize_whatsapp_number
 
 
 class SubscriptionTests(TestCase):
@@ -168,6 +171,10 @@ class SubscriptionTests(TestCase):
         self.assertEqual(billing_record.razorpay_order_id, 'order_checkout_123')
         self.assertEqual(billing_record.razorpay_signature, 'sig_checkout_123')
         self.assertEqual(billing_record.payload['provider_payment_id'], 'pay_checkout_123')
+        self.assertEqual(billing_record.amount, 99950)
+        self.assertEqual(billing_record.list_amount, 199900)
+        self.assertEqual(billing_record.discount_percent, 50)
+        self.assertEqual(billing_record.discount_amount, 99950)
         subscription = tenant.subscription
         self.assertIsNotNone(subscription.current_period_end)
         self.assertIsNotNone(subscription.charge_at)
@@ -176,6 +183,16 @@ class SubscriptionTests(TestCase):
         self.assertEqual(platform_domain.domain, 'checkout-media.live-app.in')
         self.assertTrue(platform_domain.is_verified)
         self.assertEqual(platform_domain.ssl_status, platform_domain.SSLStatus.ACTIVE)
+        onboarding = tenant.commercial_onboarding
+        self.assertEqual(onboarding.status, TenantOnboarding.Status.SUBMITTED_FOR_REVIEW)
+        self.assertIsNotNone(onboarding.submitted_at)
+        self.assertEqual(onboarding.site_title, 'Checkout Media')
+        self.assertTrue(
+            onboarding.review_events.filter(
+                action=OnboardingReviewEvent.Action.SUBMITTED,
+                notes='Auto-submitted after verified subscription payment.',
+            ).exists()
+        )
 
     def test_signup_reserves_site_slug_from_channel_or_paper_name(self):
         form = CustomerSignupForm(
@@ -228,6 +245,67 @@ class SubscriptionTests(TestCase):
         self.assertEqual(monthly_charge, monthly_end)
         self.assertEqual(yearly_end.date(), timezone.datetime(2027, 9, 3).date())
         self.assertEqual(yearly_charge, yearly_end)
+
+        _, two_year_end, two_year_charge = subscription_period_for_cycle(start, PlanPrice.BillingCycle.MONTHLY, 24)
+        self.assertEqual(two_year_end.date(), timezone.datetime(2028, 9, 3).date())
+        self.assertEqual(two_year_charge, two_year_end)
+
+    def test_offer_pricing_calculates_duration_discount(self):
+        one_month = calculate_checkout_pricing(self.price, 1)
+        twelve_months = calculate_checkout_pricing(self.price, 12)
+        twenty_four_months = calculate_checkout_pricing(self.price, 24)
+
+        self.assertEqual(one_month.list_amount, 199900)
+        self.assertEqual(one_month.discount_amount, 99950)
+        self.assertEqual(one_month.payable_amount, 99950)
+        self.assertEqual(twelve_months.list_amount, 2398800)
+        self.assertEqual(twelve_months.payable_amount, 1199400)
+        self.assertEqual(twenty_four_months.list_amount, 4797600)
+        self.assertEqual(twenty_four_months.payable_amount, 2398800)
+
+    def test_whatsapp_number_normalization_handles_leading_zero(self):
+        self.assertEqual(normalize_whatsapp_number('06397712918'), '916397712918')
+        self.assertEqual(normalize_whatsapp_number('9106397712918'), '916397712918')
+        self.assertEqual(normalize_whatsapp_number('8384802152'), '918384802152')
+
+    def test_pending_checkout_duration_can_change_before_payment(self):
+        User = get_user_model()
+        buyer = User.objects.create_user(username='buyer', password='testpass123')
+        acquisition = CustomerAcquisition.objects.create(
+            user=buyer,
+            plan_price=self.price,
+            business_name='Duration Media',
+            publication_name='Duration News',
+            publication_slug='duration-news',
+            email='duration@example.com',
+            mobile='9999999999',
+            status=CustomerAcquisition.Status.PAYMENT_PENDING,
+            billing_months=12,
+            list_amount=2398800,
+            discount_percent=50,
+            discount_amount=1199400,
+            payable_amount=1199400,
+            provider_order_id='order_old',
+            provider_payload={'order': {'id': 'order_old'}},
+        )
+        self.client.login(username='buyer', password='testpass123')
+        session = self.client.session
+        session['pending_checkout'] = {'order_id': 'order_old', 'billing_months': 12}
+        session.save()
+
+        response = self.client.post(
+            reverse('subscriptions:checkout', kwargs={'acquisition_id': acquisition.uuid}),
+            {'billing_months': '1'},
+        )
+
+        self.assertRedirects(response, reverse('subscriptions:checkout', kwargs={'acquisition_id': acquisition.uuid}))
+        acquisition.refresh_from_db()
+        self.assertEqual(acquisition.billing_months, 1)
+        self.assertEqual(acquisition.list_amount, 199900)
+        self.assertEqual(acquisition.discount_amount, 99950)
+        self.assertEqual(acquisition.payable_amount, 99950)
+        self.assertEqual(acquisition.provider_order_id, '')
+        self.assertNotIn('pending_checkout', self.client.session)
 
     @override_settings(RAZORPAY_WEBHOOK_SECRET='secret', RAZORPAY_ENVIRONMENT='test')
     def test_failed_payment_webhook_marks_acquisition_failed(self):
@@ -282,6 +360,31 @@ class SubscriptionTests(TestCase):
         response = self.client.get(reverse('subscriptions:checkout', kwargs={'acquisition_id': acquisition.uuid}))
 
         self.assertRedirects(response, reverse('home'), fetch_redirect_response=False)
+
+    @override_settings(SITE_BASE_URL='https://pressnexa.live-app.in')
+    def test_static_whatsapp_profile_button_redirects_to_tenant_domain_profile(self):
+        TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            status=TenantSubscription.Status.ACTIVE,
+        )
+        from domains.models import TenantDomain
+
+        TenantDomain.objects.create(
+            tenant=self.tenant,
+            domain='billing-news.live-app.in',
+            domain_type=TenantDomain.DomainType.PLATFORM_SUBDOMAIN,
+            is_primary=True,
+            is_verified=True,
+            ssl_status=TenantDomain.SSLStatus.ACTIVE,
+            status=TenantDomain.Status.ACTIVE,
+        )
+        self.client.login(username='owner', password='testpass123')
+
+        response = self.client.get('/profile/')
+
+        self.assertRedirects(response, 'https://billing-news.live-app.in/account/profile/', fetch_redirect_response=False)
 
     def test_billing_dashboard_renders_add_on_actions_with_uuid_urls(self):
         TenantSubscription.objects.create(

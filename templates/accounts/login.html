@@ -65,6 +65,7 @@
         <button class="btn" type="submit">Login</button>
         {% if is_tenant_domain %}
           <a href="/">Back to website</a>
+          {% if tenant_register_url %}<a href="{{ tenant_register_url }}">{{ tenant_register_label }}</a>{% endif %}
         {% else %}
           <a href="{% url 'public_saas_landing' %}">Choose a plan</a>
         {% endif %}

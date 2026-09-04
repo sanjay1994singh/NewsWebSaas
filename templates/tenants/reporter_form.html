@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Add Reporter - {{ tenant.publication_name }}{% endblock %}
+{% block styles %}
+.reporter-form-card { max-width:680px; margin:0 auto; }
+.reporter-form-card h1 { margin:0 0 8px; font-size:34px; }
+.form-actions { display:flex; gap:12px; margin-top:20px; padding-top:18px; border-top:1px solid var(--line); }
+.field-error { margin:6px 0 0; color:var(--danger); font-size:13px; }
+@media (max-width:760px) { .form-actions { flex-direction:column; } .form-actions .btn { width:100%; } }
+{% endblock %}
+{% block content %}
+<main class="page">
+  <section class="card reporter-form-card">
+    <p class="muted">Workspace team</p>
+    <h1>Add Reporter</h1>
+    <p class="muted">This account will be registered only for {{ tenant.publication_name }} and can access publishing tools.</p>
+    <form method="post">
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="form-error-box">{{ form.non_field_errors }}</div>{% endif %}
+      {% for field in form %}
+        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+        {{ field }}
+        {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+      {% endfor %}
+      <div class="form-actions">
+        <button class="btn" type="submit">Create Reporter</button>
+        <a class="btn secondary" href="{% url 'tenants:reporter_list' %}">Cancel</a>
+      </div>
+    </form>
+  </section>
+</main>
+{% endblock %}

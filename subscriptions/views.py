@@ -4,7 +4,9 @@ from django.contrib.auth import login
 from django.contrib.auth.decorators import login_required
 from django.contrib.admin.views.decorators import staff_member_required
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.core import signing
 from django.http import HttpResponse, JsonResponse
+from django.urls import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
@@ -18,7 +20,7 @@ from tenants.models import Tenant
 from tenants.views import _render_public_tenant_site
 
 from .entitlements import get_effective_entitlement, get_effective_entitlements
-from .forms import CustomerSignupForm, CustomerWorkspaceForm, OnboardingForm, ReviewActionForm
+from .forms import CheckoutDurationForm, CustomerSignupForm, CustomerWorkspaceForm, OnboardingForm, ReviewActionForm
 from .invoices import build_invoice_pdf, email_invoice, invoice_filename
 from .models import (
     AddOn,
@@ -34,6 +36,9 @@ from .models import (
     TenantOnboarding,
     TenantSubscription,
 )
+
+WHATSAPP_INVOICE_SIGNER_SALT = 'subscriptions.whatsapp.invoice'
+from .pricing import calculate_checkout_pricing, money_display
 from .services import (
     activate_tenant_add_on,
     apply_verified_plan_change,
@@ -45,6 +50,7 @@ from .services import (
     reserve_customer_acquisition,
     reserve_customer_acquisition_for_user,
     submit_onboarding_for_review,
+    tenant_public_site_url,
     update_pending_customer_acquisition,
     verify_razorpay_checkout_signature,
 )
@@ -136,6 +142,14 @@ def customer_home(request):
     return redirect('subscriptions:account_status')
 
 
+@login_required
+def tenant_profile_redirect(request):
+    tenant, subscription, onboarding_record = _customer_tenant_context(request.user)
+    if tenant is None:
+        return redirect('accounts:profile')
+    return redirect(f"{tenant_public_site_url(tenant).rstrip('/')}/account/profile/")
+
+
 def _public_plan_context():
     plans = (
         Plan.objects
@@ -154,17 +168,23 @@ def _public_plan_context():
     for plan_feature in plan_features:
         feature_matrix[plan_feature.feature.code]['plans'][plan_feature.plan_id] = plan_feature
 
-    def price_display(price):
+    def offer_context(price, months):
         if not price:
-            return ''
-        amount = price.amount / 100
-        amount_text = f"{amount:,.0f}" if amount.is_integer() else f"{amount:,.2f}"
-        return f"{price.currency} {amount_text}"
+            return None
+        pricing = calculate_checkout_pricing(price, months)
+        return {
+            'billing_months': pricing.billing_months,
+            'billing_label': pricing.billing_label,
+            'list_display': money_display(pricing.list_amount, pricing.currency),
+            'discount_percent': pricing.discount_percent,
+            'discount_display': money_display(pricing.discount_amount, pricing.currency),
+            'payable_display': money_display(pricing.payable_amount, pricing.currency),
+        }
 
     plan_cards = []
     for plan in plans:
         prices = list(plan.prices.all())
-        monthly_price = next((price for price in prices if price.billing_cycle == PlanPrice.BillingCycle.MONTHLY), None)
+        monthly_price = next((price for price in prices if price.billing_cycle == PlanPrice.BillingCycle.MONTHLY and price.is_active), None)
         yearly_price = next((price for price in prices if price.billing_cycle == PlanPrice.BillingCycle.YEARLY), None)
         enabled_features = [
             plan_feature
@@ -176,8 +196,11 @@ def _public_plan_context():
                 'plan': plan,
                 'monthly_price': monthly_price,
                 'yearly_price': yearly_price,
-                'monthly_display': price_display(monthly_price),
-                'yearly_display': price_display(yearly_price),
+                'monthly_display': money_display(monthly_price.amount, monthly_price.currency) if monthly_price else '',
+                'yearly_display': money_display(yearly_price.amount, yearly_price.currency) if yearly_price else '',
+                'offer': offer_context(monthly_price, 1),
+                'yearly_offer': offer_context(monthly_price, 12),
+                'two_year_offer': offer_context(monthly_price, 24),
                 'enabled_features': enabled_features[:8],
                 'signup_price': monthly_price or yearly_price,
             }
@@ -280,6 +303,7 @@ def signup(request):
                         email=form.cleaned_data['email'],
                         mobile=form.cleaned_data['mobile'],
                         plan_price=form.cleaned_data['price_id'],
+                        billing_months=form.cleaned_data['billing_months'],
                     )
                     messages.info(request, 'Your saved workspace details were updated. Continue payment to activate it.')
                 else:
@@ -291,12 +315,13 @@ def signup(request):
                         email=form.cleaned_data['email'],
                         mobile=form.cleaned_data['mobile'],
                         plan_price=form.cleaned_data['price_id'],
+                        billing_months=form.cleaned_data['billing_months'],
                     )
                     messages.success(request, 'Workspace reserved. Complete the verified subscription step to activate your tenant.')
                 request.session['pending_checkout'] = checkout
                 return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
         else:
-            form = CustomerWorkspaceForm(initial={'price_id': initial_price_id}, user=request.user)
+            form = CustomerWorkspaceForm(initial={'price_id': initial_price_id, 'billing_months': request.GET.get('months', '1')}, user=request.user)
         return render(
             request,
             'subscriptions/signup.html',
@@ -318,13 +343,14 @@ def signup(request):
                 mobile=form.cleaned_data['mobile'],
                 password=form.cleaned_data['password'],
                 plan_price=form.cleaned_data['price_id'],
+                billing_months=form.cleaned_data['billing_months'],
             )
             login(request, acquisition.user)
             request.session['pending_checkout'] = checkout
             messages.success(request, 'Account reserved. Complete the verified subscription step to create your tenant workspace.')
             return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
     else:
-        form = CustomerSignupForm(initial={'price_id': initial_price_id})
+        form = CustomerSignupForm(initial={'price_id': initial_price_id, 'billing_months': request.GET.get('months', '1')})
     return render(request, 'subscriptions/signup.html', {'form': form, 'plans': _public_plan_context()['plans']})
 
 
@@ -351,12 +377,45 @@ def checkout(request, acquisition_id):
     if acquisition.status != CustomerAcquisition.Status.PAYMENT_PENDING:
         messages.info(request, 'This payment request is no longer active. Choose a plan to continue.')
         return redirect('subscriptions:account_status')
+    duration_form = CheckoutDurationForm(
+        request.POST or None,
+        initial={'billing_months': acquisition.billing_months},
+    )
+    if request.method == 'POST':
+        if duration_form.is_valid():
+            pricing = calculate_checkout_pricing(acquisition.plan_price, duration_form.cleaned_data['billing_months'])
+            acquisition.billing_months = pricing.billing_months
+            acquisition.list_amount = pricing.list_amount
+            acquisition.discount_percent = pricing.discount_percent
+            acquisition.discount_amount = pricing.discount_amount
+            acquisition.payable_amount = pricing.payable_amount
+            acquisition.provider_order_id = ''
+            acquisition.provider_payload = {
+                **(acquisition.provider_payload or {}),
+                'duration_changed_before_payment': True,
+            }
+            acquisition.save(update_fields=[
+                'billing_months',
+                'list_amount',
+                'discount_percent',
+                'discount_amount',
+                'payable_amount',
+                'provider_order_id',
+                'provider_payload',
+                'updated_at',
+            ])
+            request.session.pop('pending_checkout', None)
+            messages.success(request, 'Subscription duration updated. Review the refreshed payable amount before payment.')
+            return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
+        messages.error(request, 'Choose a valid subscription duration.')
     checkout_data = request.session.get('pending_checkout', {})
     try:
+        checkout_pricing = calculate_checkout_pricing(acquisition.plan_price, acquisition.billing_months)
         checkout_is_stale = (
             checkout_data.get('acquisition_id') != str(acquisition.id)
-            or checkout_data.get('amount') != acquisition.plan_price.amount
+            or checkout_data.get('amount') != checkout_pricing.payable_amount
             or checkout_data.get('currency') != acquisition.plan_price.currency
+            or checkout_data.get('billing_months') != checkout_pricing.billing_months
         )
         if not checkout_data.get('order_id') or checkout_is_stale:
             checkout_data = create_razorpay_order_for_acquisition(acquisition)
@@ -366,7 +425,19 @@ def checkout(request, acquisition_id):
         checkout_data['checkout_error'] = exc.message
     except Exception:
         checkout_data['checkout_error'] = 'Unable to initialize Razorpay checkout right now.'
-    return render(request, 'subscriptions/checkout.html', {'acquisition': acquisition, 'checkout': checkout_data})
+    checkout_pricing = calculate_checkout_pricing(acquisition.plan_price, acquisition.billing_months)
+    checkout_data['pricing'] = checkout_data.get('pricing') or {
+        'billing_months': checkout_pricing.billing_months,
+        'billing_label': checkout_pricing.billing_label,
+        'list_amount': checkout_pricing.list_amount,
+        'list_display': money_display(checkout_pricing.list_amount, checkout_pricing.currency),
+        'discount_percent': checkout_pricing.discount_percent,
+        'discount_amount': checkout_pricing.discount_amount,
+        'discount_display': money_display(checkout_pricing.discount_amount, checkout_pricing.currency),
+        'payable_amount': checkout_pricing.payable_amount,
+        'payable_display': money_display(checkout_pricing.payable_amount, checkout_pricing.currency),
+    }
+    return render(request, 'subscriptions/checkout.html', {'acquisition': acquisition, 'checkout': checkout_data, 'duration_form': duration_form})
 
 
 @login_required
@@ -401,16 +472,25 @@ def verify_subscription(request, acquisition_id):
         },
     )
     billing_record = BillingRecord.objects.filter(tenant=tenant, status='paid').order_by('-created_at').first()
+    invoice_document_url = ''
     if billing_record:
         email_invoice(billing_record)
+        token = signing.dumps({'record_id': billing_record.id}, salt=WHATSAPP_INVOICE_SIGNER_SALT)
+        invoice_document_url = request.build_absolute_uri(
+            reverse('subscriptions:whatsapp_invoice_pdf', kwargs={'token': token})
+        )
     notify_payment_success(
         acquisition=acquisition,
         tenant=tenant,
         payment_reference=payment_id,
         dashboard_url=request.build_absolute_uri('/dashboard/'),
         profile_url=request.build_absolute_uri('/account/profile/'),
+        invoice_document_url=invoice_document_url,
     )
-    messages.success(request, 'Subscription verified. Your dashboard is ready. Complete setup details from the dashboard.')
+    messages.success(
+        request,
+        'Payment successful. Your website is being developed now. Within 30 minutes your workspace, website, and publishing access will be fully available.',
+    )
     return redirect('tenants:tenant_dashboard')
 
 
@@ -572,6 +652,10 @@ def billing_dashboard(request):
             defaults={
                 'subscription': subscription,
                 'amount': plan_price.amount if plan_price else 0,
+                'billing_months': getattr(subscription, 'billing_months', 1) or 1,
+                'list_amount': plan_price.amount if plan_price else 0,
+                'discount_percent': 0,
+                'discount_amount': 0,
                 'currency': plan_price.currency if plan_price else 'INR',
                 'status': 'paid',
                 'payload': {
@@ -621,6 +705,21 @@ def view_invoice(request, record_id):
     )
     if record.tenant.owner_id != request.user.id and not user_can_access_tenant(request.user, record.tenant):
         raise PermissionDenied("You do not have access to this invoice.")
+    response = HttpResponse(build_invoice_pdf(record), content_type='application/pdf')
+    response['Content-Disposition'] = f'inline; filename="{invoice_filename(record)}"'
+    return response
+
+
+def whatsapp_invoice_pdf(request, token):
+    try:
+        payload = signing.loads(token, salt=WHATSAPP_INVOICE_SIGNER_SALT, max_age=60 * 60 * 24 * 30)
+    except signing.BadSignature:
+        raise PermissionDenied("Invalid invoice link.")
+    record = get_object_or_404(
+        BillingRecord.objects.select_related('tenant', 'subscription__plan'),
+        pk=payload.get('record_id'),
+        status='paid',
+    )
     response = HttpResponse(build_invoice_pdf(record), content_type='application/pdf')
     response['Content-Disposition'] = f'inline; filename="{invoice_filename(record)}"'
     return response

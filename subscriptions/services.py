@@ -35,6 +35,7 @@ from .models import (
     TenantSubscription,
     WebhookEvent,
 )
+from .pricing import calculate_checkout_pricing, money_display, normalize_billing_months
 from .whatsapp import notify_payment_failed
 
 
@@ -47,8 +48,8 @@ def _add_months(value, months):
     return value.replace(year=year, month=month, day=day)
 
 
-def subscription_period_for_cycle(start_at, billing_cycle):
-    months = 12 if billing_cycle == PlanPrice.BillingCycle.YEARLY else 1
+def subscription_period_for_cycle(start_at, billing_cycle, billing_months=None):
+    months = normalize_billing_months(billing_months) if billing_months else 12 if billing_cycle == PlanPrice.BillingCycle.YEARLY else 1
     end_at = _add_months(start_at, months)
     return start_at, end_at, end_at
 
@@ -295,11 +296,12 @@ def get_razorpay_client():
 
 def create_razorpay_order_for_acquisition(acquisition):
     price = acquisition.plan_price
+    checkout_pricing = calculate_checkout_pricing(price, acquisition.billing_months)
     client = get_razorpay_client()
     receipt = f"tenant_{acquisition.user_id}_{acquisition.uuid.hex[:24]}"
     order = client.order.create(
         {
-            'amount': price.amount,
+            'amount': checkout_pricing.payable_amount,
             'currency': price.currency,
             'receipt': receipt,
             'payment_capture': 1,
@@ -309,6 +311,11 @@ def create_razorpay_order_for_acquisition(acquisition):
                 'plan_price_id': str(price.id),
                 'plan_code': price.plan.code,
                 'billing_cycle': price.billing_cycle,
+                'billing_months': str(checkout_pricing.billing_months),
+                'list_amount': str(checkout_pricing.list_amount),
+                'discount_percent': str(checkout_pricing.discount_percent),
+                'discount_amount': str(checkout_pricing.discount_amount),
+                'payable_amount': str(checkout_pricing.payable_amount),
             },
         }
     )
@@ -325,7 +332,18 @@ def create_razorpay_order_for_acquisition(acquisition):
         'amount': order['amount'],
         'currency': order['currency'],
         'name': 'Press Nexa',
-        'description': f"{price.plan.name} - {price.get_billing_cycle_display()}",
+        'description': f"{price.plan.name} - {checkout_pricing.billing_label}",
+        'pricing': {
+            'billing_months': checkout_pricing.billing_months,
+            'billing_label': checkout_pricing.billing_label,
+            'list_amount': checkout_pricing.list_amount,
+            'list_display': money_display(checkout_pricing.list_amount, checkout_pricing.currency),
+            'discount_percent': checkout_pricing.discount_percent,
+            'discount_amount': checkout_pricing.discount_amount,
+            'discount_display': money_display(checkout_pricing.discount_amount, checkout_pricing.currency),
+            'payable_amount': checkout_pricing.payable_amount,
+            'payable_display': money_display(checkout_pricing.payable_amount, checkout_pricing.currency),
+        },
         'prefill': {
             'name': acquisition.publication_name,
             'email': acquisition.email,
@@ -449,10 +467,35 @@ def generate_temporary_password(length=12):
 
 
 @transaction.atomic
-def reserve_customer_acquisition(*, business_name, publication_name, publication_slug, email, mobile, password, plan_price):
+def _checkout_session_for_acquisition(acquisition):
+    pricing = calculate_checkout_pricing(acquisition.plan_price, acquisition.billing_months)
+    return {
+        'acquisition_id': str(acquisition.id),
+        'plan_id': acquisition.plan_price.plan_id,
+        'billing_cycle': acquisition.plan_price.billing_cycle,
+        'billing_months': pricing.billing_months,
+        'amount': pricing.payable_amount,
+        'currency': acquisition.plan_price.currency,
+        'environment': settings.RAZORPAY_ENVIRONMENT,
+    }
+
+
+def _pricing_defaults(plan_price, billing_months):
+    pricing = calculate_checkout_pricing(plan_price, billing_months)
+    return {
+        'billing_months': pricing.billing_months,
+        'list_amount': pricing.list_amount,
+        'discount_percent': pricing.discount_percent,
+        'discount_amount': pricing.discount_amount,
+        'payable_amount': pricing.payable_amount,
+    }
+
+
+def reserve_customer_acquisition(*, business_name, publication_name, publication_slug, email, mobile, password, plan_price, billing_months=1):
     User = get_user_model()
     username = generate_customer_username(publication_name=publication_name, mobile=mobile)
     user = User.objects.create_user(username=username, email=email, password=password)
+    pricing_defaults = _pricing_defaults(plan_price, billing_months)
     acquisition = CustomerAcquisition.objects.create(
         user=user,
         plan_price=plan_price,
@@ -462,20 +505,14 @@ def reserve_customer_acquisition(*, business_name, publication_name, publication
         email=email,
         mobile=mobile,
         status=CustomerAcquisition.Status.PAYMENT_PENDING,
+        **pricing_defaults,
     )
-    checkout = {
-        'acquisition_id': str(acquisition.id),
-        'plan_id': plan_price.plan_id,
-        'billing_cycle': plan_price.billing_cycle,
-        'amount': plan_price.amount,
-        'currency': plan_price.currency,
-        'environment': settings.RAZORPAY_ENVIRONMENT,
-    }
-    return acquisition, checkout
+    return acquisition, _checkout_session_for_acquisition(acquisition)
 
 
 @transaction.atomic
-def reserve_customer_acquisition_for_user(*, user, business_name, publication_name, publication_slug, email, mobile, plan_price):
+def reserve_customer_acquisition_for_user(*, user, business_name, publication_name, publication_slug, email, mobile, plan_price, billing_months=1):
+    pricing_defaults = _pricing_defaults(plan_price, billing_months)
     acquisition = CustomerAcquisition.objects.create(
         user=user,
         plan_price=plan_price,
@@ -485,20 +522,13 @@ def reserve_customer_acquisition_for_user(*, user, business_name, publication_na
         email=email or user.email,
         mobile=mobile,
         status=CustomerAcquisition.Status.PAYMENT_PENDING,
+        **pricing_defaults,
     )
-    checkout = {
-        'acquisition_id': str(acquisition.id),
-        'plan_id': plan_price.plan_id,
-        'billing_cycle': plan_price.billing_cycle,
-        'amount': plan_price.amount,
-        'currency': plan_price.currency,
-        'environment': settings.RAZORPAY_ENVIRONMENT,
-    }
-    return acquisition, checkout
+    return acquisition, _checkout_session_for_acquisition(acquisition)
 
 
 @transaction.atomic
-def update_pending_customer_acquisition(*, acquisition, business_name, publication_name, publication_slug, email, mobile, plan_price):
+def update_pending_customer_acquisition(*, acquisition, business_name, publication_name, publication_slug, email, mobile, plan_price, billing_months=1):
     acquisition = CustomerAcquisition.objects.select_for_update().get(pk=acquisition.pk)
     if acquisition.tenant_id or acquisition.status != CustomerAcquisition.Status.PAYMENT_PENDING:
         raise ValidationError("This workspace reservation can no longer be changed.")
@@ -509,6 +539,9 @@ def update_pending_customer_acquisition(*, acquisition, business_name, publicati
     acquisition.email = email or acquisition.user.email
     acquisition.mobile = mobile
     acquisition.provider_order_id = ''
+    pricing_defaults = _pricing_defaults(plan_price, billing_months)
+    for field, value in pricing_defaults.items():
+        setattr(acquisition, field, value)
     acquisition.save(
         update_fields=[
             'plan_price',
@@ -518,18 +551,15 @@ def update_pending_customer_acquisition(*, acquisition, business_name, publicati
             'email',
             'mobile',
             'provider_order_id',
+            'billing_months',
+            'list_amount',
+            'discount_percent',
+            'discount_amount',
+            'payable_amount',
             'updated_at',
         ]
     )
-    checkout = {
-        'acquisition_id': str(acquisition.id),
-        'plan_id': plan_price.plan_id,
-        'billing_cycle': plan_price.billing_cycle,
-        'amount': plan_price.amount,
-        'currency': plan_price.currency,
-        'environment': settings.RAZORPAY_ENVIRONMENT,
-    }
-    return acquisition, checkout
+    return acquisition, _checkout_session_for_acquisition(acquisition)
 
 
 @transaction.atomic
@@ -557,6 +587,7 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
             acquisition.save(update_fields=update_fields)
         return acquisition.tenant
 
+    checkout_pricing = calculate_checkout_pricing(acquisition.plan_price, acquisition.billing_months)
     tenant, _ = Tenant.objects.get_or_create(
         slug=acquisition.publication_slug,
         defaults={
@@ -578,12 +609,17 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
             'joined_at': timezone.now(),
         },
     )
-    period_start, period_end, charge_at = subscription_period_for_cycle(timezone.now(), acquisition.plan_price.billing_cycle)
+    period_start, period_end, charge_at = subscription_period_for_cycle(
+        timezone.now(),
+        acquisition.plan_price.billing_cycle,
+        acquisition.billing_months,
+    )
     subscription, _ = TenantSubscription.objects.update_or_create(
         tenant=tenant,
         defaults={
             'plan': acquisition.plan_price.plan,
             'billing_cycle': acquisition.plan_price.billing_cycle,
+            'billing_months': acquisition.billing_months,
             'razorpay_payment_reference': payment_reference or provider_order_id,
             'status': TenantSubscription.Status.ACTIVE,
             'start_at': period_start,
@@ -600,7 +636,11 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
             'razorpay_order_id': provider_order_id,
             'razorpay_invoice_id': '',
             'razorpay_signature': provider_signature,
-            'amount': acquisition.plan_price.amount,
+            'amount': acquisition.payable_amount or checkout_pricing.payable_amount,
+            'billing_months': acquisition.billing_months,
+            'list_amount': acquisition.list_amount or checkout_pricing.list_amount,
+            'discount_percent': acquisition.discount_percent or checkout_pricing.discount_percent,
+            'discount_amount': acquisition.discount_amount or checkout_pricing.discount_amount,
             'currency': acquisition.plan_price.currency,
             'status': 'paid',
             'payload': {
@@ -610,17 +650,52 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
                 'acquisition_uuid': str(acquisition.uuid),
                 'plan': acquisition.plan_price.plan.name,
                 'billing_cycle': acquisition.plan_price.billing_cycle,
+                'billing_months': acquisition.billing_months,
+                'list_amount': acquisition.list_amount or checkout_pricing.list_amount,
+                'discount_percent': acquisition.discount_percent or checkout_pricing.discount_percent,
+                'discount_amount': acquisition.discount_amount or checkout_pricing.discount_amount,
+                'payable_amount': acquisition.payable_amount or checkout_pricing.payable_amount,
                 'checkout': provider_payload or {},
             },
         },
     )
     from .models import TenantOnboarding
 
-    TenantOnboarding.objects.get_or_create(
+    onboarding, _ = TenantOnboarding.objects.get_or_create(
         tenant=tenant,
         defaults={
-            'status': TenantOnboarding.Status.ONBOARDING,
+            'status': TenantOnboarding.Status.SUBMITTED_FOR_REVIEW,
             'site_title': tenant.business_name,
+            'organization_name': tenant.business_name,
+            'tagline': f'{tenant.business_name} digital newsroom',
+            'meta_description': f'{tenant.business_name} publishes news, updates, videos, and public-interest stories.',
+            'submitted_at': timezone.now(),
+        },
+    )
+    onboarding_update_fields = []
+    onboarding_defaults = {
+        'site_title': tenant.business_name,
+        'organization_name': tenant.business_name,
+        'tagline': onboarding.tagline or f'{tenant.business_name} digital newsroom',
+        'meta_description': onboarding.meta_description or f'{tenant.business_name} publishes news, updates, videos, and public-interest stories.',
+    }
+    for field, value in onboarding_defaults.items():
+        if value and getattr(onboarding, field) != value:
+            setattr(onboarding, field, value)
+            onboarding_update_fields.append(field)
+    if onboarding.status == TenantOnboarding.Status.ONBOARDING:
+        onboarding.status = TenantOnboarding.Status.SUBMITTED_FOR_REVIEW
+        onboarding.submitted_at = timezone.now()
+        onboarding_update_fields.extend(['status', 'submitted_at'])
+    if onboarding_update_fields:
+        onboarding_update_fields.append('updated_at')
+        onboarding.save(update_fields=onboarding_update_fields)
+    OnboardingReviewEvent.objects.get_or_create(
+        onboarding=onboarding,
+        action=OnboardingReviewEvent.Action.SUBMITTED,
+        defaults={
+            'actor': acquisition.user,
+            'notes': 'Auto-submitted after verified subscription payment.',
         },
     )
     acquisition.tenant = tenant

@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Reporters - {{ tenant.publication_name }}{% endblock %}
+{% block styles %}
+.reporter-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+.reporter-head h1 { margin:4px 0 0; font-size:34px; }
+.reporter-grid { display:grid; gap:12px; margin-top:18px; }
+.reporter-row { display:grid; grid-template-columns:1.4fr 1fr auto; gap:14px; align-items:center; padding:14px; border:1px solid var(--line); border-radius:8px; background:#fff; }
+.reporter-row strong, .reporter-row span { overflow-wrap:anywhere; }
+.role-pill { justify-self:start; border:1px solid var(--line); border-radius:999px; padding:7px 11px; font-weight:900; color:var(--brand); background:#f6faf8; }
+@media (max-width:760px) {
+  .reporter-head { display:grid; }
+  .reporter-head .btn { width:100%; }
+  .reporter-row { grid-template-columns:1fr; }
+}
+{% endblock %}
+{% block content %}
+<main class="page">
+  <section class="card reporter-head">
+    <div>
+      <p class="muted">Workspace team</p>
+      <h1>Reporters</h1>
+      <p class="muted">Create reporter or editor accounts for {{ tenant.publication_name }} publishing.</p>
+    </div>
+    <a class="btn" href="{% url 'tenants:reporter_create' %}">Add Reporter</a>
+  </section>
+  <section class="reporter-grid">
+    {% for membership in reporters %}
+      <article class="reporter-row">
+        <div>
+          <strong>{{ membership.user.get_full_name|default:membership.user.username }}</strong>
+          <div class="muted">{{ membership.user.email|default:membership.user.username }}</div>
+        </div>
+        <span class="role-pill">{{ membership.get_role_display }}</span>
+        <span class="muted">{{ membership.get_status_display }}</span>
+      </article>
+    {% empty %}
+      <section class="card">
+        <h2>No reporters yet</h2>
+        <p class="muted">Add your first reporter account to publish news and blog posts.</p>
+      </section>
+    {% endfor %}
+  </section>
+</main>
+{% endblock %}

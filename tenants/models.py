@@ -74,3 +74,23 @@ class TenantMembership(TimeStampedModel):
 
     def __str__(self):
         return f"{self.user} - {self.tenant} ({self.role})"
+
+
+class TenantVisitor(TimeStampedModel):
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='visitors')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='tenant_visits')
+    name = models.CharField(max_length=150)
+    email = models.EmailField(blank=True)
+    mobile = models.CharField(max_length=32, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['tenant', 'user'], name='unique_tenant_visitor_user'),
+        ]
+        indexes = [
+            models.Index(fields=['tenant', 'is_active']),
+        ]
+
+    def __str__(self):
+        return f"{self.name} - {self.tenant}"

@@ -14,8 +14,11 @@ urlpatterns = [
     path('videos/', views.public_domain_page, {'page': 'videos'}, name='public_videos'),
     path('live-tv/', views.public_domain_page, {'page': 'live-tv'}, name='public_live_tv'),
     path('contact/', views.public_domain_page, {'page': 'contact'}, name='public_contact'),
+    path('register/', views.visitor_register, name='visitor_register'),
     path('articles/<uuid:uuid>/', views.public_article_detail, name='public_article_detail'),
     path('articles/<slug:slug>/', views.public_article_slug_redirect, name='public_article_slug_redirect'),
     path('dashboard/', views.tenant_dashboard, name='tenant_dashboard'),
+    path('dashboard/reporters/', views.reporter_list, name='reporter_list'),
+    path('dashboard/reporters/add/', views.reporter_create, name='reporter_create'),
     path('settings/<uuid:uuid>/', views.tenant_settings, name='tenant_settings'),
 ]

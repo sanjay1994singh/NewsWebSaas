@@ -19,6 +19,16 @@
 .summary-row { display:flex; justify-content:space-between; gap:16px; padding-top:8px; border-top:1px solid #d5e8df; }
 .summary-row span { color:var(--muted); }
 .summary-row strong { text-align:right; }
+.discount-row strong { color:var(--brand); }
+.duration-form { display:grid; gap:10px; margin:16px 0; padding:14px; border:1px solid #cfe2d8; border-radius:8px; background:#fff; }
+.duration-form label { font-weight:900; }
+.duration-grid { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:end; }
+.duration-form select { min-height:42px; }
+.duration-form .btn { min-height:42px; white-space:nowrap; }
+.duration-help { margin:0; color:var(--muted); font-size:12px; }
+.duration-status { display:none; margin:0; color:var(--brand); font-size:12px; font-weight:800; }
+.duration-form.is-submitting .duration-status { display:block; }
+.duration-form.is-submitting .duration-help { display:none; }
 .notice { border:1px solid var(--line); border-radius:8px; padding:18px; background:#fff; }
 .notice h2 { margin:0 0 12px; font-size:22px; }
 .step-list { display:grid; gap:10px; margin:0; padding:0; list-style:none; }
@@ -41,6 +51,8 @@
   .checkout-body { grid-template-columns:1fr; padding:22px 20px 24px; }
   .summary-row { align-items:flex-start; flex-direction:column; gap:3px; }
   .summary-row strong { text-align:left; }
+  .duration-grid { grid-template-columns:1fr; }
+  .duration-form .btn { width:100%; }
 }
 @media (max-width:540px) {
   .checkout-head h1 { font-size:25px; }
@@ -65,13 +77,39 @@
         <p class="summary-title">Workspace</p>
         <h2>{{ acquisition.publication_name }}</h2>
         <div class="price">
-          <strong>{{ acquisition.plan_price.currency }} {% widthratio acquisition.plan_price.amount 100 1 %}</strong>
-          <span>/ {{ acquisition.plan_price.billing_cycle }}</span>
+          <strong>{{ checkout.pricing.payable_display }}</strong>
+          <span>/ {{ checkout.pricing.billing_label }}</span>
         </div>
+        <form class="duration-form" method="post" action="{% url 'subscriptions:checkout' acquisition.uuid %}">
+          {% csrf_token %}
+          <label for="{{ duration_form.billing_months.id_for_label }}">Change duration before payment</label>
+          <div class="duration-grid">
+            {{ duration_form.billing_months }}
+            <button class="btn secondary" type="submit">Update Amount</button>
+          </div>
+          <p class="duration-help">You can switch between 1, 12, or 24 months until the payment is successful.</p>
+          <p class="duration-status">Updating payable amount...</p>
+        </form>
         <div class="summary-list">
           <div class="summary-row">
             <span>Plan</span>
             <strong>{{ acquisition.plan_price.plan.name }}</strong>
+          </div>
+          <div class="summary-row">
+            <span>Plan amount</span>
+            <strong>{{ checkout.pricing.list_display }}</strong>
+          </div>
+          <div class="summary-row discount-row">
+            <span>Offer discount</span>
+            <strong>{{ checkout.pricing.discount_percent }}% (-{{ checkout.pricing.discount_display }})</strong>
+          </div>
+          <div class="summary-row">
+            <span>Final payable</span>
+            <strong>{{ checkout.pricing.payable_display }}</strong>
+          </div>
+          <div class="summary-row">
+            <span>Duration</span>
+            <strong>{{ checkout.pricing.billing_label }}</strong>
           </div>
           <div class="summary-row">
             <span>Account email</span>
@@ -125,6 +163,15 @@
 {% if not checkout.checkout_error %}
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
   <script>
+    document.querySelectorAll('.duration-form select').forEach(function (select) {
+      select.addEventListener('change', function () {
+        const form = select.closest('form');
+        if (!form || form.classList.contains('is-submitting')) return;
+        form.classList.add('is-submitting');
+        if (form.requestSubmit) form.requestSubmit();
+        else form.querySelector('button[type="submit"]').click();
+      });
+    });
     const button = document.getElementById('pay-button');
     const options = {
       key: "{{ checkout.key_id }}",
@@ -144,7 +191,7 @@
         document.getElementById('razorpay_signature').value = response.razorpay_signature || '';
         document.getElementById('verify-form').submit();
       },
-      modal: { ondismiss: function () { button.disabled = false; } },
+      modal: { ondismiss: function () { button.disabled = false; button.textContent = 'Pay And Create Workspace'; } },
       theme: { color: "#16614f" }
     };
     function notifyPaymentFailed(response) {
@@ -162,9 +209,11 @@
     }
     button.addEventListener('click', function () {
       button.disabled = true;
+      button.textContent = 'Opening secure payment...';
       const checkout = new Razorpay(options);
       checkout.on('payment.failed', function (response) {
         button.disabled = false;
+        button.textContent = 'Pay And Create Workspace';
         notifyPaymentFailed(response);
       });
       checkout.open();

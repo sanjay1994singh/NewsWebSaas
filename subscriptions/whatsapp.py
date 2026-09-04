@@ -6,6 +6,9 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from django.conf import settings
+from django.utils import timezone
+
+from .pricing import money_display
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +17,10 @@ def normalize_whatsapp_number(value):
     digits = re.sub(r'\D+', '', value or '')
     if not digits:
         return ''
+    if len(digits) == 11 and digits.startswith('0'):
+        digits = digits[1:]
+    if len(digits) == 13 and digits.startswith('910'):
+        digits = f'91{digits[3:]}'
     if len(digits) == 10:
         return f'91{digits}'
     return digits
@@ -41,7 +48,7 @@ def _request_json(*, url, payload=None, headers=None, method='POST'):
         response.read()
 
 
-def _send_fast2sms_simple_template(*, to, template_name, values, api_key, phone_number_id):
+def _send_fast2sms_simple_template(*, to, template_name, values, api_key, phone_number_id, media_url='', document_filename=''):
     message_id = _fast2sms_message_id(template_name)
     if not message_id:
         return None
@@ -51,6 +58,8 @@ def _send_fast2sms_simple_template(*, to, template_name, values, api_key, phone_
             'phone_number_id': phone_number_id,
             'numbers': to,
             'variables_values': '|'.join(str(value or '-') for value in values),
+            **({'media_url': media_url} if media_url else {}),
+            **({'document_filename': document_filename} if document_filename else {}),
         }
     )
     _request_json(
@@ -61,7 +70,7 @@ def _send_fast2sms_simple_template(*, to, template_name, values, api_key, phone_
     return True
 
 
-def send_template_message(*, to, template_name, values):
+def send_template_message(*, to, template_name, values, media_url='', document_filename=''):
     if not settings.WHATSAPP_NOTIFICATIONS_ENABLED:
         logger.info('WhatsApp template skipped because notifications are disabled.')
         return False
@@ -81,6 +90,8 @@ def send_template_message(*, to, template_name, values):
                 values=values,
                 api_key=api_key,
                 phone_number_id=phone_number_id,
+                media_url=media_url,
+                document_filename=document_filename,
             )
             if sent is not None:
                 return sent
@@ -92,6 +103,16 @@ def send_template_message(*, to, template_name, values):
         logger.warning('Fast2SMS simple template failed: %s', exc)
         return False
 
+    components = [_template_component(values)]
+    if media_url:
+        header_parameter = {
+            'type': 'document',
+            'document': {
+                'link': media_url,
+                'filename': document_filename or 'invoice.pdf',
+            },
+        }
+        components.insert(0, {'type': 'header', 'parameters': [header_parameter]})
     payload = {
         'messaging_product': 'whatsapp',
         'to': recipient,
@@ -99,7 +120,7 @@ def send_template_message(*, to, template_name, values):
         'template': {
             'name': template_name,
             'language': {'code': settings.WHATSAPP_TEMPLATE_LANGUAGE},
-            'components': [_template_component(values)],
+            'components': components,
         },
     }
     if provider == 'fast2sms':
@@ -163,21 +184,53 @@ def money_text(price):
     return f'{price.currency} {amount_text}'
 
 
-def notify_payment_success(*, acquisition, tenant, payment_reference, dashboard_url, profile_url):
-    return send_template_message(
+def _account_display_name(user):
+    full_name = (user.get_full_name() or '').strip()
+    return full_name or user.username
+
+
+def _date_text(value):
+    if not value:
+        return '-'
+    local_value = timezone.localtime(value) if timezone.is_aware(value) else value
+    return local_value.strftime('%d %b %Y')
+
+
+def notify_payment_success(*, acquisition, tenant, payment_reference, dashboard_url, profile_url, invoice_document_url=''):
+    from .services import tenant_public_site_url
+
+    workspace_url = tenant_public_site_url(tenant)
+    tenant_profile_url = f"{workspace_url.rstrip('/')}/account/profile/"
+    billing_months = acquisition.billing_months or 1
+    duration = '1 month' if billing_months == 1 else f'{billing_months} months'
+    paid_amount = acquisition.payable_amount or acquisition.plan_price.amount
+    subscription = getattr(tenant, 'subscription', None)
+    invoice_filename = f'pressnexa-invoice-{payment_reference or tenant.slug}.pdf'
+    sent = send_template_message(
         to=acquisition.mobile,
         template_name=settings.WHATSAPP_PAYMENT_SUCCESS_TEMPLATE,
+        media_url=invoice_document_url,
+        document_filename=invoice_filename,
         values=[
-            acquisition.publication_name,
-            acquisition.user.username,
+            _account_display_name(acquisition.user),
+            tenant.business_name or acquisition.publication_name,
+            workspace_url,
             acquisition.plan_price.plan.name,
-            money_text(acquisition.plan_price),
+            duration,
+            _date_text(getattr(subscription, 'current_period_start', None)),
+            _date_text(getattr(subscription, 'current_period_end', None)),
+            money_display(paid_amount, acquisition.plan_price.currency),
             payment_reference,
-            tenant.slug,
-            dashboard_url,
-            profile_url,
+            tenant_profile_url,
         ],
     )
+    if invoice_document_url and not sent:
+        send_session_document(
+            to=acquisition.mobile,
+            document_url=invoice_document_url,
+            filename=invoice_filename,
+        )
+    return sent
 
 
 def notify_payment_failed(*, acquisition, payment_reference, checkout_url, profile_url):

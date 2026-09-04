@@ -4,6 +4,7 @@ from django.utils.text import slugify
 from tenants.models import Tenant
 
 from .models import CustomerAcquisition, PlanPrice, TenantOnboarding
+from .pricing import ALLOWED_BILLING_MONTHS, normalize_billing_months
 
 
 def disable_autofill(fields):
@@ -31,6 +32,16 @@ class PlanSelectionForm(forms.Form):
             raise forms.ValidationError('Selected plan price is not available.') from exc
 
 
+class CheckoutDurationForm(forms.Form):
+    billing_months = forms.ChoiceField(
+        label='Subscription duration',
+        choices=[(str(months), '1 month' if months == 1 else f'{months} months') for months in ALLOWED_BILLING_MONTHS],
+    )
+
+    def clean_billing_months(self):
+        return normalize_billing_months(self.cleaned_data.get('billing_months'))
+
+
 class CustomerSignupForm(forms.Form):
     business_name = forms.CharField(max_length=255, label='Channel name / Paper name')
     publication_name = forms.CharField(max_length=255)
@@ -46,6 +57,12 @@ class CustomerSignupForm(forms.Form):
         widget=forms.PasswordInput,
     )
     price_id = forms.IntegerField(widget=forms.HiddenInput)
+    billing_months = forms.ChoiceField(
+        label='Subscription duration',
+        choices=[(str(months), '1 month' if months == 1 else f'{months} months') for months in ALLOWED_BILLING_MONTHS],
+        initial='1',
+        required=False,
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -72,6 +89,9 @@ class CustomerSignupForm(forms.Form):
         except PlanPrice.DoesNotExist as exc:
             raise forms.ValidationError('Selected plan price is not available.') from exc
 
+    def clean_billing_months(self):
+        return normalize_billing_months(self.cleaned_data.get('billing_months'))
+
     def clean(self):
         cleaned_data = super().clean()
         business_name = cleaned_data.get('business_name')
@@ -93,6 +113,12 @@ class CustomerWorkspaceForm(forms.Form):
     email = forms.EmailField(required=False)
     mobile = forms.CharField(max_length=32)
     price_id = forms.IntegerField(widget=forms.HiddenInput)
+    billing_months = forms.ChoiceField(
+        label='Subscription duration',
+        choices=[(str(months), '1 month' if months == 1 else f'{months} months') for months in ALLOWED_BILLING_MONTHS],
+        initial='1',
+        required=False,
+    )
 
     def __init__(self, *args, user=None, **kwargs):
         self.user = user
@@ -120,6 +146,9 @@ class CustomerWorkspaceForm(forms.Form):
             return PlanPrice.objects.select_related('plan').get(pk=price_id, is_active=True, plan__is_active=True)
         except PlanPrice.DoesNotExist as exc:
             raise forms.ValidationError('Selected plan price is not available.') from exc
+
+    def clean_billing_months(self):
+        return normalize_billing_months(self.cleaned_data.get('billing_months'))
 
     def clean_email(self):
         email = self.cleaned_data.get('email')

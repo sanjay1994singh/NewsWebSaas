@@ -10,10 +10,10 @@ WHATSAPP_NOTIFICATIONS_ENABLED=false
 WHATSAPP_FAST2SMS_API_KEY=
 WHATSAPP_PHONE_NUMBER_ID=
 WHATSAPP_FAST2SMS_VERSION=v26.0
-WHATSAPP_TEMPLATE_LANGUAGE=en_US
+WHATSAPP_TEMPLATE_LANGUAGE=hi
 WHATSAPP_PAYMENT_SUCCESS_TEMPLATE=pressnexa_payment_success
 WHATSAPP_PAYMENT_FAILED_TEMPLATE=pressnexa_payment_failed
-WHATSAPP_PAYMENT_SUCCESS_MESSAGE_ID=
+WHATSAPP_PAYMENT_SUCCESS_MESSAGE_ID=31349
 WHATSAPP_PAYMENT_FAILED_MESSAGE_ID=
 ```
 
@@ -42,52 +42,40 @@ Authorization: YOUR_FAST2SMS_API_KEY
 
 Category: Utility
 
-English Body:
+Approved Hindi Body:
 
 ```text
-Payment successful for {{1}}.
+नमस्ते {{1}},
 
-Username: {{2}}
-Plan: {{3}}
-Amount paid: {{4}}
-Payment ID: {{5}}
-Tenant slug: {{6}}
+आपका Press Nexa भुगतान सफलतापूर्वक प्राप्त हो गया है।
 
-Start onboarding: {{7}}
-Update profile: {{8}}
-
-Your Press Nexa tenant workspace is now active for onboarding.
-```
-
-Hindi Body:
-
-```text
-{{1}} के लिए भुगतान सफल हो गया है।
-
-Username: {{2}}
-प्लान: {{3}}
-भुगतान राशि: {{4}}
-पेमेंट आईडी: {{5}}
-Tenant slug: {{6}}
-
-ऑनबोर्डिंग शुरू करें: {{7}}
-प्रोफाइल अपडेट करें: {{8}}
-
-आपका Press Nexa tenant workspace अब onboarding के लिए active है।
+ब्रांड नाम: {{2}}
+वर्कस्पेस: {{3}}
+प्लान: {{4}}
+अवधि: {{5}}
+प्लान राशि: {{6}}
+डिस्काउंट: {{7}}
+डिस्काउंट राशि: {{8}}
+भुगतान राशि: {{9}}
+पेमेंट आईडी: {{10}}
 ```
 
 Variables:
 
 ```text
-{{1}} Publication name
-{{2}} Username
-{{3}} Plan name
-{{4}} Amount with currency
-{{5}} Razorpay payment reference
-{{6}} Tenant slug
-{{7}} Onboarding URL
-{{8}} Profile URL
+{{1}} Account/customer name
+{{2}} Tenant brand/channel name
+{{3}} Tenant public website URL
+{{4}} Plan name
+{{5}} Purchase duration
+{{6}} Original/list amount
+{{7}} Discount percent
+{{8}} Discount amount
+{{9}} Final paid amount
+{{10}} Razorpay payment reference
 ```
+
+After this template, the app sends the paid invoice PDF as a WhatsApp document using a signed invoice URL.
 
 ## Template: pressnexa_payment_failed
 

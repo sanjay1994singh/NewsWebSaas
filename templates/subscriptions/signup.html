@@ -25,6 +25,7 @@
 .form-error-box { margin:0 0 16px; padding:12px 14px; border:1px solid #f0c5bd; background:#fff4f2; color:var(--danger); border-radius:8px; }
 .signup-actions { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:24px; padding-top:22px; border-top:1px solid var(--line); }
 .signup-actions .muted { max-width:520px; font-size:14px; }
+.duration-field { grid-column:1 / -1; }
 @media (max-width:760px) {
   .signup-card { margin-top:0; }
   .signup-head { grid-template-columns:1fr; padding:24px 20px; }
@@ -68,7 +69,7 @@
           {% if field.is_hidden %}
             {{ field }}
           {% else %}
-            <div class="form-field {% if field.errors %}has-error{% endif %}">
+            <div class="form-field {% if field.name == 'billing_months' %}duration-field{% endif %} {% if field.errors %}has-error{% endif %}">
               <label for="{{ field.id_for_label }}">{{ field.label }}</label>
               {% if field.name == 'password' or field.name == 'confirm_password' %}
                 <div class="password-wrap">
