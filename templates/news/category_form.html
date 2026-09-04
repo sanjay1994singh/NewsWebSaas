@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} - {{ tenant.business_name|default:tenant.publication_name }}{% endblock %}
+
+{% block styles %}
+  .category-form-shell { display:grid; gap:18px; max-width:860px; }
+  .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
+  .field.full { grid-column:1 / -1; }
+  .check-row { display:flex; align-items:center; gap:8px; margin:12px 0; }
+  .check-row input { width:auto; }
+  .form-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
+  .field-help { margin-top:4px; color:var(--muted); font-size:13px; }
+  @media (max-width:640px) { .form-grid { display:block; } }
+{% endblock %}
+
+{% block content %}
+  <main class="page category-form-shell">
+    <section class="card">
+      <p class="muted">Publishing desk</p>
+      <h1>{{ title }}</h1>
+      <p class="muted">This category will be available only for {{ tenant.business_name|default:tenant.publication_name }}.</p>
+    </section>
+
+    <form class="card" method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+      {{ form.slug }}
+      <div class="form-grid">
+        <div class="field">
+          <label for="{{ form.name.id_for_label }}">Category name *</label>
+          {{ form.name }}
+          {{ form.name.errors }}
+          <div class="field-help">Slug category name se auto generate hoga.</div>
+        </div>
+        <div class="field">
+          {{ form.image.label_tag }}
+          {{ form.image }}
+          {{ form.image.errors }}
+        </div>
+        <div class="field full">
+          {{ form.description.label_tag }}
+          {{ form.description }}
+          {{ form.description.errors }}
+        </div>
+      </div>
+      <label class="check-row">{{ form.show_in_menu }} Show in menu</label>
+      <label class="check-row">{{ form.show_on_homepage }} Show on homepage</label>
+      <label class="check-row">{{ form.is_active }} Active</label>
+      <div class="form-actions">
+        <button class="btn" type="submit">Save Category</button>
+        <a class="btn secondary" href="{% url 'news:category_list' %}">Cancel</a>
+      </div>
+    </form>
+  </main>
+{% endblock %}

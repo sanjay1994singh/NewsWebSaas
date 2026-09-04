@@ -6,7 +6,9 @@
   .cms-shell { display:grid; gap:18px; }
   .cms-hero { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; }
   .cms-hero h1 { margin:0; font-size:36px; }
-  .cms-actions { display:flex; flex-wrap:wrap; gap:10px; }
+  .cms-actions, .tabs { display:flex; flex-wrap:wrap; gap:10px; }
+  .tabs a { min-height:38px; padding:8px 12px; border:1px solid var(--line); border-radius:999px; text-decoration:none; font-weight:800; color:var(--deep); background:#fff; }
+  .tabs a.active { border-color:var(--brand); background:var(--brand); color:#fff; }
   .stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
   .stat { background:#fff; border:1px solid var(--line); border-radius:8px; padding:16px; }
   .metric { font-size:30px; font-weight:900; line-height:1; }
@@ -25,16 +27,22 @@
     <section class="card cms-hero">
       <div>
         <p class="muted">Publishing desk</p>
-        <h1>News Publishing</h1>
-        <p class="muted">Manage articles for {{ tenant.publication_name }} from one workspace.</p>
+        <h1>{% if is_blog %}Blog Publishing{% else %}News Publishing{% endif %}</h1>
+        <p class="muted">Manage {% if is_blog %}blog posts{% else %}news articles{% endif %} for {{ tenant.business_name|default:tenant.publication_name }} from one workspace.</p>
       </div>
       <div class="cms-actions">
-        <a class="btn" href="{% url 'news:article_create' %}">Add News</a>
+        <a class="btn" href="{% url 'news:article_create' %}?type={{ content_type }}">{% if is_blog %}Add Blog{% else %}Add News{% endif %}</a>
+        <a class="btn secondary" href="{% url 'news:category_list' %}">Categories</a>
       </div>
     </section>
 
+    <nav class="tabs" aria-label="Publishing type">
+      <a class="{% if not is_blog %}active{% endif %}" href="{% url 'news:article_dashboard' %}?type=news">News Posts</a>
+      <a class="{% if is_blog %}active{% endif %}" href="{% url 'news:article_dashboard' %}?type=blog">Blog Posts</a>
+    </nav>
+
     <section class="stats">
-      <article class="stat"><div class="metric">{{ stats.total }}</div><p class="muted">Total articles</p></article>
+      <article class="stat"><div class="metric">{{ stats.total }}</div><p class="muted">Total posts</p></article>
       <article class="stat"><div class="metric">{{ stats.published }}</div><p class="muted">Published</p></article>
       <article class="stat"><div class="metric">{{ stats.draft }}</div><p class="muted">Drafts</p></article>
       <article class="stat"><div class="metric">{{ stats.review }}</div><p class="muted">In review</p></article>
@@ -78,9 +86,9 @@
       <section class="card empty-state">
         <div>
           <h2>No articles yet</h2>
-          <p class="muted">Start with your first article. You can save it as draft, send it for review, or publish it directly.</p>
+          <p class="muted">Start with your first {% if is_blog %}blog post{% else %}article{% endif %}. You can save it as draft, send it for review, or publish it directly.</p>
           <div class="cms-actions" style="justify-content:center">
-            <a class="btn" href="{% url 'news:article_create' %}">Add News</a>
+            <a class="btn" href="{% url 'news:article_create' %}?type={{ content_type }}">{% if is_blog %}Add Blog{% else %}Add News{% endif %}</a>
             <a class="btn secondary" href="{% url 'tenants:tenant_dashboard' %}">Back to Dashboard</a>
           </div>
         </div>

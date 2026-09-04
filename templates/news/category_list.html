@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Categories - {{ tenant.business_name|default:tenant.publication_name }}{% endblock %}
+
+{% block styles %}
+  .category-shell { display:grid; gap:18px; }
+  .category-head { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+  .category-actions { display:flex; flex-wrap:wrap; gap:10px; }
+  .category-table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .category-table th, .category-table td { padding:12px; border-bottom:1px solid var(--line); text-align:left; }
+  .category-table th { background:#eef6f2; color:var(--deep); font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
+  .category-table tr:last-child td { border-bottom:0; }
+  .status-pill { display:inline-flex; border:1px solid var(--line); border-radius:999px; padding:4px 10px; font-size:12px; font-weight:800; background:#f8fbfa; }
+  @media (max-width:760px) { .category-head { display:grid; } .category-table { display:block; overflow-x:auto; } }
+{% endblock %}
+
+{% block content %}
+  <main class="page category-shell">
+    <section class="card category-head">
+      <div>
+        <p class="muted">Publishing desk</p>
+        <h1>Categories</h1>
+        <p class="muted">Manage categories for {{ tenant.business_name|default:tenant.publication_name }} posts.</p>
+      </div>
+      <div class="category-actions">
+        <a class="btn" href="{% url 'news:category_create' %}">Add Category</a>
+        <a class="btn secondary" href="{% url 'news:article_dashboard' %}">Back to Posts</a>
+      </div>
+    </section>
+
+    <section>
+      <table class="category-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Slug</th>
+            <th>Status</th>
+            <th>Menu</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for category in categories %}
+            <tr>
+              <td><strong>{{ category.name }}</strong></td>
+              <td>{{ category.slug }}</td>
+              <td><span class="status-pill">{% if category.is_active %}Active{% else %}Inactive{% endif %}</span></td>
+              <td>{% if category.show_in_menu %}Visible{% else %}Hidden{% endif %}</td>
+              <td>
+                <div class="category-actions">
+                  <a class="btn secondary" href="{% url 'news:category_update' category.pk %}">Edit</a>
+                  <a class="btn secondary" href="{% url 'news:category_delete' category.pk %}">Delete</a>
+                </div>
+              </td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="5">No categories yet.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  </main>
+{% endblock %}

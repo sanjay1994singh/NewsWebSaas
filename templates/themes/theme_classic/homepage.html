@@ -209,9 +209,16 @@
     }
     .lead-media {
       min-height: 230px;
-      background-size: cover;
-      background-position: center;
-      background-image: linear-gradient(135deg, #e7f1ed, #ffffff);
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #e7f1ed, #ffffff);
+      overflow: hidden;
+    }
+    .lead-media img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
     .lead-copy {
       padding: 22px;
@@ -282,7 +289,7 @@
       display: block;
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
     }
     .story-placeholder {
       display: grid;
@@ -448,6 +455,7 @@
         <a href="/">Home</a>
         <a href="/latest-news/">Latest News</a>
         <a href="/top-stories/">Top Stories</a>
+        {% if has_blogs %}<a href="/blogs/">Blogs</a>{% endif %}
         {% if has_videos %}<a href="/videos/">Videos</a>{% endif %}
         {% if has_live_tv %}<a href="/live-tv/">Live TV</a>{% endif %}
         <a href="/contact/">Contact</a>
@@ -455,6 +463,7 @@
         <a href="/site/{{ public_site_slug }}/">Home</a>
         <a href="/site/{{ public_site_slug }}/latest-news/">Latest News</a>
         <a href="/site/{{ public_site_slug }}/top-stories/">Top Stories</a>
+        {% if has_blogs %}<a href="/site/{{ public_site_slug }}/blogs/">Blogs</a>{% endif %}
         {% if has_videos %}<a href="/site/{{ public_site_slug }}/videos/">Videos</a>{% endif %}
         {% if has_live_tv %}<a href="/site/{{ public_site_slug }}/live-tv/">Live TV</a>{% endif %}
         <a href="/site/{{ public_site_slug }}/contact/">Contact</a>
@@ -480,7 +489,9 @@
     <section class="hero-grid">
       {% if top_article %}
         <a class="lead-card lead-link" href="/articles/{{ top_article.uuid }}/">
-          <div class="lead-media"{% if top_article.featured_image %} style="background-image: url('{{ top_article.featured_image.url }}');"{% endif %}></div>
+          <div class="lead-media">
+            {% if top_article.featured_image %}<img src="{{ top_article.featured_image.url }}" alt="{{ top_article.image_alt|default:top_article.title }}">{% endif %}
+          </div>
           <div class="lead-copy">
             <span class="label">Most Viewed</span>
             <h2>{{ top_article.title }}</h2>
@@ -521,7 +532,7 @@
     </section>
     {% endif %}
 
-    {% if page == "home" or page == "latest-news" or page == "top-stories" %}
+    {% if page == "home" or page == "latest-news" or page == "top-stories" or page == "blogs" %}
     <section class="section-grid">
       {% if articles %}
         {% for article in articles %}

@@ -10,6 +10,8 @@
   .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
   .field.full { grid-column:1 / -1; }
   .field-help { margin-top:4px; color:var(--muted); font-size:13px; }
+  .required-note { color:var(--muted); font-size:13px; }
+  .ck-editor__editable { min-height:320px; }
   .check-row { display:flex; align-items:center; gap:8px; margin:12px 0; }
   .check-row input { width:auto; }
   .side-card { position:sticky; top:86px; }
@@ -25,7 +27,7 @@
       <div>
         <p class="muted">Publishing desk</p>
         <h1>{{ title }}</h1>
-        <p class="muted">Write, save, review, and publish news for {{ tenant.publication_name }}.</p>
+        <p class="muted">Write, save, review, and publish content for {{ tenant.business_name|default:tenant.publication_name }}.</p>
       </div>
       <a class="btn secondary" href="{% url 'news:article_dashboard' %}">Back to Articles</a>
     </section>
@@ -36,20 +38,18 @@
         {{ form.non_field_errors }}
         <div class="form-grid">
           <div class="field full">
-            {{ form.title.label_tag }}
+            <label for="{{ form.title.id_for_label }}">Title *</label>
             {{ form.title }}
             {{ form.title.errors }}
-          </div>
-          <div class="field">
-            {{ form.slug.label_tag }}
             {{ form.slug }}
-            {{ form.slug.errors }}
-            <div class="field-help">Blank chhodne par title se slug ban jayega.</div>
+            {{ form.content_type }}
+            <div class="field-help">Slug title se auto generate hoga. Hindi/English dono title support hain.</div>
           </div>
           <div class="field">
-            {{ form.category.label_tag }}
+            <label for="{{ form.category.id_for_label }}">Category *</label>
             {{ form.category }}
             {{ form.category.errors }}
+            <div class="field-help"><a href="{% url 'news:category_list' %}">Add, update, or delete categories</a></div>
           </div>
           <div class="field">
             {{ form.publisher_name.label_tag }}
@@ -64,22 +64,22 @@
             <div class="field-help">Existing author select kar sakte hain. Publisher name bharne par wahi naam post par dikhega.</div>
           </div>
           <div class="field">
-            {{ form.city.label_tag }}
+            <label for="{{ form.city.id_for_label }}">City *</label>
             {{ form.city }}
             {{ form.city.errors }}
           </div>
-          <div class="field full">
-            {{ form.short_description.label_tag }}
-            {{ form.short_description }}
-            {{ form.short_description.errors }}
+          <div class="field">
+            <label for="{{ form.state.id_for_label }}">State *</label>
+            {{ form.state }}
+            {{ form.state.errors }}
           </div>
           <div class="field full">
-            {{ form.content.label_tag }}
+            <label for="{{ form.content.id_for_label }}">Content *</label>
             {{ form.content }}
             {{ form.content.errors }}
           </div>
           <div class="field full">
-            {{ form.featured_image.label_tag }}
+            <label for="{{ form.featured_image.id_for_label }}">Featured image *</label>
             {{ form.featured_image }}
             {{ form.featured_image.errors }}
           </div>
@@ -141,4 +141,10 @@
       </aside>
     </form>
   </main>
+  <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script>
+  <script>
+    document.querySelectorAll('.rich-text-editor').forEach(function (field) {
+      ClassicEditor.create(field).catch(function () {});
+    });
+  </script>
 {% endblock %}

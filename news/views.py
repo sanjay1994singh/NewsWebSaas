@@ -1,6 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
+from django.db.models import ProtectedError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
@@ -8,7 +9,7 @@ from categories.models import Category
 from core.models import user_can_access_tenant
 from tenants.models import TenantMembership
 
-from .forms import NewsArticleForm
+from .forms import CategoryForm, NewsArticleForm
 from .models import AuthorProfile
 from .models import NewsArticle
 from .services import active_breaking_news_for_tenant, search_articles
@@ -45,24 +46,41 @@ def _ensure_publishing_defaults(tenant, user):
     )
 
 
+def _article_dashboard_url(content_type):
+    if content_type == NewsArticle.ContentType.BLOG:
+        return f"{redirect('news:article_dashboard').url}?type=blog"
+    return redirect('news:article_dashboard').url
+
+
 @login_required
 def article_dashboard(request):
     tenant = _active_tenant_for_user(request)
     if tenant is None:
         return redirect('tenants:tenant_dashboard')
+    content_type = request.GET.get('type') or NewsArticle.ContentType.NEWS
+    if content_type not in NewsArticle.ContentType.values:
+        content_type = NewsArticle.ContentType.NEWS
     articles = (
         NewsArticle.objects
         .for_tenant(tenant)
+        .filter(content_type=content_type)
         .select_related('category', 'author')
         .order_by('-updated_at')[:25]
     )
+    article_stats = NewsArticle.objects.for_tenant(tenant).filter(content_type=content_type)
     stats = {
-        'total': NewsArticle.objects.for_tenant(tenant).count(),
-        'published': NewsArticle.objects.for_tenant(tenant).filter(status=NewsArticle.Status.PUBLISHED).count(),
-        'draft': NewsArticle.objects.for_tenant(tenant).filter(status=NewsArticle.Status.DRAFT).count(),
-        'review': NewsArticle.objects.for_tenant(tenant).filter(status=NewsArticle.Status.REVIEW).count(),
+        'total': article_stats.count(),
+        'published': article_stats.filter(status=NewsArticle.Status.PUBLISHED).count(),
+        'draft': article_stats.filter(status=NewsArticle.Status.DRAFT).count(),
+        'review': article_stats.filter(status=NewsArticle.Status.REVIEW).count(),
     }
-    return render(request, 'news/article_dashboard.html', {'tenant': tenant, 'articles': articles, 'stats': stats})
+    return render(request, 'news/article_dashboard.html', {
+        'tenant': tenant,
+        'articles': articles,
+        'stats': stats,
+        'content_type': content_type,
+        'is_blog': content_type == NewsArticle.ContentType.BLOG,
+    })
 
 
 @login_required
@@ -70,18 +88,26 @@ def article_create(request):
     tenant = _active_tenant_for_user(request)
     if tenant is None:
         return redirect('tenants:tenant_dashboard')
+    content_type = request.GET.get('type') or NewsArticle.ContentType.NEWS
+    if content_type not in NewsArticle.ContentType.values:
+        content_type = NewsArticle.ContentType.NEWS
     _ensure_publishing_defaults(tenant, request.user)
     form = NewsArticleForm(request.POST or None, request.FILES or None, tenant=tenant)
     form.instance.tenant = tenant
+    form.instance.content_type = content_type
+    form.fields['content_type'].widget = form.fields['content_type'].hidden_widget()
+    form.fields['content_type'].initial = content_type
     if request.method == 'POST' and form.is_valid():
         article = form.save(commit=False)
         article.tenant = tenant
+        article.content_type = form.cleaned_data.get('content_type') or content_type
         article.full_clean()
         article.save()
         form.save_m2m()
-        messages.success(request, 'Article saved successfully.')
-        return redirect('news:article_dashboard')
-    return render(request, 'news/article_form.html', {'tenant': tenant, 'form': form, 'title': 'Add News Article'})
+        messages.success(request, 'Post saved successfully.')
+        return redirect(_article_dashboard_url(article.content_type))
+    title = 'Add Blog Post' if content_type == NewsArticle.ContentType.BLOG else 'Add News Article'
+    return render(request, 'news/article_form.html', {'tenant': tenant, 'form': form, 'title': title, 'content_type': content_type})
 
 
 @login_required
@@ -105,15 +131,17 @@ def article_update(request, uuid):
         uuid=uuid,
     )
     form = NewsArticleForm(request.POST or None, request.FILES or None, instance=article, tenant=tenant)
+    form.fields['content_type'].widget = form.fields['content_type'].hidden_widget()
     if request.method == 'POST' and form.is_valid():
         article = form.save(commit=False)
         article.tenant = tenant
         article.full_clean()
         article.save()
         form.save_m2m()
-        messages.success(request, 'Article updated successfully.')
-        return redirect('news:article_dashboard')
-    return render(request, 'news/article_form.html', {'tenant': tenant, 'form': form, 'article': article, 'title': 'Edit News Article'})
+        messages.success(request, 'Post updated successfully.')
+        return redirect(_article_dashboard_url(article.content_type))
+    title = 'Edit Blog Post' if article.content_type == NewsArticle.ContentType.BLOG else 'Edit News Article'
+    return render(request, 'news/article_form.html', {'tenant': tenant, 'form': form, 'article': article, 'title': title, 'content_type': article.content_type})
 
 
 @login_required
@@ -124,9 +152,68 @@ def article_delete(request, uuid):
     article = get_object_or_404(NewsArticle.objects.for_tenant(tenant), uuid=uuid)
     if request.method == 'POST':
         article.delete()
-        messages.success(request, 'Article deleted successfully.')
-        return redirect('news:article_dashboard')
+        messages.success(request, 'Post deleted successfully.')
+        return redirect(_article_dashboard_url(article.content_type))
     return render(request, 'news/article_confirm_delete.html', {'tenant': tenant, 'article': article})
+
+
+@login_required
+def category_list(request):
+    tenant = _active_tenant_for_user(request)
+    if tenant is None:
+        return redirect('tenants:tenant_dashboard')
+    categories = Category.objects.for_tenant(tenant).order_by('menu_order', 'name')
+    return render(request, 'news/category_list.html', {'tenant': tenant, 'categories': categories})
+
+
+@login_required
+def category_create(request):
+    tenant = _active_tenant_for_user(request)
+    if tenant is None:
+        return redirect('tenants:tenant_dashboard')
+    form = CategoryForm(request.POST or None, request.FILES or None, tenant=tenant)
+    form.instance.tenant = tenant
+    if request.method == 'POST' and form.is_valid():
+        category = form.save(commit=False)
+        category.tenant = tenant
+        category.full_clean()
+        category.save()
+        messages.success(request, 'Category saved successfully.')
+        return redirect('news:category_list')
+    return render(request, 'news/category_form.html', {'tenant': tenant, 'form': form, 'title': 'Add Category'})
+
+
+@login_required
+def category_update(request, pk):
+    tenant = _active_tenant_for_user(request)
+    if tenant is None:
+        return redirect('tenants:tenant_dashboard')
+    category = get_object_or_404(Category.objects.for_tenant(tenant), pk=pk)
+    form = CategoryForm(request.POST or None, request.FILES or None, instance=category, tenant=tenant)
+    if request.method == 'POST' and form.is_valid():
+        category = form.save(commit=False)
+        category.tenant = tenant
+        category.full_clean()
+        category.save()
+        messages.success(request, 'Category updated successfully.')
+        return redirect('news:category_list')
+    return render(request, 'news/category_form.html', {'tenant': tenant, 'form': form, 'title': 'Edit Category'})
+
+
+@login_required
+def category_delete(request, pk):
+    tenant = _active_tenant_for_user(request)
+    if tenant is None:
+        return redirect('tenants:tenant_dashboard')
+    category = get_object_or_404(Category.objects.for_tenant(tenant), pk=pk)
+    if request.method == 'POST':
+        try:
+            category.delete()
+            messages.success(request, 'Category deleted successfully.')
+        except ProtectedError:
+            messages.error(request, 'This category is used by posts. Move or delete those posts before deleting the category.')
+        return redirect('news:category_list')
+    return render(request, 'news/category_confirm_delete.html', {'tenant': tenant, 'category': category})
 
 
 @login_required

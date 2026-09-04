@@ -181,7 +181,7 @@ class TenantIsolationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Most Viewed')
         self.assertContains(response, f'/articles/{popular.uuid}/')
-        self.assertContains(response, "background-image: url('/media/articles/popular.jpg')")
+        self.assertContains(response, 'src="/media/articles/popular.jpg"')
 
     def test_tenant_domain_homepage_contact_section_uses_tenant_details(self):
         TenantOnboarding.objects.create(

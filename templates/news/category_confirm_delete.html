@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Delete Category - {{ tenant.business_name|default:tenant.publication_name }}{% endblock %}
+
+{% block content %}
+  <main class="page">
+    <section class="card">
+      <p class="muted">Publishing desk</p>
+      <h1>Delete Category</h1>
+      <p>Are you sure you want to delete <strong>{{ category.name }}</strong>?</p>
+      <p class="muted">If this category is already used by posts, it cannot be deleted until those posts are moved or deleted.</p>
+      <form method="post" style="display:flex; gap:10px; flex-wrap:wrap">
+        {% csrf_token %}
+        <button class="btn" type="submit">Delete Category</button>
+        <a class="btn secondary" href="{% url 'news:category_list' %}">Cancel</a>
+      </form>
+    </section>
+  </main>
+{% endblock %}

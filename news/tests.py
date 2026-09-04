@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.db import IntegrityError
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -13,6 +14,14 @@ from tenants.models import Tenant, TenantMembership
 from .forms import NewsArticleForm
 from .models import AuthorProfile, BreakingNews, NewsArticle, Tag
 from .services import active_breaking_news_for_tenant, search_articles
+
+
+def tiny_gif(name='article.gif'):
+    return SimpleUploadedFile(
+        name,
+        b'GIF87a\x01\x00\x01\x00\x80\x01\x00\x00\x00\x00ccc,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;',
+        content_type='image/gif',
+    )
 
 
 @override_settings(ALLOWED_HOSTS=['testserver', 'a.example.com', 'b.example.com'])
@@ -117,6 +126,9 @@ class TenantNewsCMSTests(TestCase):
                 'title': 'Fresh city update',
                 'slug': '',
                 'content': '<p>Fresh body</p>',
+                'city': 'Delhi',
+                'state': 'Delhi',
+                'featured_image': tiny_gif(),
                 'status': NewsArticle.Status.DRAFT,
                 'allow_comments': 'on',
                 'robots_index': 'on',
@@ -136,6 +148,8 @@ class TenantNewsCMSTests(TestCase):
                 'title': 'Fresh city update published',
                 'slug': article.slug,
                 'content': '<p>Fresh body updated</p>',
+                'city': 'Delhi',
+                'state': 'Delhi',
                 'status': NewsArticle.Status.PUBLISHED,
                 'allow_comments': 'on',
                 'robots_index': 'on',
@@ -163,6 +177,9 @@ class TenantNewsCMSTests(TestCase):
                 'title': 'Byline update',
                 'slug': '',
                 'content': '<p>Body</p>',
+                'city': 'Delhi',
+                'state': 'Delhi',
+                'featured_image': tiny_gif('publisher.gif'),
                 'status': NewsArticle.Status.PUBLISHED,
                 'allow_comments': 'on',
                 'robots_index': 'on',

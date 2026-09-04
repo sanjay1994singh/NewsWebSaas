@@ -147,18 +147,20 @@ def public_domain_page(request, page):
 
 
 def _render_public_tenant_site(request, tenant, page='home'):
-    allowed_pages = {'home', 'latest-news', 'top-stories', 'videos', 'live-tv', 'contact'}
+    allowed_pages = {'home', 'latest-news', 'top-stories', 'blogs', 'videos', 'live-tv', 'contact'}
     if page not in allowed_pages:
         raise Http404("Publication page not found.")
     request.tenant = tenant
     layout = get_or_create_layout(tenant, HomepageLayout.Status.PUBLISHED)
     blocks = list(layout.blocks.filter(is_enabled=True).select_related('category'))
-    article_queryset = published_articles_for_tenant(tenant)
+    published_queryset = published_articles_for_tenant(tenant)
+    article_queryset = published_queryset.filter(content_type=NewsArticle.ContentType.BLOG if page == 'blogs' else NewsArticle.ContentType.NEWS)
     if page == 'top-stories':
         articles = list(article_queryset.order_by('-view_count', '-published_at', '-created_at')[:12])
     else:
         articles = list(article_queryset.order_by('-published_at', '-created_at')[:12])
-    latest_articles = list(article_queryset.order_by('-published_at', '-created_at')[:3])
+    latest_articles = list(published_queryset.filter(content_type=NewsArticle.ContentType.NEWS).order_by('-published_at', '-created_at')[:3])
+    has_blogs = published_queryset.filter(content_type=NewsArticle.ContentType.BLOG).exists()
     top_article = article_queryset.order_by('-view_count', '-published_at', '-created_at').first()
     try:
         onboarding = tenant.commercial_onboarding
@@ -174,6 +176,7 @@ def _render_public_tenant_site(request, tenant, page='home'):
         'onboarding': onboarding,
         'has_videos': any(block.block_type == HomepageBlock.BlockType.VIDEOS for block in blocks),
         'has_live_tv': any(block.block_type == HomepageBlock.BlockType.LIVE_TV for block in blocks),
+        'has_blogs': has_blogs,
         'page': page,
         'public_site_slug': tenant_public_site_slug(tenant),
         'preview': False,

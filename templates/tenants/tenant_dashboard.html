@@ -99,6 +99,8 @@
         <p class="nav-label">Workspace</p>
         <a class="active" href="{% url 'tenants:tenant_dashboard' %}">Dashboard <span>Overview</span></a>
         <a href="/cms/">Create News <span>Publish</span></a>
+        <a href="/cms/?type=blog">Blog Posts <span>Write</span></a>
+        <a href="{% url 'news:category_list' %}">Categories <span>Manage</span></a>
         <a href="{% url 'subscriptions:onboarding' %}">Onboarding <span>{% if onboarding %}{{ onboarding.get_status_display }}{% else %}Update{% endif %}</span></a>
         {% if site_url %}<a href="{{ site_url }}" target="_blank" rel="noopener">Site URL <span>Open</span></a>{% endif %}
         <a href="{% url 'subscriptions:billing_dashboard' %}">Billing <span>{% if subscription %}{{ subscription.get_status_display }}{% else %}Review{% endif %}</span></a>
@@ -160,6 +162,14 @@
         <a class="quick-card" href="/cms/">
           <strong>Create News</strong>
           <span>Write and publish your first article.</span>
+        </a>
+        <a class="quick-card" href="/cms/?type=blog">
+          <strong>Blog Posts</strong>
+          <span>Create, update, list, and delete blog content.</span>
+        </a>
+        <a class="quick-card" href="{% url 'news:category_list' %}">
+          <strong>Categories</strong>
+          <span>Manage categories for this publication website.</span>
         </a>
         <a class="quick-card" href="{% url 'subscriptions:onboarding' %}">
           <strong>Update Onboarding</strong>

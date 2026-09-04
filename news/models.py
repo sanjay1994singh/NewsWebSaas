@@ -51,6 +51,10 @@ class Tag(TenantOwnedModel):
 
 
 class NewsArticle(TenantOwnedModel):
+    class ContentType(models.TextChoices):
+        NEWS = 'news', 'News'
+        BLOG = 'blog', 'Blog'
+
     class Status(models.TextChoices):
         DRAFT = 'draft', 'Draft'
         REVIEW = 'review', 'Review'
@@ -63,6 +67,7 @@ class NewsArticle(TenantOwnedModel):
     reporters = models.ManyToManyField(AuthorProfile, blank=True, related_name='reported_articles')
     tags = models.ManyToManyField(Tag, blank=True, related_name='articles')
     title = models.CharField(max_length=255)
+    content_type = models.CharField(max_length=20, choices=ContentType.choices, default=ContentType.NEWS, db_index=True)
     slug = models.SlugField(max_length=280)
     short_description = models.TextField(blank=True)
     content = models.TextField()
@@ -97,6 +102,7 @@ class NewsArticle(TenantOwnedModel):
             models.UniqueConstraint(fields=['tenant', 'slug'], name='unique_article_slug_per_tenant'),
         ]
         indexes = [
+            models.Index(fields=['tenant', 'content_type', 'status', '-published_at']),
             models.Index(fields=['tenant', 'status', '-published_at']),
             models.Index(fields=['tenant', 'category', 'status']),
             models.Index(fields=['tenant', 'is_breaking', 'status']),

@@ -10,6 +10,7 @@ urlpatterns = [
     path('site/<slug:tenant_slug>/<slug:page>/', views.public_tenant_page, name='public_tenant_page'),
     path('latest-news/', views.public_domain_page, {'page': 'latest-news'}, name='public_latest_news'),
     path('top-stories/', views.public_domain_page, {'page': 'top-stories'}, name='public_top_stories'),
+    path('blogs/', views.public_domain_page, {'page': 'blogs'}, name='public_blogs'),
     path('videos/', views.public_domain_page, {'page': 'videos'}, name='public_videos'),
     path('live-tv/', views.public_domain_page, {'page': 'live-tv'}, name='public_live_tv'),
     path('contact/', views.public_domain_page, {'page': 'contact'}, name='public_contact'),
