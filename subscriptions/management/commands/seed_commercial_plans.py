@@ -28,29 +28,21 @@ FEATURES = [
 PLAN_DEFAULTS = {
     Plan.Code.NEWS_STARTER: {
         'name': 'News Starter',
-        'monthly_price': 49900,
+        'monthly_price': 39900,
         'yearly_price': 499000,
         'features': {
             'news_articles': (True, 100),
-            'blog': (True, None),
-            'breaking_news': (True, None),
-            'homepage_builder': (True, None),
-            'multiple_staff': (True, 3),
+            'custom_domain': (True, None),
         },
     },
     Plan.Code.NEWS_VIDEO: {
-        'name': 'News + Video',
+        'name': 'News Basic',
         'monthly_price': 99900,
         'yearly_price': 999000,
         'features': {
             'news_articles': (True, 500),
             'blog': (True, None),
-            'breaking_news': (True, None),
-            'homepage_builder': (True, None),
-            'multiple_staff': (True, 8),
-            'youtube_videos': (True, None),
-            'youtube_shorts': (True, None),
-            'photo_gallery': (True, None),
+            'custom_domain': (True, None),
         },
     },
     Plan.Code.NEWS_PRO: {
@@ -60,44 +52,23 @@ PLAN_DEFAULTS = {
         'features': {
             'news_articles': (True, 2000),
             'blog': (True, None),
-            'breaking_news': (True, None),
             'custom_domain': (True, None),
-            'homepage_builder': (True, None),
-            'multiple_staff': (True, 20),
             'youtube_videos': (True, None),
             'youtube_shorts': (True, None),
-            'adsense': (True, None),
-            'advertisement_manager': (True, None),
-            'advanced_seo': (True, None),
-            'analytics': (True, None),
-            'photo_gallery': (True, None),
-            'premium_themes': (True, None),
         },
     },
-    Plan.Code.NEWS_BUSINESS: {
-        'name': 'News Business',
+    Plan.Code.PROFESSIONAL: {
+        'name': 'News Professional',
         'monthly_price': 499900,
         'yearly_price': 4999000,
         'features': {
             'news_articles': (True, 10000),
             'blog': (True, None),
-            'breaking_news': (True, None),
             'custom_domain': (True, None),
             'epaper': (True, None),
             'epaper_editions_per_month': (True, 30),
-            'homepage_builder': (True, None),
-            'multiple_staff': (True, 50),
             'youtube_videos': (True, None),
             'youtube_shorts': (True, None),
-            'live_tv': (True, None),
-            'adsense': (True, None),
-            'advertisement_manager': (True, None),
-            'advanced_seo': (True, None),
-            'analytics': (True, None),
-            'mobile_app': (True, None),
-            'photo_gallery': (True, None),
-            'api_access': (True, None),
-            'premium_themes': (True, None),
         },
     },
 }
@@ -107,6 +78,8 @@ ADD_ON_DEFAULTS = [
     ('mobile-app-addon', 'Mobile App Add-on', 'mobile_app', 299900, 2999000, None),
     ('extra-staff-addon', 'Extra Staff', 'multiple_staff', 19900, 199000, 5),
 ]
+
+DEPRECATED_PLAN_CODES = (Plan.Code.NEWS_BUSINESS,)
 
 
 class Command(BaseCommand):
@@ -149,6 +122,10 @@ class Command(BaseCommand):
                 billing_cycle=PlanPrice.BillingCycle.YEARLY,
                 defaults={'amount': plan_data['yearly_price'], 'currency': 'INR', 'is_active': True},
             )
+            PlanFeature.objects.filter(plan=plan).exclude(feature__code__in=plan_data['features'].keys()).update(
+                is_enabled=False,
+                limit_value=None,
+            )
             for feature_code, (is_enabled, limit_value) in plan_data['features'].items():
                 PlanFeature.objects.update_or_create(
                     plan=plan,
@@ -158,6 +135,11 @@ class Command(BaseCommand):
                         'limit_value': limit_value,
                     },
                 )
+
+        Plan.objects.filter(code__in=DEPRECATED_PLAN_CODES, version=1).update(
+            is_active=False,
+            is_current_version=False,
+        )
 
         for order, (code, name, feature_code, monthly_price, yearly_price, limit_value) in enumerate(ADD_ON_DEFAULTS, start=10):
             AddOn.objects.update_or_create(
