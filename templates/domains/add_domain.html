@@ -1,14 +1,59 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><title>Add Domain</title></head>
-<body>
-  <main>
-    <h1>Add Domain</h1>
-    <form method="post">
-      {% csrf_token %}
-      {{ form.as_p }}
-      <button>Add Domain</button>
-    </form>
+{% extends "base.html" %}
+
+{% block title %}Add Domain - {{ site_brand_name|default:"Press Nexa" }}{% endblock %}
+
+{% block styles %}
+  .domain-form-shell { display:grid; gap:18px; }
+  .domain-hero { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; }
+  .domain-hero h1 { margin:0; font-size:36px; line-height:1.1; }
+  .domain-layout { display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:18px; align-items:start; }
+  .form-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
+  .field-help { color:var(--muted); font-size:13px; margin-top:6px; }
+  .checklist { display:grid; gap:12px; margin:0; padding:0; list-style:none; }
+  .checklist li { border:1px solid var(--line); border-radius:8px; padding:12px; background:#f8fbfa; }
+  @media (max-width:860px) { .domain-hero, .domain-layout { display:grid; grid-template-columns:1fr; } }
+{% endblock %}
+
+{% block content %}
+  <main class="page domain-form-shell">
+    <section class="card domain-hero">
+      <div>
+        <p class="muted">Website access</p>
+        <h1>Add Domain</h1>
+        <p class="muted">Connect a custom domain that visitors can use to open your publication website.</p>
+      </div>
+      <a class="btn secondary" href="{% url 'domains:domain_list' %}">Back to Domains</a>
+    </section>
+
+    <section class="domain-layout">
+      <form class="card" method="post" autocomplete="off">
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+
+        <label for="{{ form.domain.id_for_label }}">Domain name</label>
+        {{ form.domain }}
+        {{ form.domain.errors }}
+        <div class="field-help">Enter only the domain, for example <strong>theupmedia.com</strong>. Do not enter https:// or any page path.</div>
+
+        <label for="{{ form.domain_type.id_for_label }}">Domain type</label>
+        {{ form.domain_type }}
+        {{ form.domain_type.errors }}
+        <div class="field-help">Use custom domain for your own domain. Platform subdomain is normally created automatically after payment.</div>
+
+        <div class="form-actions">
+          <button class="btn" type="submit">Add Domain</button>
+          <a class="btn secondary" href="{% url 'domains:domain_list' %}">Cancel</a>
+        </div>
+      </form>
+
+      <aside class="card">
+        <h2>Before adding</h2>
+        <ul class="checklist">
+          <li>Domain should belong to you or your organization.</li>
+          <li>Keep DNS panel access ready so you can add the verification TXT record.</li>
+          <li>After verification, SSL can be queued from the domain detail page.</li>
+        </ul>
+      </aside>
+    </section>
   </main>
-</body>
-</html>
+{% endblock %}

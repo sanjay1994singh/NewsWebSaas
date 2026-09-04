@@ -1,32 +1,111 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><title>Domains</title></head>
-<body>
-  <main>
-    <h1>Domains</h1>
-    <a href="{% url 'domains:add_domain' %}">Add Domain</a>
-    <table>
-      <tbody>
-        {% for domain in domains %}
-          <tr>
-            <td><a href="{% url 'domains:domain_detail' domain.id %}">{{ domain.domain }}</a></td>
-            <td>{{ domain.get_status_display }}</td>
-            <td>{{ domain.get_ssl_status_display }}</td>
-            <td>{% if domain.is_primary %}Primary{% endif %}</td>
-            <td>
-              {% if domain.is_verified and not domain.is_primary %}
-                <form method="post" action="{% url 'domains:make_primary' domain.id %}">
-                  {% csrf_token %}
-                  <button>Make Primary</button>
-                </form>
-              {% endif %}
-            </td>
-          </tr>
-        {% empty %}
-          <tr><td>No domains yet.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+{% extends "base.html" %}
+
+{% block title %}Domains - {{ site_brand_name|default:"Press Nexa" }}{% endblock %}
+
+{% block styles %}
+  .domain-shell { display:grid; gap:18px; }
+  .domain-hero { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; }
+  .domain-hero h1 { margin:0; font-size:36px; line-height:1.1; }
+  .hero-actions, .row-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
+  .domain-grid { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(300px,.65fr); gap:18px; align-items:start; }
+  .domain-table { width:100%; border-collapse:collapse; }
+  .domain-table th, .domain-table td { padding:14px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle; }
+  .domain-table th { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+  .domain-table tr:last-child td { border-bottom:0; }
+  .domain-name { display:grid; gap:4px; }
+  .domain-name a { color:var(--deep); font-weight:900; text-decoration:none; }
+  .badge { display:inline-flex; width:max-content; align-items:center; justify-content:center; border:1px solid var(--line); border-radius:999px; padding:5px 10px; background:#fff; color:var(--deep); font-size:12px; font-weight:800; }
+  .badge.ok { border-color:#b9dbd0; background:#edf8f4; color:#075641; }
+  .badge.warn { border-color:#ead6a7; background:#fff8e6; color:#7a5700; }
+  .steps { display:grid; gap:14px; margin:0; padding:0; list-style:none; }
+  .steps li { display:grid; grid-template-columns:30px 1fr; gap:12px; align-items:start; }
+  .step-dot { display:grid; place-items:center; width:30px; height:30px; border-radius:999px; background:#e6f3ee; color:var(--brand); font-weight:900; }
+  .empty { display:grid; place-items:center; min-height:220px; text-align:center; }
+  .copy-box { display:flex; gap:8px; align-items:center; justify-content:space-between; border:1px solid var(--line); border-radius:8px; padding:12px; background:#f8fbfa; font-weight:800; overflow-wrap:anywhere; }
+  @media (max-width:860px) { .domain-hero, .domain-grid { display:grid; grid-template-columns:1fr; } .domain-table { display:block; overflow-x:auto; } }
+{% endblock %}
+
+{% block content %}
+  <main class="page domain-shell">
+    <section class="card domain-hero">
+      <div>
+        <p class="muted">Website access</p>
+        <h1>Domains</h1>
+        <p class="muted">Manage the URLs visitors use to open your news website.</p>
+      </div>
+      <div class="hero-actions">
+        <a class="btn secondary" href="{% url 'tenants:tenant_dashboard' %}">Dashboard</a>
+        <a class="btn" href="{% url 'domains:add_domain' %}">Add Domain</a>
+      </div>
+    </section>
+
+    <section class="domain-grid">
+      <div class="card">
+        <h2>Your Domains</h2>
+        {% if domains %}
+          <table class="domain-table">
+            <thead>
+              <tr>
+                <th>Domain</th>
+                <th>Domain status</th>
+                <th>SSL</th>
+                <th>Primary</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for domain in domains %}
+                <tr>
+                  <td>
+                    <div class="domain-name">
+                      <a href="{% url 'domains:domain_detail' domain.id %}">{{ domain.domain }}</a>
+                      <span class="muted">{{ domain.get_domain_type_display }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="badge {% if domain.is_verified %}ok{% else %}warn{% endif %}">
+                      {% if domain.is_verified %}Verified{% else %}Needs verification{% endif %}
+                    </span>
+                  </td>
+                  <td><span class="badge {% if domain.ssl_status == 'active' %}ok{% else %}warn{% endif %}">{{ domain.get_ssl_status_display }}</span></td>
+                  <td>{% if domain.is_primary %}<span class="badge ok">Primary</span>{% else %}<span class="muted">No</span>{% endif %}</td>
+                  <td>
+                    <div class="row-actions">
+                      <a class="btn secondary" href="{% url 'domains:domain_detail' domain.id %}">Manage</a>
+                      {% if domain.is_verified and not domain.is_primary %}
+                        <form method="post" action="{% url 'domains:make_primary' domain.id %}">
+                          {% csrf_token %}
+                          <button class="btn" type="submit">Make Primary</button>
+                        </form>
+                      {% endif %}
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <div class="empty">
+            <div>
+              <h2>No domains added yet</h2>
+              <p class="muted">Add a custom domain after pointing DNS to the server.</p>
+              <a class="btn" href="{% url 'domains:add_domain' %}">Add Domain</a>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+
+      <aside class="card">
+        <h2>How custom domain works</h2>
+        <ol class="steps">
+          <li><span class="step-dot">1</span><span>Add your domain, for example <strong>theupmedia.com</strong>.</span></li>
+          <li><span class="step-dot">2</span><span>Add the DNS TXT verification record shown on the domain detail page.</span></li>
+          <li><span class="step-dot">3</span><span>Verify DNS, then queue SSL. After SSL is active, make it primary.</span></li>
+        </ol>
+        <h3>Recommended DNS</h3>
+        <div class="copy-box">A record @ -> 103.168.19.9</div>
+        <p class="muted">For www, add CNAME www -> your root domain, or add a separate domain entry.</p>
+      </aside>
+    </section>
   </main>
-</body>
-</html>
+{% endblock %}

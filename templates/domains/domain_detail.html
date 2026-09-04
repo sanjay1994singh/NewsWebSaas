@@ -1,25 +1,98 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><title>{{ domain.domain }}</title></head>
-<body>
-  <main>
-    <h1>{{ domain.domain }}</h1>
-    <dl>
-      <dt>Status</dt><dd>{{ domain.get_status_display }}</dd>
-      <dt>SSL</dt><dd>{{ domain.get_ssl_status_display }}</dd>
-      <dt>DNS TXT Name</dt><dd>{{ domain.dns_txt_name }}</dd>
-      <dt>DNS TXT Value</dt><dd>{{ domain.expected_txt_value }}</dd>
-    </dl>
-    <form method="post" action="{% url 'domains:verify_domain' domain.id %}">
-      {% csrf_token %}
-      <button>Verify DNS</button>
-    </form>
-    {% if domain.is_verified %}
-      <form method="post" action="{% url 'domains:provision_ssl' domain.id %}">
-        {% csrf_token %}
-        <button>Queue SSL</button>
-      </form>
-    {% endif %}
+{% extends "base.html" %}
+
+{% block title %}{{ domain.domain }} - {{ site_brand_name|default:"Press Nexa" }}{% endblock %}
+
+{% block styles %}
+  .detail-shell { display:grid; gap:18px; }
+  .detail-hero { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; }
+  .detail-hero h1 { margin:0; font-size:34px; line-height:1.15; overflow-wrap:anywhere; }
+  .detail-actions { display:flex; flex-wrap:wrap; gap:10px; }
+  .detail-grid { display:grid; grid-template-columns:minmax(0,1fr) 390px; gap:18px; align-items:start; }
+  .status-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+  .status-box { border:1px solid var(--line); border-radius:8px; padding:14px; background:#f8fbfa; }
+  .status-box span { display:block; color:var(--muted); font-size:13px; }
+  .status-box strong { display:block; margin-top:4px; font-size:18px; overflow-wrap:anywhere; }
+  .dns-record { display:grid; gap:12px; }
+  .record-row { border:1px solid var(--line); border-radius:8px; padding:12px; background:#fff; }
+  .record-row span { display:block; color:var(--muted); font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+  .record-row code { display:block; margin-top:6px; white-space:normal; overflow-wrap:anywhere; font-size:14px; }
+  .badge { display:inline-flex; width:max-content; border:1px solid var(--line); border-radius:999px; padding:6px 11px; background:#fff; color:var(--deep); font-size:13px; font-weight:900; }
+  .badge.ok { border-color:#b9dbd0; background:#edf8f4; color:#075641; }
+  .badge.warn { border-color:#ead6a7; background:#fff8e6; color:#7a5700; }
+  .help-list { margin:0; padding-left:18px; color:var(--muted); }
+  .help-list li { margin:8px 0; }
+  @media (max-width:860px) { .detail-hero, .detail-grid, .status-grid { display:grid; grid-template-columns:1fr; } }
+{% endblock %}
+
+{% block content %}
+  <main class="page detail-shell">
+    <section class="card detail-hero">
+      <div>
+        <p class="muted">Domain setup</p>
+        <h1>{{ domain.domain }}</h1>
+        <div class="detail-actions" style="margin-top:12px">
+          <span class="badge {% if domain.is_verified %}ok{% else %}warn{% endif %}">
+            {% if domain.is_verified %}Verified{% else %}Needs DNS verification{% endif %}
+          </span>
+          <span class="badge {% if domain.ssl_status == 'active' %}ok{% else %}warn{% endif %}">SSL {{ domain.get_ssl_status_display }}</span>
+          {% if domain.is_primary %}<span class="badge ok">Primary domain</span>{% endif %}
+        </div>
+      </div>
+      <div class="detail-actions">
+        <a class="btn secondary" href="{% url 'domains:domain_list' %}">All Domains</a>
+        <a class="btn secondary" href="https://{{ domain.domain }}/" target="_blank" rel="noopener">Open Site</a>
+      </div>
+    </section>
+
+    <section class="detail-grid">
+      <div class="card">
+        <h2>DNS verification</h2>
+        <p class="muted">Add this TXT record in your domain DNS panel, then click Verify DNS.</p>
+        <div class="dns-record">
+          <div class="record-row">
+            <span>TXT name</span>
+            <code>{{ domain.dns_txt_name }}</code>
+          </div>
+          <div class="record-row">
+            <span>TXT value</span>
+            <code>{{ domain.expected_txt_value }}</code>
+          </div>
+        </div>
+        <div class="detail-actions" style="margin-top:18px">
+          <form method="post" action="{% url 'domains:verify_domain' domain.id %}">
+            {% csrf_token %}
+            <button class="btn" type="submit">Verify DNS</button>
+          </form>
+          {% if domain.is_verified %}
+            <form method="post" action="{% url 'domains:provision_ssl' domain.id %}">
+              {% csrf_token %}
+              <button class="btn secondary" type="submit">Queue SSL</button>
+            </form>
+          {% endif %}
+          {% if domain.is_verified and not domain.is_primary %}
+            <form method="post" action="{% url 'domains:make_primary' domain.id %}">
+              {% csrf_token %}
+              <button class="btn secondary" type="submit">Make Primary</button>
+            </form>
+          {% endif %}
+        </div>
+      </div>
+
+      <aside class="card">
+        <h2>Status</h2>
+        <div class="status-grid">
+          <div class="status-box"><span>Domain type</span><strong>{{ domain.get_domain_type_display }}</strong></div>
+          <div class="status-box"><span>Domain status</span><strong>{{ domain.get_status_display }}</strong></div>
+          <div class="status-box"><span>SSL status</span><strong>{{ domain.get_ssl_status_display }}</strong></div>
+          <div class="status-box"><span>Primary</span><strong>{% if domain.is_primary %}Yes{% else %}No{% endif %}</strong></div>
+        </div>
+        <h3>DNS target</h3>
+        <ul class="help-list">
+          <li>Root domain: add A record pointing to <strong>103.168.19.9</strong>.</li>
+          <li>www domain: add CNAME to root domain or add it separately.</li>
+          <li>DNS changes can take a few minutes to several hours.</li>
+        </ul>
+      </aside>
+    </section>
   </main>
-</body>
-</html>
+{% endblock %}

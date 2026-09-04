@@ -244,12 +244,6 @@
       margin: 0;
       color: var(--muted);
     }
-    .story-byline {
-      margin-top: 12px !important;
-      color: var(--ink) !important;
-      font-size: 13px;
-      font-weight: 800;
-    }
     .empty-card {
       margin: 28px 0 46px;
       background: linear-gradient(135deg, #fff, var(--soft));
@@ -372,7 +366,7 @@
         <div class="headline-list">
           <div class="headline-item">
             <strong>{% if articles %}{{ articles.0.title }}{% else %}Latest news desk is ready{% endif %}</strong>
-            <span>{% if articles and articles.0.public_publisher_name %}By {{ articles.0.public_publisher_name }}{% else %}New articles will be listed here automatically.{% endif %}</span>
+            <span>{% if articles %}Latest published update{% else %}New articles will be listed here automatically.{% endif %}</span>
           </div>
           <div class="headline-item">
             <strong>Video and Live TV sections available</strong>
@@ -392,7 +386,6 @@
           <article class="section-card">
             <h2>{{ article.title }}</h2>
             <p>{{ article.short_description|default:"Read the latest update from this newsroom." }}</p>
-            {% if article.public_publisher_name %}<p class="story-byline">By {{ article.public_publisher_name }}</p>{% endif %}
           </article>
         {% endfor %}
       {% else %}

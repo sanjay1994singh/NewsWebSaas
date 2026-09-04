@@ -5,9 +5,11 @@ from django.urls import reverse
 from django.utils import timezone
 
 from core.models import user_can_access_tenant
+from categories.models import Category
 from domains.forms import PrimaryDomainSelectionForm
 from domains.middleware import TenantResolutionMiddleware
 from domains.models import TenantDomain
+from news.models import AuthorProfile, NewsArticle
 from subscriptions.services import tenant_public_site_slug, tenant_public_site_url
 
 from .models import Tenant, TenantMembership
@@ -119,6 +121,26 @@ class TenantIsolationTests(TestCase):
         self.assertContains(response, self.tenant_a.publication_name)
         self.assertContains(response, '/account/login/?next=/dashboard/')
         self.assertNotContains(response, 'Launch Your Digital News Platform')
+
+    def test_tenant_domain_homepage_does_not_show_article_publisher_name(self):
+        category = Category.objects.create(tenant=self.tenant_a, name='Local', slug='local')
+        author = AuthorProfile.objects.create(tenant=self.tenant_a, display_name='City Desk', slug='city-desk')
+        NewsArticle.objects.create(
+            tenant=self.tenant_a,
+            category=category,
+            author=author,
+            title='Local update',
+            slug='local-update',
+            content='<p>Body</p>',
+            status=NewsArticle.Status.PUBLISHED,
+        )
+
+        response = self.client.get('/', HTTP_HOST='customera.platformdomain.com')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Local update')
+        self.assertNotContains(response, 'City Desk')
+        self.assertNotContains(response, 'By ')
 
     def test_tenant_domain_admin_redirects_to_customer_dashboard(self):
         response = self.client.get('/admin/', HTTP_HOST='customera.platformdomain.com')

@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -33,6 +33,7 @@ class DomainValidationTests(TestCase):
         self.assertEqual(validate_public_domain('WWW.Example.COM:443.'), 'example.com')
 
 
+@override_settings(ALLOWED_HOSTS=['testserver', 'a.example.com', 'b.example.com'])
 class DomainWorkflowTests(TestCase):
     def setUp(self):
         User = get_user_model()
@@ -111,3 +112,24 @@ class DomainWorkflowTests(TestCase):
         self.client.force_login(self.user_a)
         response = self.client.get(reverse('domains:domain_detail', args=[domain.id]))
         self.assertEqual(response.status_code, 403)
+
+    def test_domain_list_uses_customer_dashboard_design(self):
+        domain = TenantDomain.objects.create(
+            tenant=self.tenant_a,
+            domain='a.example.com',
+            domain_type=TenantDomain.DomainType.PLATFORM_SUBDOMAIN,
+            is_primary=True,
+            is_verified=True,
+            status=TenantDomain.Status.ACTIVE,
+            ssl_status=TenantDomain.SSLStatus.ACTIVE,
+        )
+        self.client.force_login(self.user_a)
+
+        response = self.client.get(reverse('domains:domain_list'), HTTP_HOST='a.example.com')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Website access')
+        self.assertContains(response, 'Your Domains')
+        self.assertContains(response, domain.domain)
+        self.assertContains(response, 'Primary')
+        self.assertContains(response, 'How custom domain works')
