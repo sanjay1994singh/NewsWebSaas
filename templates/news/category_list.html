@@ -6,12 +6,27 @@
   .category-shell { display:grid; gap:18px; }
   .category-head { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
   .category-actions { display:flex; flex-wrap:wrap; gap:10px; }
-  .category-table { width:100%; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+  .category-table { width:100%; table-layout:fixed; border-collapse:collapse; background:#fff; border:1px solid var(--line); border-radius:8px; overflow:hidden; }
   .category-table th, .category-table td { padding:12px; border-bottom:1px solid var(--line); text-align:left; }
   .category-table th { background:#eef6f2; color:var(--deep); font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
+  .category-table th:nth-child(1) { width:28%; }
+  .category-table th:nth-child(2) { width:26%; }
+  .category-table th:nth-child(3) { width:14%; }
+  .category-table th:nth-child(4) { width:14%; }
+  .category-table th:nth-child(5) { width:18%; }
   .category-table tr:last-child td { border-bottom:0; }
-  .status-pill { display:inline-flex; border:1px solid var(--line); border-radius:999px; padding:4px 10px; font-size:12px; font-weight:800; background:#f8fbfa; }
-  @media (max-width:760px) { .category-head { display:grid; } .category-actions { width:100%; } .category-actions .btn { flex:1 1 150px; } .category-table { display:block; overflow-x:auto; } .category-table th, .category-table td { min-width:120px; } }
+  .status-pill { display:inline-flex; width:max-content; max-width:100%; border:1px solid var(--line); border-radius:999px; padding:4px 10px; font-size:12px; line-height:1.15; font-weight:800; background:#f8fbfa; white-space:nowrap; }
+  @media (max-width:820px) {
+    .category-table, .category-table thead, .category-table tbody, .category-table tr, .category-table th, .category-table td { display:block; width:100%; }
+    .category-table { border:0; background:transparent; }
+    .category-table thead { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+    .category-table tr { margin-bottom:12px; border:1px solid var(--line); border-radius:8px; background:#fff; overflow:hidden; }
+    .category-table td { display:grid; grid-template-columns:120px minmax(0,1fr); gap:12px; border-bottom:1px solid var(--line); }
+    .category-table td::before { content:attr(data-label); color:var(--muted); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
+    .category-table td:last-child { border-bottom:0; }
+  }
+  @media (max-width:760px) { .category-head { display:grid; } .category-actions { width:100%; } .category-actions .btn { flex:1 1 150px; } }
+  @media (max-width:560px) { .category-table td { grid-template-columns:1fr; gap:4px; } }
   @media (max-width:520px) { .category-actions .btn { width:100%; flex-basis:100%; } }
 {% endblock %}
 
@@ -43,11 +58,11 @@
         <tbody>
           {% for category in categories %}
             <tr>
-              <td><strong>{{ category.name }}</strong></td>
-              <td>{{ category.slug }}</td>
-              <td><span class="status-pill">{% if category.is_active %}Active{% else %}Inactive{% endif %}</span></td>
-              <td>{% if category.show_in_menu %}Visible{% else %}Hidden{% endif %}</td>
-              <td>
+              <td data-label="Name"><strong>{{ category.name }}</strong></td>
+              <td data-label="Slug">{{ category.slug }}</td>
+              <td data-label="Status"><span class="status-pill">{% if category.is_active %}Active{% else %}Inactive{% endif %}</span></td>
+              <td data-label="Menu">{% if category.show_in_menu %}Visible{% else %}Hidden{% endif %}</td>
+              <td data-label="Actions">
                 <div class="category-actions">
                   <a class="btn secondary" href="{% url 'news:category_update' category.pk %}">Edit</a>
                   <a class="btn secondary" href="{% url 'news:category_delete' category.pk %}">Delete</a>

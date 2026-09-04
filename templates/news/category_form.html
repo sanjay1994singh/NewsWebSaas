@@ -10,7 +10,10 @@
   .check-row input { width:auto; }
   .form-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
   .field-help { margin-top:4px; color:var(--muted); font-size:13px; }
-  @media (max-width:640px) { .form-grid { display:block; } }
+  @media (max-width:640px) {
+    .form-grid { display:block; }
+    .form-actions .btn { width:100%; }
+  }
 {% endblock %}
 
 {% block content %}

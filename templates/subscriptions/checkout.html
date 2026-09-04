@@ -42,6 +42,12 @@
   .summary-row { align-items:flex-start; flex-direction:column; gap:3px; }
   .summary-row strong { text-align:left; }
 }
+@media (max-width:540px) {
+  .checkout-head h1 { font-size:25px; }
+  .price { align-items:flex-start; flex-direction:column; }
+  .price strong { font-size:26px; }
+  .payment-actions .btn { width:100%; }
+}
 {% endblock %}
 {% block content %}
 <main class="page checkout-shell">

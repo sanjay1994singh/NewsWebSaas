@@ -8,13 +8,18 @@
   .domain-hero h1 { margin:0; font-size:36px; line-height:1.1; }
   .hero-actions, .row-actions { display:flex; flex-wrap:wrap; align-items:center; gap:10px; }
   .domain-grid { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(300px,.65fr); gap:18px; align-items:start; }
-  .domain-table { width:100%; border-collapse:collapse; }
+  .domain-table { width:100%; table-layout:fixed; border-collapse:collapse; }
   .domain-table th, .domain-table td { padding:14px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:middle; }
   .domain-table th { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.04em; }
+  .domain-table th:nth-child(1) { width:30%; }
+  .domain-table th:nth-child(2) { width:18%; }
+  .domain-table th:nth-child(3) { width:16%; }
+  .domain-table th:nth-child(4) { width:14%; }
+  .domain-table th:nth-child(5) { width:22%; }
   .domain-table tr:last-child td { border-bottom:0; }
   .domain-name { display:grid; gap:4px; }
   .domain-name a { color:var(--deep); font-weight:900; text-decoration:none; }
-  .badge { display:inline-flex; width:max-content; align-items:center; justify-content:center; border:1px solid var(--line); border-radius:999px; padding:5px 10px; background:#fff; color:var(--deep); font-size:12px; font-weight:800; }
+  .badge { display:inline-flex; width:max-content; max-width:100%; align-items:center; justify-content:center; border:1px solid var(--line); border-radius:999px; padding:5px 10px; background:#fff; color:var(--deep); font-size:12px; font-weight:800; line-height:1.15; white-space:nowrap; }
   .badge.ok { border-color:#b9dbd0; background:#edf8f4; color:#075641; }
   .badge.warn { border-color:#ead6a7; background:#fff8e6; color:#7a5700; }
   .steps { display:grid; gap:14px; margin:0; padding:0; list-style:none; }
@@ -22,7 +27,16 @@
   .step-dot { display:grid; place-items:center; width:30px; height:30px; border-radius:999px; background:#e6f3ee; color:var(--brand); font-weight:900; }
   .empty { display:grid; place-items:center; min-height:220px; text-align:center; }
   .copy-box { display:flex; gap:8px; align-items:center; justify-content:space-between; border:1px solid var(--line); border-radius:8px; padding:12px; background:#f8fbfa; font-weight:800; overflow-wrap:anywhere; }
-  @media (max-width:860px) { .domain-hero, .domain-grid { display:grid; grid-template-columns:1fr; } .hero-actions, .row-actions, .row-actions form { width:100%; } .domain-table { display:block; overflow-x:auto; } .domain-table th, .domain-table td { min-width:132px; } }
+  @media (max-width:940px) {
+    .domain-table, .domain-table thead, .domain-table tbody, .domain-table tr, .domain-table th, .domain-table td { display:block; width:100%; }
+    .domain-table thead { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+    .domain-table tr { margin-bottom:12px; border:1px solid var(--line); border-radius:8px; background:#fff; overflow:hidden; }
+    .domain-table td { display:grid; grid-template-columns:128px minmax(0,1fr); gap:12px; border-bottom:1px solid var(--line); }
+    .domain-table td::before { content:attr(data-label); color:var(--muted); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
+    .domain-table td:last-child { border-bottom:0; }
+  }
+  @media (max-width:860px) { .domain-hero, .domain-grid { display:grid; grid-template-columns:1fr; } .hero-actions, .row-actions, .row-actions form { width:100%; } }
+  @media (max-width:560px) { .domain-table td { grid-template-columns:1fr; gap:4px; } }
   @media (max-width:520px) { .hero-actions .btn, .row-actions .btn { width:100%; } .copy-box { display:grid; } }
 {% endblock %}
 
@@ -57,20 +71,20 @@
             <tbody>
               {% for domain in domains %}
                 <tr>
-                  <td>
+                  <td data-label="Domain">
                     <div class="domain-name">
                       <a href="{% url 'domains:domain_detail' domain.id %}">{{ domain.domain }}</a>
                       <span class="muted">{{ domain.get_domain_type_display }}</span>
                     </div>
                   </td>
-                  <td>
+                  <td data-label="Domain status">
                     <span class="badge {% if domain.is_verified %}ok{% else %}warn{% endif %}">
                       {% if domain.is_verified %}Verified{% else %}Needs verification{% endif %}
                     </span>
                   </td>
-                  <td><span class="badge {% if domain.ssl_status == 'active' %}ok{% else %}warn{% endif %}">{{ domain.get_ssl_status_display }}</span></td>
-                  <td>{% if domain.is_primary %}<span class="badge ok">Primary</span>{% else %}<span class="muted">No</span>{% endif %}</td>
-                  <td>
+                  <td data-label="SSL"><span class="badge {% if domain.ssl_status == 'active' %}ok{% else %}warn{% endif %}">{{ domain.get_ssl_status_display }}</span></td>
+                  <td data-label="Primary">{% if domain.is_primary %}<span class="badge ok">Primary</span>{% else %}<span class="muted">No</span>{% endif %}</td>
+                  <td data-label="Action">
                     <div class="row-actions">
                       <a class="btn secondary" href="{% url 'domains:domain_detail' domain.id %}">Manage</a>
                       {% if domain.is_verified and not domain.is_primary %}

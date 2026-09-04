@@ -2,17 +2,27 @@
 
 {% block title %}Delete Category - {{ tenant.business_name|default:tenant.publication_name }}{% endblock %}
 
+{% block styles %}
+  .delete-box { max-width:680px; }
+  .delete-box h1 { margin-top:0; }
+  .delete-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:18px; }
+  .btn.danger { border-color:var(--danger); background:var(--danger); }
+  @media (max-width:560px) { .delete-actions .btn { width:100%; } }
+{% endblock %}
+
 {% block content %}
   <main class="page">
-    <section class="card">
+    <section class="card delete-box">
       <p class="muted">Publishing desk</p>
       <h1>Delete Category</h1>
       <p>Are you sure you want to delete <strong>{{ category.name }}</strong>?</p>
       <p class="muted">If this category is already used by posts, it cannot be deleted until those posts are moved or deleted.</p>
-      <form method="post" style="display:flex; gap:10px; flex-wrap:wrap">
+      <form method="post">
         {% csrf_token %}
-        <button class="btn" type="submit">Delete Category</button>
+        <div class="delete-actions">
+        <button class="btn danger" type="submit">Delete Category</button>
         <a class="btn secondary" href="{% url 'news:category_list' %}">Cancel</a>
+        </div>
       </form>
     </section>
   </main>

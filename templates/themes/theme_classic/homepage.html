@@ -383,9 +383,18 @@
       color: var(--ink);
       font-size: 18px;
     }
+    @media (max-width: 1040px) {
+      .hero-grid {
+        grid-template-columns: 1fr;
+      }
+      .section-grid,
+      .empty-actions,
+      .contact-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
     @media (max-width: 800px) {
       .masthead,
-      .hero-grid,
       .section-grid,
       .empty-actions,
       .contact-grid {

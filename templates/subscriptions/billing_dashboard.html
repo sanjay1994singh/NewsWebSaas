@@ -20,14 +20,30 @@
   .feature-card strong { font-size:13px; }
   .feature-card p { margin:4px 0 0; font-size:12px; }
   .field-note { font-size:13px; color:var(--muted); margin:0; }
-  .invoice-table { width:100%; border-collapse:collapse; overflow:hidden; border:1px solid var(--line); border-radius:8px; background:#fff; }
+  .invoice-table { width:100%; table-layout:fixed; border-collapse:collapse; overflow:hidden; border:1px solid var(--line); border-radius:8px; background:#fff; }
   .invoice-table th, .invoice-table td { padding:10px; border-bottom:1px solid var(--line); text-align:left; font-size:13px; }
   .invoice-table th { background:#eef6f2; color:var(--deep); font-size:13px; text-transform:uppercase; letter-spacing:.04em; }
+  .invoice-table th:nth-child(1) { width:16%; }
+  .invoice-table th:nth-child(2) { width:24%; }
+  .invoice-table th:nth-child(3) { width:16%; }
+  .invoice-table th:nth-child(4) { width:14%; }
+  .invoice-table th:nth-child(5) { width:30%; }
   .invoice-table tr:last-child td { border-bottom:0; }
   .invoice-actions { display:flex; gap:8px; flex-wrap:wrap; }
   .invoice-actions .btn { min-height:34px; padding:7px 10px; font-size:12px; }
   @media (max-width:900px) { .billing-summary-grid { grid-template-columns:1fr; } }
-  @media (max-width:760px) { .billing-hero, .detail-row { display:grid; } .invoice-table { display:block; overflow-x:auto; } }
+  @media (max-width:820px) {
+    .invoice-table, .invoice-table thead, .invoice-table tbody, .invoice-table tr, .invoice-table th, .invoice-table td { display:block; width:100%; }
+    .invoice-table { border:0; background:transparent; }
+    .invoice-table thead { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+    .invoice-table tr { margin-bottom:12px; border:1px solid var(--line); border-radius:8px; background:#fff; overflow:hidden; }
+    .invoice-table td { display:grid; grid-template-columns:120px minmax(0,1fr); gap:12px; border-bottom:1px solid var(--line); }
+    .invoice-table td::before { content:attr(data-label); color:var(--muted); font-size:12px; font-weight:900; text-transform:uppercase; letter-spacing:.04em; }
+    .invoice-table td:last-child { border-bottom:0; }
+    .invoice-actions .btn { flex:1 1 130px; }
+  }
+  @media (max-width:760px) { .billing-hero, .detail-row { display:grid; } .status-pill { width:max-content; max-width:100%; white-space:normal; } }
+  @media (max-width:540px) { .invoice-table td { grid-template-columns:1fr; gap:4px; } .invoice-actions .btn { width:100%; flex-basis:100%; } }
 {% endblock %}
 
 {% block content %}
@@ -71,11 +87,11 @@
             <tbody>
               {% for invoice in invoices %}
                 <tr>
-                  <td>{{ invoice.created_at|date:"d M Y" }}</td>
-                  <td>{% if invoice.subscription %}{{ invoice.subscription.plan.name }}{% else %}Subscription{% endif %}</td>
-                  <td>{{ invoice.currency }} {{ invoice.amount|paise_to_rupees }}</td>
-                  <td>{{ invoice.status|title }}</td>
-                  <td>
+                  <td data-label="Date">{{ invoice.created_at|date:"d M Y" }}</td>
+                  <td data-label="Plan">{% if invoice.subscription %}{{ invoice.subscription.plan.name }}{% else %}Subscription{% endif %}</td>
+                  <td data-label="Amount">{{ invoice.currency }} {{ invoice.amount|paise_to_rupees }}</td>
+                  <td data-label="Status">{{ invoice.status|title }}</td>
+                  <td data-label="Actions">
                     <div class="invoice-actions">
                       <a class="btn secondary" href="{% url 'subscriptions:view_invoice' invoice.id %}" target="_blank" rel="noopener">View PDF</a>
                       <a class="btn secondary" href="{% url 'subscriptions:download_invoice' invoice.id %}">Download PDF</a>
