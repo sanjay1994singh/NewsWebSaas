@@ -833,7 +833,7 @@ def upgrade_plan(request):
         PlanChangeRequest.objects
         .filter(tenant=tenant)
         .select_related('from_plan', 'to_plan')
-        .order_by('-created_at')[:20]
+        .order_by('-created_at')[:1]
     )
     return render(
         request,
