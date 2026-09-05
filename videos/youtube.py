@@ -1,5 +1,6 @@
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from html import unescape
 from urllib.error import URLError
 from urllib.parse import parse_qs, quote, urlparse
@@ -16,7 +17,7 @@ YOUTUBE_OEMBED_URL = 'https://www.youtube.com/oembed?url={video_url}&format=json
 YOUTUBE_BROWSE_URL = 'https://www.youtube.com/youtubei/v1/browse?key={api_key}'
 YOUTUBE_TIMEOUT = 6
 YOUTUBE_USER_AGENT = 'PressNexaBot/1.0'
-YOUTUBE_CACHE_VERSION = 'v5'
+YOUTUBE_CACHE_VERSION = 'v9'
 
 
 def _fetch_text(url):
@@ -156,10 +157,53 @@ def _youtube_text(value):
     return ''
 
 
+def _bucket_from_relative_text(value):
+    text = _clean_youtube_text(value).lower()
+    match = re.search(r'(\d+)\s+(minute|minutes|hour|hours|day|days|week|weeks|month|months)\s+ago', text)
+    if not match:
+        return ''
+    amount = int(match.group(1))
+    unit = match.group(2)
+    if unit.startswith(('minute', 'hour')):
+        return 'today'
+    if unit.startswith('day'):
+        if amount == 1:
+            return 'yesterday'
+        if amount <= 7:
+            return 'week'
+        if amount <= 30:
+            return 'month'
+        return 'old'
+    if unit.startswith('week'):
+        return 'week' if amount == 1 else 'month'
+    return 'month' if amount == 1 else 'old'
+
+
 def _initial_video_items_from_data(data, url_prefix):
     items = []
     seen = set()
     for node in _walk_youtube_data(data):
+        shorts_lockup = node.get('shortsLockupViewModel')
+        if isinstance(shorts_lockup, dict):
+            endpoint = (
+                shorts_lockup.get('onTap', {})
+                .get('innertubeCommand', {})
+                .get('reelWatchEndpoint', {})
+            )
+            video_id = endpoint.get('videoId') or (shorts_lockup.get('entityId', '').rsplit('-', 1)[-1])
+            if not video_id or video_id in seen:
+                continue
+            if url_prefix != '/shorts':
+                continue
+            title = _clean_youtube_text((shorts_lockup.get('accessibilityText') or '').split(',')[0])
+            seen.add(video_id)
+            items.append({
+                'id': video_id,
+                'title': title,
+                'published': '',
+                'bucket': '',
+            })
+            continue
         lockup = node.get('lockupViewModel')
         if isinstance(lockup, dict):
             video_id = lockup.get('contentId')
@@ -171,10 +215,13 @@ def _initial_video_items_from_data(data, url_prefix):
             metadata = lockup.get('metadata', {}).get('lockupMetadataViewModel', {})
             title = _youtube_text(metadata.get('title'))
             published = ''
+            bucket = ''
             content_metadata = metadata.get('metadata', {}).get('contentMetadataViewModel', {})
             for row in content_metadata.get('metadataRows', []):
                 for part in row.get('metadataParts', []):
-                    published = _published_from_relative_text(_youtube_text(part.get('text')))
+                    part_text = _youtube_text(part.get('text'))
+                    published = _published_from_relative_text(part_text)
+                    bucket = _bucket_from_relative_text(part_text)
                     if published:
                         break
                 if published:
@@ -184,6 +231,7 @@ def _initial_video_items_from_data(data, url_prefix):
                 'id': video_id,
                 'title': title,
                 'published': published,
+                'bucket': bucket,
             })
             continue
         renderer = node.get('videoRenderer') or node.get('gridVideoRenderer') or node.get('reelItemRenderer')
@@ -201,15 +249,15 @@ def _initial_video_items_from_data(data, url_prefix):
         if url and not url.startswith(url_prefix):
             continue
         title = _youtube_text(renderer.get('title')) or _youtube_text(renderer.get('headline'))
-        published = _published_from_relative_text(
-            _youtube_text(renderer.get('publishedTimeText'))
-            or _youtube_text(renderer.get('shortBylineText'))
-        )
+        published_text = _youtube_text(renderer.get('publishedTimeText')) or _youtube_text(renderer.get('shortBylineText'))
+        published = _published_from_relative_text(published_text)
+        bucket = _bucket_from_relative_text(published_text)
         seen.add(video_id)
         items.append({
             'id': video_id,
             'title': title,
             'published': published,
+            'bucket': bucket,
         })
     return items
 
@@ -332,6 +380,36 @@ def _youtube_oembed_title(video_id, is_short=False):
     return title
 
 
+def _youtube_page_publish_date(video_id, is_short=False):
+    cache_key = f'{YOUTUBE_CACHE_VERSION}:youtube-page-published:{"short" if is_short else "video"}:{video_id}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    url = f'https://www.youtube.com/shorts/{video_id}' if is_short else f'https://www.youtube.com/watch?v={video_id}'
+    try:
+        html = _fetch_text(url)
+    except (OSError, URLError, ValueError):
+        cache.set(cache_key, '', 60 * 30)
+        return ''
+
+    patterns = (
+        r'<meta itemprop="uploadDate" content="(?P<date>[^"]+)"',
+        r'<meta itemprop="datePublished" content="(?P<date>[^"]+)"',
+        r'"publishDate":"(?P<date>[^"]+)"',
+        r'"uploadDate":"(?P<date>[^"]+)"',
+    )
+    for pattern in patterns:
+        match = re.search(pattern, html)
+        if match:
+            published = _clean_youtube_text(match.group('date'))
+            cache.set(cache_key, published, 60 * 60 * 24)
+            return published
+
+    cache.set(cache_key, '', 60 * 30)
+    return ''
+
+
 def fetch_youtube_channel_videos(channel_url, limit=None):
     channel_id = extract_youtube_channel_id(channel_url)
     if not channel_id:
@@ -381,6 +459,7 @@ def fetch_youtube_channel_videos(channel_url, limit=None):
                         'url': f'https://www.youtube.com/watch?v={video_id}',
                         'embed_url': f'https://www.youtube.com/embed/{video_id}?enablejsapi=1&rel=0',
                         'published': published,
+                        'bucket': '',
                     })
 
     try:
@@ -405,6 +484,7 @@ def fetch_youtube_channel_videos(channel_url, limit=None):
                 'url': f'https://www.youtube.com/watch?v={item["id"]}',
                 'embed_url': f'https://www.youtube.com/embed/{item["id"]}?enablejsapi=1&rel=0',
                 'published': item.get('published', ''),
+                'bucket': item.get('bucket', ''),
             })
             existing_ids.add(item['id'])
             if limit and len(videos) >= limit:
@@ -424,6 +504,7 @@ def fetch_youtube_channel_videos(channel_url, limit=None):
                 'url': f'https://www.youtube.com/watch?v={video_id}',
                 'embed_url': f'https://www.youtube.com/embed/{video_id}?enablejsapi=1&rel=0',
                 'published': published_dates.get(video_id, ''),
+                'bucket': '',
             })
             existing_ids.add(video_id)
             if limit and len(videos) >= limit:
@@ -440,6 +521,7 @@ def fetch_youtube_channel_videos(channel_url, limit=None):
                 'url': f'https://www.youtube.com/watch?v={item["id"]}',
                 'embed_url': f'https://www.youtube.com/embed/{item["id"]}?enablejsapi=1&rel=0',
                 'published': item.get('published', ''),
+                'bucket': item.get('bucket', ''),
             })
             existing_ids.add(item['id'])
             if limit and len(videos) >= limit:
@@ -561,30 +643,54 @@ def fetch_youtube_channel_shorts(channel_url, limit=None):
             titles[item['id']] = item['title']
         if item.get('published'):
             published_dates[item['id']] = item['published']
-    continuation_items = _continuation_items_from_html(html, '/shorts')
+    continuation_items = []
     for item in continuation_items:
         if item.get('title'):
             titles[item['id']] = item['title']
         if item.get('published'):
             published_dates[item['id']] = item['published']
+    video_metadata = {}
+    for item in fetch_youtube_channel_videos(channel_url):
+        video_metadata[item['id']] = item
 
     seen = set()
     shorts = []
     ordered_ids = [item['id'] for item in initial_items] + _shorts_ids_from_html(html) + [item['id'] for item in continuation_items]
+    if limit:
+        ordered_ids = ordered_ids[:limit]
+    missing_published_ids = []
     for video_id in ordered_ids:
         if video_id in seen:
             continue
         seen.add(video_id)
-        title = titles.get(video_id) or _youtube_oembed_title(video_id, is_short=True) or 'YouTube short'
+        metadata = video_metadata.get(video_id, {})
+        title = titles.get(video_id) or metadata.get('title') or _youtube_oembed_title(video_id, is_short=True) or 'YouTube short'
+        published = published_dates.get(video_id) or metadata.get('published', '')
+        if not published:
+            missing_published_ids.append(video_id)
         shorts.append({
             'id': video_id,
             'title': title,
             'url': f'https://www.youtube.com/shorts/{video_id}',
             'embed_url': f'https://www.youtube.com/embed/{video_id}?enablejsapi=1&rel=0',
-            'published': published_dates.get(video_id, ''),
+            'published': published,
+            'bucket': metadata.get('bucket', ''),
         })
         if limit and len(shorts) >= limit:
             break
+
+    if missing_published_ids:
+        fetched_dates = {}
+        with ThreadPoolExecutor(max_workers=12) as executor:
+            future_map = {
+                executor.submit(_youtube_page_publish_date, video_id, True): video_id
+                for video_id in missing_published_ids[:60]
+            }
+            for future in as_completed(future_map):
+                fetched_dates[future_map[future]] = future.result()
+        for item in shorts:
+            if not item.get('published') and fetched_dates.get(item['id']):
+                item['published'] = fetched_dates[item['id']]
 
     cache.set(cache_key, json.loads(json.dumps(shorts)), 60 * 30)
     return shorts

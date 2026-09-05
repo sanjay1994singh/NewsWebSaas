@@ -1,5 +1,6 @@
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core.cache import cache
 from django.test import TestCase
 
 from tenants.models import Tenant
@@ -12,6 +13,7 @@ from .youtube import _shorts_ids_from_html, _shorts_published_from_html, _shorts
 
 class VideoTests(TestCase):
     def setUp(self):
+        cache.clear()
         user = get_user_model().objects.create_user(username='owner')
         self.tenant = Tenant.objects.create(owner=user, business_name='A', publication_name='A', slug='a', email='a@example.com')
 
@@ -51,8 +53,7 @@ class VideoTests(TestCase):
         self.assertNotEqual(shorts[0]['title'], 'Latest short')
 
     def test_video_fetch_merges_feed_and_channel_page_items(self):
-        feed = '''<?xml version="1.0" encoding="UTF-8"?>
-        <feed xmlns="http://www.w3.org/2005/Atom" xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns:media="http://search.yahoo.com/mrss/">
+        feed = '''<feed xmlns="http://www.w3.org/2005/Atom" xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns:media="http://search.yahoo.com/mrss/">
           <entry>
             <yt:videoId>feedvideo12</yt:videoId>
             <title>Today feed video</title>

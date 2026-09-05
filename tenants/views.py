@@ -6,7 +6,7 @@ from django.contrib import messages
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.utils.dateparse import parse_datetime
+from django.utils.dateparse import parse_date, parse_datetime
 from django.utils import timezone
 from datetime import timedelta
 
@@ -47,9 +47,18 @@ def _group_youtube_items_by_day(items):
         if video_id in seen_ids:
             continue
         seen_ids.add(video_id)
+        bucket = item.get('bucket')
+        if bucket in lookup:
+            lookup[bucket]['items'].append(item)
+            continue
+        if bucket == 'old':
+            continue
         published_at = parse_datetime(item.get('published') or '')
         if published_at:
             published_date = timezone.localdate(published_at)
+        else:
+            published_date = parse_date(item.get('published') or '')
+        if published_date:
             if published_date == today:
                 lookup['today']['items'].append(item)
             elif published_date == today - timedelta(days=1):
