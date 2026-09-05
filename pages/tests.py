@@ -163,3 +163,40 @@ class WebsiteBuilderTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(list(layout.blocks.order_by('order').values_list('heading', flat=True)[:2]), ['Second First', 'First Second'])
+
+    def test_owner_can_manage_only_required_static_pages(self):
+        self.client.force_login(self.user_a)
+
+        response = self.client.get(reverse('pages:tenant_static_page_list'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Privacy Policy')
+        self.assertContains(response, 'Editorial Policy')
+        self.assertEqual(Page.objects.filter(tenant=self.tenant_a, is_published=True).count(), 9)
+
+        page = Page.objects.get(tenant=self.tenant_a, slug='privacy-policy')
+        edit_response = self.client.post(
+            reverse('pages:tenant_static_page_edit', args=[page.id]),
+            {
+                'title': 'Privacy Policy',
+                'content': '<p>Updated tenant privacy content.</p><script>alert(1)</script>',
+                'seo_title': 'Privacy - A News',
+                'meta_description': 'Updated privacy policy.',
+            },
+        )
+
+        self.assertEqual(edit_response.status_code, 302)
+        page.refresh_from_db()
+        self.assertIn('Updated tenant privacy content', page.content)
+        self.assertNotIn('<script', page.content)
+
+    def test_owner_cannot_edit_other_tenant_static_page(self):
+        from subscriptions.services import ensure_required_tenant_pages
+
+        ensure_required_tenant_pages(tenant=self.tenant_b)
+        foreign_page = Page.objects.get(tenant=self.tenant_b, slug='privacy-policy')
+        self.client.force_login(self.user_a)
+
+        response = self.client.get(reverse('pages:tenant_static_page_edit', args=[foreign_page.id]))
+
+        self.assertEqual(response.status_code, 404)

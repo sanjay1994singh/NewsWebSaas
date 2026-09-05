@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block title %}Site Pages - {{ tenant.business_name|default:tenant.publication_name }}{% endblock %}
+
+{% block styles %}
+  .page-shell { display:grid; gap:18px; }
+  .page-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+  .page-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:14px; }
+  .page-card { display:grid; gap:10px; min-height:164px; padding:18px; border:1px solid var(--line); border-radius:8px; background:#fff; text-decoration:none; }
+  .page-card:hover { border-color:var(--brand); box-shadow:0 12px 30px rgba(19,32,27,.08); }
+  .page-card strong { font-size:20px; line-height:1.2; }
+  .page-card span { color:var(--muted); overflow-wrap:anywhere; }
+  .page-card .status { display:inline-flex; width:max-content; max-width:100%; border:1px solid var(--line); border-radius:999px; padding:4px 10px; font-size:12px; font-weight:900; color:var(--brand); background:#f8fbfa; }
+  @media (max-width:920px) { .page-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:620px) { .page-head { display:grid; } .page-grid { grid-template-columns:1fr; } }
+{% endblock %}
+
+{% block content %}
+  <main class="page page-shell">
+    <section class="card page-head">
+      <div>
+        <p class="muted">Website pages</p>
+        <h1>Site Pages</h1>
+        <p class="muted">Edit only the required public pages for {{ tenant.business_name|default:tenant.publication_name }}.</p>
+      </div>
+      <a class="btn secondary" href="{% url 'tenants:tenant_dashboard' %}">Back to Dashboard</a>
+    </section>
+
+    <section class="page-grid">
+      {% for page_item in pages %}
+        <a class="page-card" href="{% url 'pages:tenant_static_page_edit' page_item.id %}">
+          <strong>{{ page_item.title }}</strong>
+          <span>/{{ page_item.slug }}/</span>
+          <span class="status">{% if page_item.is_published %}Published{% else %}Hidden{% endif %}</span>
+        </a>
+      {% empty %}
+        <article class="card">
+          <p class="muted">No editable pages are available yet.</p>
+        </article>
+      {% endfor %}
+    </section>
+  </main>
+{% endblock %}

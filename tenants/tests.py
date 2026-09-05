@@ -148,6 +148,8 @@ class TenantIsolationTests(TestCase):
         self.assertNotContains(response, 'Latest updates')
         self.assertNotContains(response, 'href="/videos/"')
         self.assertNotContains(response, 'href="/live-tv/"')
+        self.assertNotContains(response, 'href="/latest-news/"')
+        self.assertNotContains(response, 'href="/top-stories/"')
         self.assertNotContains(response, 'data-block-type="videos"')
         self.assertNotContains(response, 'data-block-type="live_tv"')
         self.assertNotContains(response, 'Video and Live TV sections available')
@@ -170,6 +172,49 @@ class TenantIsolationTests(TestCase):
         self.assertEqual(page_response.status_code, 200)
         self.assertContains(page_response, 'Privacy Policy')
         self.assertContains(page_response, 'A News')
+
+    def test_public_nav_shows_home_and_tenant_categories(self):
+        Category.objects.create(tenant=self.tenant_a, name='Local News', slug='local-news', show_in_menu=True, menu_order=1)
+        Category.objects.create(tenant=self.tenant_a, name='Hidden', slug='hidden', show_in_menu=False, menu_order=2)
+
+        response = self.client.get('/', HTTP_HOST='customera.platformdomain.com')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'href="/category/local-news/"')
+        self.assertNotContains(response, 'href="/category/hidden/"')
+        self.assertNotContains(response, 'href="/latest-news/"')
+        self.assertNotContains(response, 'href="/top-stories/"')
+
+    def test_public_category_page_filters_articles(self):
+        category = Category.objects.create(tenant=self.tenant_a, name='Local News', slug='local-news', show_in_menu=True)
+        other_category = Category.objects.create(tenant=self.tenant_a, name='Sports', slug='sports', show_in_menu=True)
+        author = AuthorProfile.objects.create(tenant=self.tenant_a, display_name='City Desk', slug='city-desk')
+        NewsArticle.objects.create(
+            tenant=self.tenant_a,
+            category=category,
+            author=author,
+            title='Local category story',
+            slug='local-category-story',
+            content='<p>Body</p>',
+            status=NewsArticle.Status.PUBLISHED,
+            published_at=timezone.now(),
+        )
+        NewsArticle.objects.create(
+            tenant=self.tenant_a,
+            category=other_category,
+            author=author,
+            title='Sports story',
+            slug='sports-story',
+            content='<p>Body</p>',
+            status=NewsArticle.Status.PUBLISHED,
+            published_at=timezone.now(),
+        )
+
+        response = self.client.get('/category/local-news/', HTTP_HOST='customera.platformdomain.com')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Local category story')
+        self.assertNotContains(response, 'Sports story')
 
     def test_required_public_pages_open_from_platform_site_path(self):
         ensure_required_tenant_pages(tenant=self.tenant_a)

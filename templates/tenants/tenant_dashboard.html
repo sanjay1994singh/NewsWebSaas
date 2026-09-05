@@ -161,6 +161,7 @@
         <a href="/cms/?type=blog">Blog Posts <span>Write</span></a>
         <a href="{% url 'news:category_list' %}">Categories <span>Manage</span></a>
         <a href="{% url 'tenants:reporter_list' %}">Reporters <span>Add</span></a>
+        <a href="{% url 'pages:tenant_static_page_list' %}">Pages <span>Legal</span></a>
         <a href="{% url 'subscriptions:onboarding' %}">Onboarding <span>{% if onboarding %}{{ onboarding.get_status_display }}{% else %}Update{% endif %}</span></a>
         <a href="{% url 'subscriptions:billing_dashboard' %}">Billing <span>{% if subscription %}{{ subscription.get_status_display }}{% else %}Review{% endif %}</span></a>
         <a href="{% url 'subscriptions:upgrade_plan' %}">Upgrade Plan <span>Renew</span></a>
@@ -230,6 +231,10 @@
         <a class="quick-card" href="{% url 'news:category_list' %}">
           <strong>Categories</strong>
           <span>Manage categories for this publication website.</span>
+        </a>
+        <a class="quick-card" href="{% url 'pages:tenant_static_page_list' %}">
+          <strong>Site Pages</strong>
+          <span>Edit About, Privacy, Terms, policies, and advertise pages.</span>
         </a>
         <a class="quick-card" href="{% url 'subscriptions:onboarding' %}">
           <strong>Update Onboarding</strong>

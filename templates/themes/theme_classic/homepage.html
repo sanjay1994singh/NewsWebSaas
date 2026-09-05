@@ -185,12 +185,18 @@
     .nav {
       min-height: 48px;
       overflow-x: auto;
+      overflow-y: hidden;
+      justify-content: flex-start;
+      gap: 34px;
+      scrollbar-width: thin;
+      -webkit-overflow-scrolling: touch;
     }
     .nav a {
       flex: 0 0 auto;
       font-weight: 700;
       font-size: 14px;
       color: #294039;
+      white-space: nowrap;
     }
     .breaking {
       display: flex;
@@ -647,9 +653,7 @@
         font-size: 15px;
         background: #fff;
       }
-      .nav {
-        min-width: max-content;
-      }
+      .nav { gap: 24px; }
       .nav a {
         padding: 0 10px;
       }
@@ -741,24 +745,14 @@
     <nav class="wrap nav" aria-label="Primary navigation">
       {% if request.tenant %}
         <a href="/">Home</a>
-        <a href="/latest-news/">Latest News</a>
-        <a href="/top-stories/">Top Stories</a>
-        {% if has_blogs %}<a href="/blogs/">Blogs</a>{% endif %}
-        {% if has_videos %}<a href="/videos/">Videos</a>{% endif %}
-        {% if has_live_tv %}<a href="/live-tv/">Live TV</a>{% endif %}
-        <a href="/about-us/">About Us</a>
-        <a href="/privacy-policy/">Privacy Policy</a>
-        <a href="/contact/">Contact</a>
+        {% for category in nav_categories %}
+          <a href="/category/{{ category.slug }}/">{{ category.name }}</a>
+        {% endfor %}
       {% else %}
         <a href="/site/{{ public_site_slug }}/">Home</a>
-        <a href="/site/{{ public_site_slug }}/latest-news/">Latest News</a>
-        <a href="/site/{{ public_site_slug }}/top-stories/">Top Stories</a>
-        {% if has_blogs %}<a href="/site/{{ public_site_slug }}/blogs/">Blogs</a>{% endif %}
-        {% if has_videos %}<a href="/site/{{ public_site_slug }}/videos/">Videos</a>{% endif %}
-        {% if has_live_tv %}<a href="/site/{{ public_site_slug }}/live-tv/">Live TV</a>{% endif %}
-        <a href="/site/{{ public_site_slug }}/about-us/">About Us</a>
-        <a href="/site/{{ public_site_slug }}/privacy-policy/">Privacy Policy</a>
-        <a href="/site/{{ public_site_slug }}/contact/">Contact</a>
+        {% for category in nav_categories %}
+          <a href="/site/{{ public_site_slug }}/category/{{ category.slug }}/">{{ category.name }}</a>
+        {% endfor %}
       {% endif %}
     </nav>
   </div>
@@ -832,7 +826,7 @@
     </section>
     {% endif %}
 
-    {% if page == "home" or page == "latest-news" or page == "top-stories" or page == "blogs" %}
+    {% if page == "home" or page == "latest-news" or page == "top-stories" or page == "blogs" or page == "category" %}
     <section class="section-grid">
       {% if articles %}
         {% for article in articles %}

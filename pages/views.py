@@ -1,12 +1,14 @@
 import json
 
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.http import JsonResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from core.models import user_can_access_tenant
+from tenants.models import TenantMembership
 
 from .builder import (
     add_homepage_block,
@@ -18,12 +20,45 @@ from .builder import (
     restore_published_to_draft,
     update_homepage_blocks,
 )
-from .models import HomepageBlock, HomepageLayout, Menu, MenuItem
+from .forms import TenantStaticPageForm
+from .models import HomepageBlock, HomepageLayout, Menu, MenuItem, Page
+
+
+def _active_tenant(request):
+    tenant = getattr(request, 'tenant', None)
+    if tenant is not None:
+        return tenant
+    membership = (
+        TenantMembership.objects
+        .select_related('tenant')
+        .filter(user=request.user, status=TenantMembership.Status.ACTIVE)
+        .order_by('role', 'created_at')
+        .first()
+    )
+    tenant = membership.tenant if membership else None
+    request.tenant = tenant
+    return tenant
 
 
 def _require_tenant_user(request):
-    if not user_can_access_tenant(request.user, request.tenant):
+    tenant = _active_tenant(request)
+    if tenant is None or not user_can_access_tenant(request.user, tenant):
         raise PermissionDenied("You do not have access to this tenant.")
+
+
+def _require_tenant_page_manager(request):
+    tenant = _active_tenant(request)
+    if tenant is None or not user_can_access_tenant(request.user, tenant, roles=[
+        TenantMembership.Role.OWNER,
+        TenantMembership.Role.ADMINISTRATOR,
+    ]):
+        raise PermissionDenied("Only workspace owners or administrators can manage site pages.")
+
+
+def _editable_page_slugs():
+    from subscriptions.services import required_tenant_pages
+
+    return [slug for _page_type, _title, slug, _order in required_tenant_pages()]
 
 
 @login_required
@@ -131,5 +166,35 @@ def menu_builder(request, location='header'):
         'items': menu.items.select_related('parent', 'category', 'page'),
         'link_types': MenuItem.LinkType.choices,
     })
+
+
+@login_required
+def tenant_static_page_list(request):
+    _require_tenant_page_manager(request)
+    from subscriptions.services import ensure_required_tenant_pages
+
+    ensure_required_tenant_pages(tenant=request.tenant)
+    pages = (
+        Page.objects
+        .filter(tenant=request.tenant, slug__in=_editable_page_slugs())
+        .order_by('menu_items__order', 'title')
+        .distinct()
+    )
+    return render(request, 'builder/static_page_list.html', {'tenant': request.tenant, 'pages': pages})
+
+
+@login_required
+def tenant_static_page_edit(request, page_id):
+    _require_tenant_page_manager(request)
+    page = get_object_or_404(Page, tenant=request.tenant, pk=page_id, slug__in=_editable_page_slugs())
+    if request.method == 'POST':
+        form = TenantStaticPageForm(request.POST, instance=page)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f'{page.title} updated.')
+            return redirect('pages:tenant_static_page_list')
+    else:
+        form = TenantStaticPageForm(instance=page)
+    return render(request, 'builder/static_page_form.html', {'tenant': request.tenant, 'form': form, 'page_obj': page})
 
 # Create your views here.

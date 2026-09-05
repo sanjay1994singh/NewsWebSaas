@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from analytics.services import record_article_view
 from core.models import user_can_access_tenant
+from categories.models import Category
 from domains.models import TenantDomain
 from news.models import NewsArticle
 from news.services import article_public_path, published_articles_for_tenant
@@ -158,11 +159,28 @@ def public_tenant_page(request, tenant_slug, page):
     return _render_public_tenant_site(request, tenant, page)
 
 
+def public_tenant_category(request, tenant_slug, category_slug):
+    public_tenants = Tenant.objects.select_related('owner').filter(status__in=[Tenant.Status.TRIAL, Tenant.Status.ACTIVE])
+    tenant = public_tenants.filter(slug=tenant_slug).first()
+    if tenant is None:
+        tenant = next((item for item in public_tenants if tenant_public_site_slug(item) == tenant_slug), None)
+    if tenant is None:
+        raise Http404("Publication site not found.")
+    return _render_public_tenant_site(request, tenant, 'category', category_slug=category_slug)
+
+
 def public_domain_page(request, page):
     tenant = getattr(request, 'tenant', None)
     if tenant is None:
         raise Http404("Publication site not found.")
     return _render_public_tenant_site(request, tenant, page)
+
+
+def public_domain_category(request, category_slug):
+    tenant = getattr(request, 'tenant', None)
+    if tenant is None:
+        raise Http404("Publication site not found.")
+    return _render_public_tenant_site(request, tenant, 'category', category_slug=category_slug)
 
 
 def visitor_register(request):
@@ -254,14 +272,17 @@ def reporter_create(request):
     return render(request, 'tenants/reporter_form.html', {'tenant': tenant, 'form': form})
 
 
-def _render_public_tenant_site(request, tenant, page='home'):
-    allowed_pages = {'home', 'latest-news', 'top-stories', 'blogs', 'videos', 'live-tv', 'contact'}
+def _render_public_tenant_site(request, tenant, page='home', category_slug=''):
+    allowed_pages = {'home', 'latest-news', 'top-stories', 'blogs', 'videos', 'live-tv', 'contact', 'category'}
     ensure_required_tenant_pages(tenant=tenant)
     static_page = None
+    active_category = None
     if page not in allowed_pages:
         static_page = Page.objects.filter(tenant=tenant, slug=page, is_published=True).first()
     if page not in allowed_pages and static_page is None:
         raise Http404("Publication page not found.")
+    if page == 'category':
+        active_category = get_object_or_404(Category, tenant=tenant, slug=category_slug, is_active=True)
     request.tenant = tenant
     entitlements = get_effective_entitlements(tenant)
     has_videos = entitlements.get('youtube_videos', {}).get('is_enabled') or entitlements.get('youtube_shorts', {}).get('is_enabled')
@@ -276,6 +297,11 @@ def _render_public_tenant_site(request, tenant, page='home'):
         .order_by('menu_items__order', 'title')
         .distinct()
     )
+    nav_categories = list(
+        Category.objects
+        .filter(tenant=tenant, is_active=True, show_in_menu=True)
+        .order_by('menu_order', 'name')[:30]
+    )
     layout = get_or_create_layout(tenant, HomepageLayout.Status.PUBLISHED)
     blocks = list(layout.blocks.filter(is_enabled=True).select_related('category'))
     blocks = [
@@ -288,11 +314,14 @@ def _render_public_tenant_site(request, tenant, page='home'):
     ]
     published_queryset = published_articles_for_tenant(tenant)
     article_queryset = published_queryset.filter(content_type=NewsArticle.ContentType.BLOG if page == 'blogs' else NewsArticle.ContentType.NEWS)
+    if active_category:
+        article_queryset = article_queryset.filter(category=active_category)
     if page == 'top-stories':
         articles = list(article_queryset.order_by('-view_count', '-published_at', '-created_at')[:12])
     else:
         articles = list(article_queryset.order_by('-published_at', '-created_at')[:12])
-    latest_articles = list(published_queryset.filter(content_type=NewsArticle.ContentType.NEWS).order_by('-published_at', '-created_at')[:3])
+    latest_source = article_queryset if active_category else published_queryset.filter(content_type=NewsArticle.ContentType.NEWS)
+    latest_articles = list(latest_source.order_by('-published_at', '-created_at')[:3])
     has_blogs = published_queryset.filter(content_type=NewsArticle.ContentType.BLOG).exists()
     top_article = article_queryset.order_by('-view_count', '-published_at', '-created_at').first()
     try:
@@ -317,6 +346,8 @@ def _render_public_tenant_site(request, tenant, page='home'):
         'has_blogs': has_blogs,
         'page': page,
         'static_page': static_page,
+        'active_category': active_category,
+        'nav_categories': nav_categories,
         'footer_pages': footer_pages,
         'public_site_slug': tenant_public_site_slug(tenant),
         'preview': False,

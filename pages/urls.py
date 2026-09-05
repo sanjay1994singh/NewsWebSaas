@@ -15,4 +15,6 @@ urlpatterns = [
     path('appearance/homepage/restore-published/', views.restore_published, name='restore_published'),
     path('appearance/homepage/restore-default/', views.restore_default, name='restore_default'),
     path('appearance/menus/<str:location>/', views.menu_builder, name='menu_builder'),
+    path('site-pages/', views.tenant_static_page_list, name='tenant_static_page_list'),
+    path('site-pages/<int:page_id>/edit/', views.tenant_static_page_edit, name='tenant_static_page_edit'),
 ]

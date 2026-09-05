@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}Edit {{ page_obj.title }} - {{ tenant.business_name|default:tenant.publication_name }}{% endblock %}
+
+{% block styles %}
+  .edit-shell { display:grid; gap:18px; }
+  .edit-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
+  .locked-row { display:grid; grid-template-columns:160px minmax(0,1fr); gap:12px; padding:12px 0; border-bottom:1px solid var(--line); }
+  .locked-row span { color:var(--muted); font-weight:900; }
+  .locked-row strong { overflow-wrap:anywhere; }
+  .form-grid { display:grid; gap:16px; }
+  .form-grid label { display:grid; gap:7px; font-weight:900; }
+  .form-grid input,
+  .form-grid textarea { width:100%; border:1px solid var(--line); border-radius:6px; padding:12px; font:inherit; background:#fff; }
+  .form-grid textarea { min-height:220px; resize:vertical; }
+  .field-error { color:var(--danger); font-weight:800; }
+  .actions { display:flex; flex-wrap:wrap; gap:10px; padding-top:16px; border-top:1px solid var(--line); }
+  @media (max-width:620px) { .edit-head { display:grid; } .locked-row { grid-template-columns:1fr; gap:4px; } }
+{% endblock %}
+
+{% block content %}
+  <main class="page edit-shell">
+    <section class="card edit-head">
+      <div>
+        <p class="muted">Website pages</p>
+        <h1>Edit {{ page_obj.title }}</h1>
+        <p class="muted">This content appears on your public website at /{{ page_obj.slug }}/.</p>
+      </div>
+      <a class="btn secondary" href="{% url 'pages:tenant_static_page_list' %}">All Pages</a>
+    </section>
+
+    <section class="card">
+      <div class="locked-row"><span>Page URL</span><strong>/{{ page_obj.slug }}/</strong></div>
+      <div class="locked-row"><span>Page type</span><strong>{{ page_obj.get_page_type_display }}</strong></div>
+      <form method="post" class="form-grid">
+        {% csrf_token %}
+        <label>
+          Title
+          {{ form.title }}
+          {% for error in form.title.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </label>
+        <label>
+          Content
+          {{ form.content }}
+          {% for error in form.content.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </label>
+        <label>
+          SEO title
+          {{ form.seo_title }}
+          {% for error in form.seo_title.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </label>
+        <label>
+          Meta description
+          {{ form.meta_description }}
+          {% for error in form.meta_description.errors %}<span class="field-error">{{ error }}</span>{% endfor %}
+        </label>
+        <div class="actions">
+          <button class="btn" type="submit">Save Page</button>
+          <a class="btn secondary" href="/{{ page_obj.slug }}/" target="_blank" rel="noopener">View Page</a>
+        </div>
+      </form>
+    </section>
+  </main>
+{% endblock %}
