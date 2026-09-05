@@ -58,10 +58,10 @@ def build_invoice_pdf(record):
             'cycle': cycle,
             'period_start': date_filter(timezone.localtime(period_start), 'd M Y') if period_start else '-',
             'period_end': date_filter(timezone.localtime(period_end), 'd M Y') if period_end else '-',
-            'list_amount': money_display(list_amount, record.currency),
+            'list_amount': _pdf_money_display(list_amount, record.currency),
             'discount_percent': f"{record.discount_percent or 0}%",
-            'discount_amount': money_display(discount_amount, record.currency),
-            'amount': money_display(record.amount, record.currency),
+            'discount_amount': _pdf_money_display(discount_amount, record.currency),
+            'amount': _pdf_money_display(record.amount, record.currency),
         }
     )
 
@@ -195,6 +195,14 @@ def _invoice_pdf(data):
 
 def _pdf_text(value):
     return str(value).replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+
+
+def _pdf_money_display(amount, currency='INR'):
+    if currency == 'INR':
+        value = int(amount or 0) / 100
+        value_text = f"{value:,.0f}" if value.is_integer() else f"{value:,.2f}"
+        return f"Rs {value_text}"
+    return money_display(amount, currency)
 
 
 def _short(value, limit):
