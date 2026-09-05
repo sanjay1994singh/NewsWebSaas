@@ -136,7 +136,7 @@
           <p class="muted-small" data-quote-help>Amount after 50% offer{% if not option.is_current_plan %}. Old plan credit will be minus below{% endif %}.</p>
           <ul class="feature-list">
             {% for plan_feature in option.enabled_features %}
-              <li>{{ plan_feature.feature.name }}{% if plan_feature.limit_value %}: {{ plan_feature.limit_value }} {{ plan_feature.feature.default_unit }}{% endif %}</li>
+              <li>{{ plan_feature.feature.name }}{% if plan_feature.limit_value %}: {{ plan_feature.limit_value }}{% if plan_feature.feature.code == 'news_articles' %} / month{% elif plan_feature.feature.default_unit %} {{ plan_feature.feature.default_unit }}{% endif %}{% endif %}</li>
             {% empty %}
               <li>Plan features will appear after seeding.</li>
             {% endfor %}

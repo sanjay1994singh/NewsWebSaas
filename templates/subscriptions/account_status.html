@@ -97,7 +97,7 @@
           </div>
           <ul class="plan-features">
             {% for plan_feature in card.enabled_features|slice:":4" %}
-              <li>{{ plan_feature.feature.name }}{% if plan_feature.limit_value %}: {{ plan_feature.limit_value }}{% endif %}</li>
+              <li>{{ plan_feature.feature.name }}{% if plan_feature.limit_value %}: {{ plan_feature.limit_value }}{% if plan_feature.feature.code == 'news_articles' %} / month{% endif %}{% endif %}</li>
             {% empty %}
               <li>Core publishing workspace</li>
             {% endfor %}

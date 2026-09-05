@@ -31,7 +31,7 @@ PLAN_DEFAULTS = {
         'monthly_price': 39900,
         'yearly_price': 499000,
         'features': {
-            'news_articles': (True, 100),
+            'news_articles': (True, 150),
             'custom_domain': (True, None),
         },
     },
@@ -40,7 +40,7 @@ PLAN_DEFAULTS = {
         'monthly_price': 99900,
         'yearly_price': 999000,
         'features': {
-            'news_articles': (True, 500),
+            'news_articles': (True, 300),
             'blog': (True, None),
             'custom_domain': (True, None),
         },
@@ -50,7 +50,7 @@ PLAN_DEFAULTS = {
         'monthly_price': 199900,
         'yearly_price': 1999000,
         'features': {
-            'news_articles': (True, 2000),
+            'news_articles': (True, 1500),
             'blog': (True, None),
             'custom_domain': (True, None),
             'youtube_videos': (True, None),

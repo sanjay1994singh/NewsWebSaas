@@ -223,7 +223,7 @@
               </div>
               <ul>
                 {% for plan_feature in card.enabled_features %}
-                  <li>{{ plan_feature.feature.name }}{% if plan_feature.limit_value %}: {{ plan_feature.limit_value }} {{ plan_feature.feature.default_unit }}{% endif %}</li>
+                  <li>{{ plan_feature.feature.name }}{% if plan_feature.limit_value %}: {{ plan_feature.limit_value }}{% if plan_feature.feature.code == 'news_articles' %} / month{% elif plan_feature.feature.default_unit %} {{ plan_feature.feature.default_unit }}{% endif %}{% endif %}</li>
                 {% empty %}
                   <li>Plan features will appear after seeding.</li>
                 {% endfor %}
