@@ -375,7 +375,7 @@ class SubscriptionTests(TestCase):
         )
 
         self.assertTrue(form.is_valid(), form.errors)
-        self.assertEqual(form.cleaned_data['publication_slug'], 'aaj-tak')
+        self.assertEqual(form.cleaned_data['publication_slug'], 'aajtak')
 
     def test_signup_email_is_optional(self):
         form = CustomerSignupForm(
@@ -482,8 +482,8 @@ class SubscriptionTests(TestCase):
 
         self.tenant.refresh_from_db()
         acquisition = CustomerAcquisition.objects.get(tenant=self.tenant)
-        self.assertEqual(self.tenant.slug, 'aaj-tak')
-        self.assertEqual(acquisition.publication_slug, 'aaj-tak')
+        self.assertEqual(self.tenant.slug, 'aajtak')
+        self.assertEqual(acquisition.publication_slug, 'aajtak')
 
     def test_subscription_period_calculation_respects_billing_cycle(self):
         start = timezone.datetime(2026, 9, 3, 9, 0, tzinfo=timezone.get_current_timezone())

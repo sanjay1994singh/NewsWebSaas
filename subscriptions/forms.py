@@ -1,10 +1,10 @@
 from django import forms
-from django.utils.text import slugify
 
 from tenants.models import Tenant
 
 from .models import CustomerAcquisition, PlanPrice, TenantOnboarding
 from .pricing import ALLOWED_BILLING_MONTHS, normalize_billing_months
+from .slugs import compact_publication_slug
 
 
 def disable_autofill(fields):
@@ -102,7 +102,7 @@ class CustomerSignupForm(forms.Form):
         cleaned_data = super().clean()
         business_name = cleaned_data.get('business_name')
         if business_name:
-            slug = slugify(business_name)[:160]
+            slug = compact_publication_slug(business_name)
             if Tenant.objects.filter(slug=slug).exists() or CustomerAcquisition.objects.filter(publication_slug=slug).exists():
                 self.add_error('business_name', 'A channel or paper URL with this name is already reserved.')
             cleaned_data['publication_slug'] = slug
@@ -173,7 +173,7 @@ class CustomerWorkspaceForm(forms.Form):
         cleaned_data = super().clean()
         business_name = cleaned_data.get('business_name')
         if business_name:
-            slug = slugify(business_name)[:160]
+            slug = compact_publication_slug(business_name)
             existing_acquisition = (
                 CustomerAcquisition.objects
                 .filter(

@@ -1,12 +1,12 @@
 from django.core.management.base import BaseCommand
-from django.utils.text import slugify
 
 from subscriptions.models import CustomerAcquisition
+from subscriptions.slugs import compact_publication_slug
 from tenants.models import Tenant
 
 
 def _desired_site_slug(tenant):
-    return (slugify(tenant.business_name or tenant.publication_name or tenant.slug)[:150].strip('-') or tenant.slug)
+    return compact_publication_slug(tenant.business_name or tenant.publication_name or tenant.slug, fallback=tenant.slug)
 
 
 def _unique_slug(base_slug, tenant, used_slugs):

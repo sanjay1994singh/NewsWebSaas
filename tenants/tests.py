@@ -563,7 +563,7 @@ class TenantIsolationTests(TestCase):
     def test_public_site_url_uses_channel_or_paper_name(self):
         self.domain_a.is_primary = False
         self.domain_a.save(update_fields=['is_primary', 'updated_at'])
-        self.assertEqual(tenant_public_site_url(self.tenant_a), 'https://pressnexa.live-app.in/site/a-media/')
+        self.assertEqual(tenant_public_site_url(self.tenant_a), 'https://pressnexa.live-app.in/site/amedia/')
 
     @override_settings(SITE_BASE_URL='https://pressnexa.live-app.in')
     def test_public_site_url_prefers_primary_domain(self):

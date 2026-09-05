@@ -14,7 +14,6 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
-from django.utils.text import slugify
 
 from categories.models import Category
 from domains.models import TenantDomain
@@ -38,6 +37,7 @@ from .models import (
     WebhookEvent,
 )
 from .pricing import calculate_checkout_pricing, money_display, monthly_price_for_plan, normalize_billing_months
+from .slugs import compact_publication_slug
 from .whatsapp import notify_payment_failed
 
 
@@ -346,12 +346,12 @@ def platform_root_domain():
 
 def platform_domain_for_name(name):
     root_domain = platform_root_domain()
-    subdomain = slugify(name or '').strip('-') or 'publication'
+    subdomain = compact_publication_slug(name)
     return f'{subdomain}.{root_domain}'
 
 
 def tenant_public_site_slug(tenant):
-    return slugify(tenant.business_name or tenant.publication_name or tenant.slug).strip('-') or tenant.slug
+    return compact_publication_slug(tenant.business_name or tenant.publication_name or tenant.slug, fallback=tenant.slug)
 
 
 def tenant_public_site_url(tenant):
@@ -366,7 +366,7 @@ def ensure_platform_domain_for_tenant(tenant):
     if primary:
         return primary
     root_domain = platform_root_domain()
-    base_subdomain = slugify(tenant.business_name or tenant.publication_name or tenant.slug).strip('-') or tenant.slug
+    base_subdomain = compact_publication_slug(tenant.business_name or tenant.publication_name or tenant.slug, fallback=tenant.slug)
     for index in range(1, 1000):
         subdomain = base_subdomain if index == 1 else f'{base_subdomain}-{index}'
         domain_name = f'{subdomain}.{root_domain}'
