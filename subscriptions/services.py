@@ -23,7 +23,7 @@ from pages.models import HomepageLayout, Menu, MenuItem, Page
 from tenants.models import Tenant, TenantMembership
 from themes.models import TenantBranding, ThemeActivation
 
-from .entitlements import get_effective_entitlements
+from .entitlements import get_effective_entitlements, invalidate_entitlement_cache, snapshot_plan_entitlements
 from .models import (
     CustomerAcquisition,
     BillingRecord,
@@ -54,6 +54,22 @@ def subscription_period_for_cycle(start_at, billing_cycle, billing_months=None):
     months = normalize_billing_months(billing_months) if billing_months else 12 if billing_cycle == PlanPrice.BillingCycle.YEARLY else 1
     end_at = _add_months(start_at, months)
     return start_at, end_at, end_at
+
+
+def subscription_monthly_usage_window(subscription, now=None):
+    now = now or timezone.now()
+    if not subscription or not subscription.current_period_start or not subscription.current_period_end:
+        month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        return month_start, _add_months(month_start, 1)
+
+    window_start = subscription.current_period_start
+    period_end = subscription.current_period_end
+    while True:
+        next_window_start = _add_months(window_start, 1)
+        if next_window_start > now or next_window_start >= period_end:
+            break
+        window_start = next_window_start
+    return window_start, min(_add_months(window_start, 1), period_end)
 
 
 def next_subscription_period_start(subscription, now=None):
@@ -247,6 +263,7 @@ def record_successful_subscription_payment(
         plan_price.billing_cycle,
         billing_months,
     )
+    entitlement_snapshot = snapshot_plan_entitlements(plan_price.plan)
     record, created = BillingRecord.objects.update_or_create(
         tenant=tenant,
         razorpay_payment_id=payment_id,
@@ -264,6 +281,7 @@ def record_successful_subscription_payment(
             'period_end': period_end,
             'currency': plan_price.currency,
             'status': 'paid',
+            'entitlement_snapshot': entitlement_snapshot,
             'payload': {
                 'provider_order_id': provider_order_id,
                 'provider_payment_id': payment_reference,
@@ -278,6 +296,7 @@ def record_successful_subscription_payment(
                 'payable_amount': amount,
                 'period_start': period_start.isoformat() if period_start else '',
                 'period_end': period_end.isoformat() if period_end else '',
+                'entitlement_snapshot': entitlement_snapshot,
                 'checkout': provider_payload or {},
             },
         },
@@ -293,6 +312,8 @@ def record_successful_subscription_payment(
         subscription.current_period_start = period_start
         subscription.current_period_end = period_end
         subscription.charge_at = charge_at
+        subscription.entitlement_snapshot = entitlement_snapshot
+        subscription.entitlement_snapshot_at = timezone.now()
         subscription.save(update_fields=[
             'plan',
             'billing_cycle',
@@ -303,8 +324,11 @@ def record_successful_subscription_payment(
             'current_period_start',
             'current_period_end',
             'charge_at',
+            'entitlement_snapshot',
+            'entitlement_snapshot_at',
             'updated_at',
         ])
+        invalidate_entitlement_cache(tenant)
     return record
 
 

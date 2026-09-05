@@ -9,6 +9,7 @@ from django.utils import timezone
 from categories.models import Category
 from media_library.models import MediaAsset
 from pages.models import Page
+from subscriptions.models import Plan, PlanPrice, TenantSubscription
 from tenants.models import Tenant, TenantMembership
 
 from .forms import NewsArticleForm
@@ -150,6 +151,7 @@ class TenantNewsCMSTests(TestCase):
                 'content': '<p>Fresh body updated</p>',
                 'city': 'Delhi',
                 'state': 'Delhi',
+                'featured_image': tiny_gif('quota.gif'),
                 'status': NewsArticle.Status.PUBLISHED,
                 'allow_comments': 'on',
                 'robots_index': 'on',
@@ -190,6 +192,54 @@ class TenantNewsCMSTests(TestCase):
         self.assertRedirects(response, reverse('news:article_dashboard'))
         article = NewsArticle.objects.get(tenant=self.tenant_a, slug='byline-update')
         self.assertEqual(article.public_publisher_name, 'City Desk')
+
+    @override_settings(STORAGES={
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+    })
+    def test_monthly_news_article_limit_blocks_extra_published_news(self):
+        plan = Plan.objects.create(name='News Starter', code=Plan.Code.NEWS_STARTER)
+        TenantSubscription.objects.create(
+            tenant=self.tenant_a,
+            plan=plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            status=TenantSubscription.Status.ACTIVE,
+            current_period_start=timezone.now() - timezone.timedelta(days=1),
+            current_period_end=timezone.now() + timezone.timedelta(days=29),
+            entitlement_snapshot={
+                'news_articles': {
+                    'is_enabled': True,
+                    'limit_value': 1,
+                    'configuration': {},
+                    'source': 'purchased_plan_snapshot',
+                },
+            },
+            entitlement_snapshot_at=timezone.now(),
+        )
+        self.client.force_login(self.user_a)
+
+        response = self.client.post(
+            reverse('news:article_create'),
+            {
+                'category': self.category_a.pk,
+                'author': self.author_a.pk,
+                'title': 'Second published story',
+                'slug': '',
+                'content': '<p>Body</p>',
+                'city': 'Delhi',
+                'country': 'India',
+                'state': 'Delhi',
+                'featured_image': tiny_gif('quota.gif'),
+                'status': NewsArticle.Status.PUBLISHED,
+                'allow_comments': 'on',
+                'robots_index': 'on',
+                'robots_follow': 'on',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Your monthly news article limit is 1')
+        self.assertFalse(NewsArticle.objects.filter(tenant=self.tenant_a, slug='second-published-story').exists())
 
     def test_article_create_remembers_last_country_and_state(self):
         self.client.force_login(self.user_a)

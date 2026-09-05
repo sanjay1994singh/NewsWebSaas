@@ -108,6 +108,28 @@ def _legacy_value_to_entitlement(value):
     return _entitlement(source='legacy_plan_json')
 
 
+def snapshot_plan_entitlements(plan):
+    entitlements = {}
+    plan_features = (
+        PlanFeature.objects
+        .select_related('feature')
+        .filter(plan=plan, feature__is_active=True)
+    )
+    for plan_feature in plan_features:
+        entitlements[plan_feature.feature.code] = _entitlement(
+            is_enabled=plan_feature.is_enabled,
+            limit_value=plan_feature.limit_value,
+            configuration=plan_feature.configuration_json,
+            source='purchased_plan_snapshot',
+        )
+    if not entitlements and plan.entitlements:
+        for code, value in plan.entitlements.items():
+            entitlement = _legacy_value_to_entitlement(value)
+            entitlement['source'] = 'purchased_plan_snapshot'
+            entitlements[code] = entitlement
+    return entitlements
+
+
 def _subscription_for_tenant(tenant):
     try:
         subscription = tenant.subscription
@@ -136,22 +158,25 @@ def get_effective_entitlements(tenant):
     subscription = _subscription_for_tenant(tenant)
 
     if subscription:
-        plan_features = (
-            PlanFeature.objects
-            .select_related('feature')
-            .filter(plan=subscription.plan, feature__is_active=True)
-        )
-        for plan_feature in plan_features:
-            entitlements[plan_feature.feature.code] = _entitlement(
-                is_enabled=plan_feature.is_enabled,
-                limit_value=plan_feature.limit_value,
-                configuration=plan_feature.configuration_json,
-                source='plan_feature',
+        if subscription.entitlement_snapshot:
+            entitlements.update(subscription.entitlement_snapshot)
+        else:
+            plan_features = (
+                PlanFeature.objects
+                .select_related('feature')
+                .filter(plan=subscription.plan, feature__is_active=True)
             )
+            for plan_feature in plan_features:
+                entitlements[plan_feature.feature.code] = _entitlement(
+                    is_enabled=plan_feature.is_enabled,
+                    limit_value=plan_feature.limit_value,
+                    configuration=plan_feature.configuration_json,
+                    source='plan_feature',
+                )
 
-        if not entitlements and subscription.plan.entitlements:
-            for code, value in subscription.plan.entitlements.items():
-                entitlements[code] = _legacy_value_to_entitlement(value)
+            if not entitlements and subscription.plan.entitlements:
+                for code, value in subscription.plan.entitlements.items():
+                    entitlements[code] = _legacy_value_to_entitlement(value)
 
     now = timezone.now()
     tenant_add_ons = (

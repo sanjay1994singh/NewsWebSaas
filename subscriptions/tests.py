@@ -84,6 +84,46 @@ class SubscriptionTests(TestCase):
         self.assertTrue(tenant_has_feature(self.tenant, 'custom_domain'))
         self.assertEqual(get_feature_limit(self.tenant, 'staff'), 10)
 
+    def test_successful_payment_freezes_plan_feature_limits(self):
+        feature = Feature.objects.create(
+            code='news_articles',
+            name='News Articles',
+            category='content',
+            feature_type=Feature.FeatureType.LIMIT,
+            default_unit='articles',
+        )
+        plan_feature = PlanFeature.objects.create(
+            plan=self.plan,
+            feature=feature,
+            is_enabled=True,
+            limit_value=100,
+        )
+        subscription = TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+        )
+
+        invoice = record_successful_subscription_payment(
+            tenant=self.tenant,
+            subscription=subscription,
+            plan_price=self.price,
+            billing_months=1,
+            provider_order_id='order_limit_snapshot',
+            payment_reference='pay_limit_snapshot',
+            amount=39900,
+            list_amount=79800,
+            discount_percent=50,
+            discount_amount=39900,
+        )
+        subscription.refresh_from_db()
+        plan_feature.limit_value = 500
+        plan_feature.save(update_fields=['limit_value', 'updated_at'])
+
+        self.assertEqual(subscription.entitlement_snapshot['news_articles']['limit_value'], 100)
+        self.assertEqual(invoice.entitlement_snapshot['news_articles']['limit_value'], 100)
+        self.assertEqual(tenant_feature_limit(self.tenant, 'news_articles'), 100)
+
     def test_signature_verification_rejects_invalid_signature(self):
         body = b'{"id":"evt_1","event":"order.paid"}'
         signature = hmac.new(b'secret', body, sha256).hexdigest()

@@ -2,7 +2,7 @@ import uuid
 
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.core.exceptions import PermissionDenied
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.files.storage import default_storage
 from django.db.models import ProtectedError
 from django.http import JsonResponse
@@ -17,7 +17,7 @@ from tenants.models import TenantMembership
 from .forms import CategoryForm, NewsArticleForm, state_choices_for_country
 from .models import AuthorProfile
 from .models import NewsArticle
-from .services import active_breaking_news_for_tenant, search_articles
+from .services import active_breaking_news_for_tenant, search_articles, validate_news_article_monthly_limit
 
 
 def _active_tenant_for_user(request):
@@ -135,13 +135,18 @@ def article_create(request):
         article = form.save(commit=False)
         article.tenant = tenant
         article.content_type = form.cleaned_data.get('content_type') or content_type
-        article.full_clean()
-        article.save()
-        form.save_m2m()
-        request.session['last_article_country'] = article.country
-        request.session['last_article_state'] = article.state
-        messages.success(request, 'Post saved successfully.')
-        return redirect(_article_dashboard_url(article.content_type))
+        try:
+            validate_news_article_monthly_limit(tenant, article)
+            article.full_clean()
+        except ValidationError as exc:
+            form.add_error(None, exc)
+        else:
+            article.save()
+            form.save_m2m()
+            request.session['last_article_country'] = article.country
+            request.session['last_article_state'] = article.state
+            messages.success(request, 'Post saved successfully.')
+            return redirect(_article_dashboard_url(article.content_type))
     title = 'Add Blog Post' if content_type == NewsArticle.ContentType.BLOG else 'Add News Article'
     return render(request, 'news/article_form.html', {'tenant': tenant, 'form': form, 'title': title, 'content_type': content_type})
 
@@ -171,13 +176,18 @@ def article_update(request, uuid):
     if request.method == 'POST' and form.is_valid():
         article = form.save(commit=False)
         article.tenant = tenant
-        article.full_clean()
-        article.save()
-        form.save_m2m()
-        request.session['last_article_country'] = article.country
-        request.session['last_article_state'] = article.state
-        messages.success(request, 'Post updated successfully.')
-        return redirect(_article_dashboard_url(article.content_type))
+        try:
+            validate_news_article_monthly_limit(tenant, article)
+            article.full_clean()
+        except ValidationError as exc:
+            form.add_error(None, exc)
+        else:
+            article.save()
+            form.save_m2m()
+            request.session['last_article_country'] = article.country
+            request.session['last_article_state'] = article.state
+            messages.success(request, 'Post updated successfully.')
+            return redirect(_article_dashboard_url(article.content_type))
     title = 'Edit Blog Post' if article.content_type == NewsArticle.ContentType.BLOG else 'Edit News Article'
     return render(request, 'news/article_form.html', {'tenant': tenant, 'form': form, 'article': article, 'title': title, 'content_type': article.content_type})
 

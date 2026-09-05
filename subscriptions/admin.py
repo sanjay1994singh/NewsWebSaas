@@ -91,10 +91,11 @@ class PlanPriceAdmin(admin.ModelAdmin):
 
 @admin.register(TenantSubscription)
 class TenantSubscriptionAdmin(admin.ModelAdmin):
-    list_display = ('tenant', 'plan', 'status', 'billing_cycle', 'current_period_end')
+    list_display = ('tenant', 'plan', 'status', 'billing_cycle', 'current_period_end', 'entitlement_snapshot_at')
     list_filter = ('status', 'billing_cycle')
     search_fields = ('tenant__publication_name', 'razorpay_payment_reference')
     autocomplete_fields = ('tenant', 'plan')
+    readonly_fields = ('entitlement_snapshot_at',)
 
 
 @admin.register(CustomerAcquisition)
@@ -150,6 +151,7 @@ class BillingRecordAdmin(admin.ModelAdmin):
     list_filter = ('status', 'currency')
     search_fields = ('tenant__publication_name', 'tenant__slug', 'razorpay_order_id', 'razorpay_payment_id', 'razorpay_invoice_id')
     autocomplete_fields = ('tenant', 'subscription')
+    readonly_fields = ('entitlement_snapshot',)
 
 
 @admin.register(WebhookEvent)

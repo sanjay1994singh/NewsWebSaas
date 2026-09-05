@@ -198,6 +198,8 @@ class TenantSubscription(UUIDModel, TimeStampedModel):
     charge_at = models.DateTimeField(null=True, blank=True)
     ended_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
+    entitlement_snapshot = JSONTextField(blank=True)
+    entitlement_snapshot_at = models.DateTimeField(null=True, blank=True)
 
 
 class CustomerAcquisition(UUIDModel, TimeStampedModel):
@@ -371,6 +373,7 @@ class BillingRecord(TimeStampedModel):
     period_end = models.DateTimeField(null=True, blank=True, db_index=True)
     currency = models.CharField(max_length=3, default='INR')
     status = models.CharField(max_length=60, db_index=True)
+    entitlement_snapshot = JSONTextField(blank=True)
     payload = JSONTextField(blank=True)
 
 
