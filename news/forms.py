@@ -8,6 +8,31 @@ from categories.models import Category
 from .models import AuthorProfile, BreakingNews, NewsArticle
 
 
+COUNTRY_STATE_CHOICES = {
+    'India': [
+        'Andhra Pradesh', 'Arunachal Pradesh', 'Assam', 'Bihar', 'Chhattisgarh', 'Delhi', 'Goa', 'Gujarat',
+        'Haryana', 'Himachal Pradesh', 'Jharkhand', 'Karnataka', 'Kerala', 'Madhya Pradesh', 'Maharashtra',
+        'Manipur', 'Meghalaya', 'Mizoram', 'Nagaland', 'Odisha', 'Punjab', 'Rajasthan', 'Sikkim',
+        'Tamil Nadu', 'Telangana', 'Tripura', 'Uttar Pradesh', 'Uttarakhand', 'West Bengal',
+        'Andaman and Nicobar Islands', 'Chandigarh', 'Dadra and Nagar Haveli and Daman and Diu',
+        'Jammu and Kashmir', 'Ladakh', 'Lakshadweep', 'Puducherry',
+    ],
+    'United States': ['California', 'Florida', 'New York', 'Texas', 'Washington'],
+    'United Kingdom': ['England', 'Northern Ireland', 'Scotland', 'Wales'],
+    'Canada': ['Alberta', 'British Columbia', 'Ontario', 'Quebec'],
+    'Australia': ['New South Wales', 'Queensland', 'Victoria', 'Western Australia'],
+}
+
+
+def country_choices():
+    return [(country, country) for country in COUNTRY_STATE_CHOICES]
+
+
+def state_choices_for_country(country):
+    states = COUNTRY_STATE_CHOICES.get(country or 'India', [])
+    return [('', 'Select state')] + [(state, state) for state in states]
+
+
 def _safe_slug_from_title(title):
     base = slugify(title or '')[:220]
     if base:
@@ -15,10 +40,19 @@ def _safe_slug_from_title(title):
     return f'post-{timezone.now().strftime("%Y%m%d%H%M%S")}'
 
 
+def default_publisher_name_for_tenant(tenant):
+    brand_name = ''
+    if tenant is not None:
+        brand_name = (tenant.business_name or tenant.publication_name or '').strip()
+    if not brand_name:
+        brand_name = 'News'
+    return f'{brand_name} News Desk'
+
+
 class NewsArticleForm(TenantScopedFormMixin, forms.ModelForm):
     tenant_scoped_fields = ('category', 'author', 'reporters', 'tags')
     publisher_name = forms.CharField(
-        label='Publisher name on this post',
+        label='Publisher name',
         max_length=180,
         required=False,
         help_text='This name appears on the news post. Leave blank if you do not want a publisher name shown.',
@@ -62,6 +96,8 @@ class NewsArticleForm(TenantScopedFormMixin, forms.ModelForm):
         return f'{slug}-{counter}'
 
     def __init__(self, *args, **kwargs):
+        initial_country = kwargs.pop('initial_country', None)
+        initial_state = kwargs.pop('initial_state', None)
         super().__init__(*args, **kwargs)
         self.fields['title'].required = True
         self.fields['slug'].required = False
@@ -69,15 +105,27 @@ class NewsArticleForm(TenantScopedFormMixin, forms.ModelForm):
         self.fields['category'].required = True
         self.fields['city'].required = True
         self.fields['state'].required = True
+        self.fields['country'].required = False
         self.fields['content'].required = True
         self.fields['featured_image'].required = not bool(self.instance and self.instance.pk and self.instance.featured_image)
         self.fields['author'].required = False
+        self.fields['author'].label = 'Author'
         self.fields['author'].empty_label = 'Do not show publisher name'
         self.fields['category'].empty_label = 'Select category'
+        self.fields['country'].widget = forms.Select(choices=country_choices())
+        country_value = (
+            self.data.get(self.add_prefix('country'))
+            if self.is_bound
+            else self.instance.country or initial_country or 'India'
+        )
+        self.fields['state'].widget = forms.Select(choices=state_choices_for_country(country_value))
         self.fields['published_at'].required = False
         if not self.is_bound and not self.instance.pk:
             self.fields['published_at'].initial = timezone.now().strftime('%Y-%m-%dT%H:%M')
-            self.fields['country'].initial = 'India'
+            self.fields['country'].initial = initial_country or 'India'
+            self.fields['publisher_name'].initial = default_publisher_name_for_tenant(self.tenant)
+            if initial_state:
+                self.fields['state'].initial = initial_state
         if self.instance and self.instance.pk and self.instance.public_publisher_name:
             self.fields['publisher_name'].initial = self.instance.public_publisher_name
 
@@ -86,6 +134,9 @@ class NewsArticleForm(TenantScopedFormMixin, forms.ModelForm):
 
     def clean_content_type(self):
         return self.cleaned_data.get('content_type') or NewsArticle.ContentType.NEWS
+
+    def clean_country(self):
+        return (self.cleaned_data.get('country') or 'India').strip()
 
     def clean(self):
         cleaned_data = super().clean()

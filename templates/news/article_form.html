@@ -10,6 +10,9 @@
   .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
   .field.full { grid-column:1 / -1; }
   .field-help { margin-top:4px; color:var(--muted); font-size:13px; }
+  .field-label-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; }
+  .field-label-row label { margin:0; }
+  .mini-add-btn { display:inline-grid; place-items:center; width:34px; height:34px; border:1px solid var(--brand); border-radius:6px; background:#fff; color:var(--brand); font-size:22px; line-height:1; font-weight:900; cursor:pointer; }
   .required-note { color:var(--muted); font-size:13px; }
   .ck-editor__editable { min-height:320px; }
   .current-image { display:grid; gap:8px; margin-bottom:10px; }
@@ -19,6 +22,13 @@
   .side-card { position:sticky; top:86px; }
   .form-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
   .errorlist { color:var(--danger); margin:6px 0 0; padding-left:18px; }
+  .modal-backdrop { display:none; position:fixed; inset:0; z-index:70; background:rgba(16,35,29,.42); padding:18px; }
+  .modal-backdrop.is-open { display:grid; place-items:center; }
+  .modal-card { width:min(460px,100%); border:1px solid var(--line); border-radius:8px; background:#fff; padding:20px; box-shadow:0 24px 70px rgba(19,32,27,.22); }
+  .modal-card h2 { margin:0 0 14px; font-size:24px; }
+  .modal-card label { display:grid; gap:7px; margin-bottom:12px; font-weight:900; }
+  .modal-card input, .modal-card textarea { width:100%; border:1px solid var(--line); border-radius:6px; padding:11px; font:inherit; }
+  .modal-errors { color:var(--danger); font-weight:800; margin-bottom:10px; }
   @media (max-width:900px) { .editor-form { grid-template-columns:1fr; } .side-card { position:static; } }
   @media (max-width:640px) { .editor-head, .form-grid { display:block; } .editor-head .btn, .form-actions .btn { width:100%; } .ck-editor__editable { min-height:240px; } }
 {% endblock %}
@@ -48,27 +58,37 @@
             <div class="field-help">Slug title se auto generate hoga. Hindi/English dono title support hain.</div>
           </div>
           <div class="field">
-            <label for="{{ form.category.id_for_label }}">Category *</label>
+            <div class="field-label-row">
+              <label for="{{ form.category.id_for_label }}">Category *</label>
+              <button class="mini-add-btn" type="button" data-modal-open="category-modal" aria-label="Add category">+</button>
+            </div>
             {{ form.category }}
             {{ form.category.errors }}
-            <div class="field-help"><a href="{% url 'news:category_list' %}">Add, update, or delete categories</a></div>
           </div>
           <div class="field">
-            {{ form.publisher_name.label_tag }}
+            <label for="{{ form.publisher_name.id_for_label }}">Publisher name</label>
             {{ form.publisher_name }}
             {{ form.publisher_name.errors }}
-            <div class="field-help">{{ form.publisher_name.help_text }}</div>
+            <div class="field-help">Ye naam public post par dikhega. Blank chhodne par publisher name hide rahega.</div>
           </div>
           <div class="field">
-            {{ form.author.label_tag }}
+            <div class="field-label-row">
+              <label for="{{ form.author.id_for_label }}">Author</label>
+              <button class="mini-add-btn" type="button" data-modal-open="author-modal" aria-label="Add author">+</button>
+            </div>
             {{ form.author }}
             {{ form.author.errors }}
-            <div class="field-help">Existing author select kar sakte hain. Publisher name bharne par wahi naam post par dikhega.</div>
+            <div class="field-help">Author internal profile/byline record hai. Publisher name public post par dikhne wala naam hai.</div>
           </div>
           <div class="field">
             <label for="{{ form.city.id_for_label }}">City *</label>
             {{ form.city }}
             {{ form.city.errors }}
+          </div>
+          <div class="field">
+            <label for="{{ form.country.id_for_label }}">Country *</label>
+            {{ form.country }}
+            {{ form.country.errors }}
           </div>
           <div class="field">
             <label for="{{ form.state.id_for_label }}">State *</label>
@@ -148,6 +168,40 @@
         </div>
       </aside>
     </form>
+
+    <div class="modal-backdrop" id="category-modal" aria-hidden="true">
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="category-modal-title">
+        <h2 id="category-modal-title">Add Category</h2>
+        <div class="modal-errors" data-modal-errors></div>
+        <form data-ajax-create="category" data-url="{% url 'news:ajax_category_create' %}">
+          {% csrf_token %}
+          <label>Category name <input name="name" required></label>
+          <label>Description <textarea name="description" rows="3"></textarea></label>
+          <input type="hidden" name="show_in_menu" value="on">
+          <input type="hidden" name="is_active" value="on">
+          <div class="form-actions">
+            <button class="btn" type="submit">Save Category</button>
+            <button class="btn secondary" type="button" data-modal-close>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="author-modal" aria-hidden="true">
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="author-modal-title">
+        <h2 id="author-modal-title">Add Author</h2>
+        <div class="modal-errors" data-modal-errors></div>
+        <form data-ajax-create="author" data-url="{% url 'news:ajax_author_create' %}">
+          {% csrf_token %}
+          <label>Author name <input name="display_name" required></label>
+          <label>Designation <input name="designation" placeholder="Reporter, Editor, City Desk"></label>
+          <div class="form-actions">
+            <button class="btn" type="submit">Save Author</button>
+            <button class="btn secondary" type="button" data-modal-close>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </main>
   <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script>
   <script>
@@ -190,5 +244,79 @@
         extraPlugins: [tenantUploadPlugin]
       }).catch(function () {});
     });
+
+    const categorySelect = document.getElementById('{{ form.category.id_for_label }}');
+    const authorSelect = document.getElementById('{{ form.author.id_for_label }}');
+    const countrySelect = document.getElementById('{{ form.country.id_for_label }}');
+    const stateSelect = document.getElementById('{{ form.state.id_for_label }}');
+    function csrfToken() {
+      return document.querySelector('[name=csrfmiddlewaretoken]').value;
+    }
+    function setModal(modal, open) {
+      modal.classList.toggle('is-open', open);
+      modal.setAttribute('aria-hidden', open ? 'false' : 'true');
+      if (open) {
+        const input = modal.querySelector('input:not([type=hidden])');
+        if (input) input.focus();
+      }
+    }
+    document.querySelectorAll('[data-modal-open]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        const modal = document.getElementById(button.dataset.modalOpen);
+        if (modal) setModal(modal, true);
+      });
+    });
+    document.querySelectorAll('[data-modal-close], .modal-backdrop').forEach(function (item) {
+      item.addEventListener('click', function (event) {
+        if (event.target !== item && !item.hasAttribute('data-modal-close')) return;
+        const modal = item.closest('.modal-backdrop') || item;
+        setModal(modal, false);
+      });
+    });
+    document.querySelectorAll('[data-ajax-create]').forEach(function (formEl) {
+      formEl.addEventListener('submit', function (event) {
+        event.preventDefault();
+        const modal = formEl.closest('.modal-backdrop');
+        const errorBox = modal.querySelector('[data-modal-errors]');
+        errorBox.textContent = '';
+        fetch(formEl.dataset.url, {
+          method: 'POST',
+          body: new FormData(formEl),
+          headers: { 'X-CSRFToken': csrfToken(), 'X-Requested-With': 'XMLHttpRequest' },
+          credentials: 'same-origin'
+        })
+          .then(function (response) { return response.json().then(function (data) { return { ok: response.ok, data: data }; }); })
+          .then(function (result) {
+            if (!result.ok || !result.data.ok) {
+              errorBox.textContent = result.data.error || 'Please check the details and try again.';
+              return;
+            }
+            const target = formEl.dataset.ajaxCreate === 'category' ? categorySelect : authorSelect;
+            const option = new Option(result.data.name, result.data.id, true, true);
+            target.add(option);
+            target.value = result.data.id;
+            formEl.reset();
+            setModal(modal, false);
+          })
+          .catch(function () {
+            errorBox.textContent = 'Could not save right now.';
+          });
+      });
+    });
+    if (countrySelect && stateSelect) {
+      countrySelect.addEventListener('change', function () {
+        fetch("{% url 'news:ajax_state_choices' %}?country=" + encodeURIComponent(countrySelect.value), {
+          credentials: 'same-origin',
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+          .then(function (response) { return response.json(); })
+          .then(function (data) {
+            stateSelect.innerHTML = '';
+            data.states.forEach(function (state) {
+              stateSelect.add(new Option(state.label, state.value));
+            });
+          });
+      });
+    }
   </script>
 {% endblock %}

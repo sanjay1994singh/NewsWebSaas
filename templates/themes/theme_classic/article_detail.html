@@ -27,19 +27,27 @@
     * { box-sizing:border-box; }
     body { margin:0; color:var(--ink); background:#f7fbf9; font-family:Arial, Helvetica, sans-serif; line-height:1.6; }
     a { color:inherit; text-decoration:none; }
-    .wrap { width:min(980px, calc(100% - 32px)); margin:0 auto; }
+    .wrap { width:min(1180px, calc(100% - 32px)); margin:0 auto; }
     .topbar { background:var(--ink); color:#fff; font-size:13px; }
-    .topbar .wrap, .masthead, .share-row, .footer-row { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .topbar .wrap, .masthead, .nav, .share-row { display:flex; align-items:center; justify-content:space-between; gap:16px; }
     .topbar .wrap { min-height:34px; }
-    .masthead { min-height:84px; }
-    .brand { display:flex; align-items:center; gap:12px; font-weight:900; font-size:26px; }
-    .brand-mark { display:grid; place-items:center; width:46px; height:46px; border-radius:6px; background:var(--brand); color:#fff; text-transform:uppercase; }
+    .masthead { min-height:92px; padding:18px 0; }
+    .brand { display:flex; align-items:flex-start; gap:12px; font-weight:900; font-size:26px; min-width:0; }
+    .brand-mark { display:grid; place-items:center; width:42px; height:42px; flex:0 0 42px; border-radius:6px; background:var(--brand); color:#fff; font-size:21px; line-height:1; text-transform:uppercase; }
+    .brand-copy { display:flex; min-width:0; flex-direction:column; justify-content:flex-start; }
+    .site-title { margin:0; font-size:34px; line-height:42px; letter-spacing:0; text-transform:capitalize; }
+    .tagline { margin:4px 0 0; color:var(--muted); font-size:15px; line-height:1.35; font-weight:400; }
     .login-link, .share-btn, .back-link, .account-toggle { display:inline-flex; align-items:center; justify-content:center; min-height:38px; border:1px solid var(--brand); border-radius:999px; padding:8px 14px; color:var(--brand); background:#fff; font-size:14px; font-weight:800; cursor:pointer; }
+    .account-toggle { gap:8px; }
+    .account-icon { display:block; width:18px; height:18px; }
     .account-menu { position:relative; }
     .account-panel { display:none; position:absolute; right:0; top:46px; z-index:10; min-width:190px; padding:8px; border:1px solid var(--line); border-radius:8px; background:#fff; box-shadow:0 18px 44px rgba(16,35,29,.16); }
-    .account-menu:hover .account-panel, .account-menu:focus-within .account-panel { display:grid; gap:6px; }
+    .account-menu:hover .account-panel, .account-menu:focus-within .account-panel, .account-menu.is-open .account-panel { display:grid; gap:6px; }
     .account-panel a, .account-panel button { display:block; width:100%; border:0; border-radius:6px; padding:10px 12px; background:#fff; color:var(--ink); text-align:left; font:inherit; cursor:pointer; }
     .account-panel a:hover, .account-panel button:hover { background:var(--soft); }
+    .nav-shell { position:sticky; top:0; z-index:5; border-top:1px solid var(--line); border-bottom:1px solid var(--line); background:rgba(255,255,255,.96); backdrop-filter:blur(8px); }
+    .nav { min-height:48px; justify-content:flex-start; gap:34px; overflow-x:auto; overflow-y:hidden; scrollbar-width:thin; -webkit-overflow-scrolling:touch; }
+    .nav a { flex:0 0 auto; color:#294039; font-size:14px; font-weight:700; white-space:nowrap; }
     .article-shell { display:grid; gap:22px; margin:26px auto 44px; }
     .article-head, .article-body, .share-card { border:1px solid var(--line); border-radius:8px; background:var(--paper); }
     .article-head { padding:28px; }
@@ -57,14 +65,28 @@
     .share-row { align-items:flex-start; }
     .share-actions { display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-end; }
     .share-btn.primary { background:var(--brand); color:#fff; }
-    footer { border-top:1px solid var(--line); background:#fff; padding:26px 0; color:var(--muted); font-size:14px; }
+    footer { border-top:1px solid var(--line); background:#fff; padding:28px 0; color:var(--muted); font-size:14px; }
     footer strong { color:var(--ink); font-size:18px; }
+    .footer-row { display:grid; grid-template-columns:minmax(220px,1fr) minmax(0,2fr); gap:22px; align-items:start; }
+    .footer-links { display:flex; flex-wrap:wrap; gap:10px 18px; justify-content:flex-end; }
+    .footer-links a { color:#385149; font-weight:700; }
+    .footer-links a:hover { color:var(--brand); }
     @media (max-width:760px) {
-      .masthead, .share-row, .footer-row { display:grid; justify-content:start; }
+      .masthead, .share-row { display:flex; align-items:flex-start; }
+      .brand { flex:1 1 auto; gap:10px; }
+      .brand-mark { width:44px; height:44px; flex-basis:44px; font-size:22px; }
+      .site-title { font-size:32px; line-height:44px; overflow-wrap:anywhere; }
+      .tagline { display:none; }
+      .nav { gap:24px; }
+      .nav a { padding:0 10px; }
+      .footer-row { grid-template-columns:1fr; }
+      .footer-links { justify-content:flex-start; }
       h1 { font-size:32px; }
       .article-head, .article-body { padding:20px; }
       .share-actions { justify-content:flex-start; }
-      .login-link, .back-link, .share-btn, .account-menu, .account-toggle { width:100%; }
+      .back-link, .share-btn { width:100%; }
+      .account-toggle { width:44px; height:44px; min-width:44px; padding:0; border-radius:50%; }
+      .account-toggle-text { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
     }
   </style>
 </head>
@@ -80,24 +102,43 @@
     <a class="brand" href="/">
       {% with site_name=tenant.business_name|default:tenant.publication_name %}
         <span class="brand-mark">{{ site_name|first }}</span>
-        <span>{{ site_name }}</span>
+        <span class="brand-copy">
+          <span class="site-title">{{ site_name }}</span>
+          <span class="tagline">Trusted news, updates, videos, and public-interest stories.</span>
+        </span>
       {% endwith %}
     </a>
     <div class="account-menu">
-      <button class="account-toggle" type="button">Account</button>
+      <button class="account-toggle" type="button" aria-label="Open account menu">
+        <svg class="account-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+          <path d="M12 12c2.7 0 4.75-2.05 4.75-4.75S14.7 2.5 12 2.5 7.25 4.55 7.25 7.25 9.3 12 12 12Zm0 2.25c-3.45 0-7.25 1.9-7.25 4.75v1.25h14.5V19c0-2.85-3.8-4.75-7.25-4.75Z" fill="currentColor"/>
+        </svg>
+        <span class="account-toggle-text">Account</span>
+      </button>
       <div class="account-panel">
         {% if request.user.is_authenticated %}
-          <a href="/dashboard/">Dashboard</a>
+          <a href="/account/profile/">Profile</a>
+          {% if can_access_dashboard %}<a href="/dashboard/">Dashboard</a>{% endif %}
           <form method="post" action="{% url 'accounts:logout' %}">
             {% csrf_token %}
             <button type="submit">Logout</button>
           </form>
         {% else %}
           <a href="/account/login/?next=/dashboard/">Login</a>
+          <a href="/register/">Register</a>
         {% endif %}
       </div>
     </div>
   </header>
+
+  <div class="nav-shell">
+    <nav class="wrap nav" aria-label="Primary navigation">
+      <a href="/">Home</a>
+      {% for category in nav_categories %}
+        <a href="/category/{{ category.slug }}/">{{ category.name }}</a>
+      {% endfor %}
+    </nav>
+  </div>
 
   <main class="wrap article-shell">
     <a class="back-link" href="/">Back to Home</a>
@@ -143,12 +184,42 @@
 
   <footer>
     <div class="wrap footer-row">
-      <strong>{{ tenant.business_name|default:tenant.publication_name }}</strong>
-      <span>For updates, keep visiting this website.</span>
+      <div>
+        <strong>{{ tenant.business_name|default:tenant.publication_name }}</strong>
+        <p>For updates, keep visiting this website.</p>
+      </div>
+      {% if footer_pages %}
+        <nav class="footer-links" aria-label="Footer pages">
+          {% for footer_page in footer_pages %}
+            <a href="/{{ footer_page.slug }}/">{{ footer_page.title }}</a>
+          {% endfor %}
+        </nav>
+      {% endif %}
     </div>
   </footer>
 
   <script>
+    (function () {
+      const accountMenu = document.querySelector('.account-menu');
+      const accountToggle = document.querySelector('.account-toggle');
+      if (!accountMenu || !accountToggle) return;
+      function setAccountMenu(open) {
+        accountMenu.classList.toggle('is-open', open);
+        accountToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+      accountToggle.setAttribute('aria-expanded', 'false');
+      accountToggle.addEventListener('click', function (event) {
+        event.preventDefault();
+        setAccountMenu(!accountMenu.classList.contains('is-open'));
+      });
+      document.addEventListener('click', function (event) {
+        if (accountMenu.contains(event.target)) return;
+        setAccountMenu(false);
+      });
+      document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape') setAccountMenu(false);
+      });
+    })();
     document.querySelectorAll('[data-copy-url]').forEach(function (button) {
       button.addEventListener('click', function () {
         const url = button.getAttribute('data-copy-url');

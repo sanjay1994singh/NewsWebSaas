@@ -360,6 +360,7 @@ def public_article_detail(request, uuid):
     tenant = getattr(request, 'tenant', None)
     if tenant is None:
         raise Http404("Article not found.")
+    ensure_required_tenant_pages(tenant=tenant)
     article = get_object_or_404(
         published_articles_for_tenant(tenant),
         uuid=uuid,
@@ -369,6 +370,22 @@ def public_article_detail(request, uuid):
         meta['og_image'] = request.build_absolute_uri(article.featured_image.url)
     share_url = request.build_absolute_uri(article_public_path(article))
     share_text = f"{article.title} - {tenant.business_name or tenant.publication_name}"
+    footer_pages = list(
+        Page.objects
+        .filter(tenant=tenant, is_published=True, menu_items__menu__location=Menu.Location.FOOTER, menu_items__is_enabled=True)
+        .order_by('menu_items__order', 'title')
+        .distinct()
+    )
+    nav_categories = list(
+        Category.objects
+        .filter(tenant=tenant, is_active=True, show_in_menu=True)
+        .order_by('menu_order', 'name')[:30]
+    )
+    can_access_dashboard = user_can_access_tenant(request.user, tenant)
+    is_registered_visitor = (
+        request.user.is_authenticated
+        and TenantVisitor.objects.filter(tenant=tenant, user=request.user, is_active=True).exists()
+    )
     _, visitor_cookie = record_article_view(request, article)
     response = render(request, 'themes/theme_classic/article_detail.html', {
         'tenant': tenant,
@@ -377,6 +394,10 @@ def public_article_detail(request, uuid):
         'json_ld': article_json_ld(article),
         'share_url': share_url,
         'share_text': share_text,
+        'footer_pages': footer_pages,
+        'nav_categories': nav_categories,
+        'can_access_dashboard': can_access_dashboard,
+        'is_registered_visitor': is_registered_visitor,
     })
     if visitor_cookie:
         response.set_cookie(

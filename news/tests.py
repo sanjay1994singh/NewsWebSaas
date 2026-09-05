@@ -191,6 +191,57 @@ class TenantNewsCMSTests(TestCase):
         article = NewsArticle.objects.get(tenant=self.tenant_a, slug='byline-update')
         self.assertEqual(article.public_publisher_name, 'City Desk')
 
+    def test_article_create_remembers_last_country_and_state(self):
+        self.client.force_login(self.user_a)
+        response = self.client.post(
+            reverse('news:article_create'),
+            {
+                'category': self.category_a.pk,
+                'author': self.author_a.pk,
+                'title': 'Location memory',
+                'slug': '',
+                'content': '<p>Body</p>',
+                'city': 'Lucknow',
+                'country': 'India',
+                'state': 'Uttar Pradesh',
+                'featured_image': tiny_gif('location.gif'),
+                'status': NewsArticle.Status.DRAFT,
+                'allow_comments': 'on',
+                'robots_index': 'on',
+                'robots_follow': 'on',
+            },
+        )
+
+        self.assertRedirects(response, reverse('news:article_dashboard'))
+        form_response = self.client.get(reverse('news:article_create'))
+        self.assertContains(form_response, '<option value="India" selected>India</option>', html=True)
+        self.assertContains(form_response, '<option value="Uttar Pradesh" selected>Uttar Pradesh</option>', html=True)
+
+    def test_ajax_category_and_author_create_for_article_form(self):
+        self.client.force_login(self.user_a)
+
+        category_response = self.client.post(
+            reverse('news:ajax_category_create'),
+            {'name': 'Politics', 'show_in_menu': 'on', 'is_active': 'on'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        author_response = self.client.post(
+            reverse('news:ajax_author_create'),
+            {'display_name': 'New Reporter', 'designation': 'Reporter'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(category_response.status_code, 200)
+        self.assertEqual(author_response.status_code, 200)
+        self.assertTrue(Category.objects.filter(tenant=self.tenant_a, slug='politics').exists())
+        self.assertTrue(AuthorProfile.objects.filter(tenant=self.tenant_a, slug='new-reporter').exists())
+
+    def test_ajax_state_choices_follow_country(self):
+        response = self.client.get(reverse('news:ajax_state_choices'), {'country': 'India'})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn({'value': 'Uttar Pradesh', 'label': 'Uttar Pradesh'}, response.json()['states'])
+
     def test_default_editor_name_is_not_public_publisher_name(self):
         default_author = AuthorProfile.objects.create(
             tenant=self.tenant_a,
@@ -253,6 +304,17 @@ class TenantNewsCMSTests(TestCase):
         self.assertIn('category', form.errors)
         self.assertIn('author', form.errors)
         self.assertIn('tags', form.errors)
+
+    def test_article_create_prefills_brand_news_desk_publisher_name(self):
+        self.client.force_login(self.user_a)
+
+        news_response = self.client.get(reverse('news:article_create'))
+        blog_response = self.client.get(f"{reverse('news:article_create')}?type=blog")
+
+        self.assertEqual(news_response.status_code, 200)
+        self.assertEqual(blog_response.status_code, 200)
+        self.assertContains(news_response, 'value="A Media News Desk"')
+        self.assertContains(blog_response, 'value="A Media News Desk"')
 
     def test_category_list_is_tenant_scoped(self):
         self.client.force_login(self.user_a)

@@ -7,12 +7,14 @@ from django.core.files.storage import default_storage
 from django.db.models import ProtectedError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.text import slugify
+from django.views.decorators.http import require_POST
 
 from categories.models import Category
 from core.models import user_can_access_tenant
 from tenants.models import TenantMembership
 
-from .forms import CategoryForm, NewsArticleForm
+from .forms import CategoryForm, NewsArticleForm, state_choices_for_country
 from .models import AuthorProfile
 from .models import NewsArticle
 from .services import active_breaking_news_for_tenant, search_articles
@@ -118,7 +120,13 @@ def article_create(request):
     if content_type not in NewsArticle.ContentType.values:
         content_type = NewsArticle.ContentType.NEWS
     _ensure_publishing_defaults(tenant, request.user)
-    form = NewsArticleForm(request.POST or None, request.FILES or None, tenant=tenant)
+    form = NewsArticleForm(
+        request.POST or None,
+        request.FILES or None,
+        tenant=tenant,
+        initial_country=request.session.get('last_article_country', 'India'),
+        initial_state=request.session.get('last_article_state', ''),
+    )
     form.instance.tenant = tenant
     form.instance.content_type = content_type
     form.fields['content_type'].widget = form.fields['content_type'].hidden_widget()
@@ -130,6 +138,8 @@ def article_create(request):
         article.full_clean()
         article.save()
         form.save_m2m()
+        request.session['last_article_country'] = article.country
+        request.session['last_article_state'] = article.state
         messages.success(request, 'Post saved successfully.')
         return redirect(_article_dashboard_url(article.content_type))
     title = 'Add Blog Post' if content_type == NewsArticle.ContentType.BLOG else 'Add News Article'
@@ -164,6 +174,8 @@ def article_update(request, uuid):
         article.full_clean()
         article.save()
         form.save_m2m()
+        request.session['last_article_country'] = article.country
+        request.session['last_article_state'] = article.state
         messages.success(request, 'Post updated successfully.')
         return redirect(_article_dashboard_url(article.content_type))
     title = 'Edit Blog Post' if article.content_type == NewsArticle.ContentType.BLOG else 'Edit News Article'
@@ -207,6 +219,54 @@ def category_create(request):
         messages.success(request, 'Category saved successfully.')
         return redirect('news:category_list')
     return render(request, 'news/category_form.html', {'tenant': tenant, 'form': form, 'title': 'Add Category'})
+
+
+@login_required
+@require_POST
+def ajax_category_create(request):
+    tenant = _active_tenant_for_user(request)
+    if tenant is None:
+        return JsonResponse({'ok': False, 'error': 'Workspace not available.'}, status=403)
+    form = CategoryForm(request.POST, tenant=tenant)
+    form.instance.tenant = tenant
+    if not form.is_valid():
+        return JsonResponse({'ok': False, 'errors': form.errors}, status=400)
+    category = form.save(commit=False)
+    category.tenant = tenant
+    category.full_clean()
+    category.save()
+    return JsonResponse({'ok': True, 'id': category.id, 'name': category.name})
+
+
+@login_required
+@require_POST
+def ajax_author_create(request):
+    tenant = _active_tenant_for_user(request)
+    if tenant is None:
+        return JsonResponse({'ok': False, 'error': 'Workspace not available.'}, status=403)
+    display_name = (request.POST.get('display_name') or '').strip()
+    if not display_name:
+        return JsonResponse({'ok': False, 'errors': {'display_name': ['Author name is required.']}}, status=400)
+    base_slug = slugify(display_name)[:160] or f'author-{timezone.now().strftime("%Y%m%d%H%M%S")}'
+    slug = base_slug
+    counter = 2
+    while AuthorProfile.objects.filter(tenant=tenant, slug=slug).exists():
+        slug = f'{base_slug[:150]}-{counter}'
+        counter += 1
+    author = AuthorProfile.objects.create(
+        tenant=tenant,
+        display_name=display_name,
+        slug=slug,
+        designation=(request.POST.get('designation') or '').strip(),
+        is_public=True,
+    )
+    return JsonResponse({'ok': True, 'id': author.id, 'name': author.display_name})
+
+
+def ajax_state_choices(request):
+    return JsonResponse({
+        'states': [{'value': value, 'label': label} for value, label in state_choices_for_country(request.GET.get('country'))]
+    })
 
 
 @login_required
