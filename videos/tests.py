@@ -7,7 +7,7 @@ from tenants.models import Tenant
 from .models import Video
 from unittest.mock import patch
 
-from .youtube import _shorts_ids_from_html, _shorts_published_from_html, _shorts_titles_from_html, fetch_youtube_channel_shorts
+from .youtube import _shorts_ids_from_html, _shorts_published_from_html, _shorts_titles_from_html, fetch_youtube_channel_shorts, fetch_youtube_channel_videos
 
 
 class VideoTests(TestCase):
@@ -49,3 +49,32 @@ class VideoTests(TestCase):
 
         self.assertEqual(shorts[0]['title'], 'Actual short title from YouTube')
         self.assertNotEqual(shorts[0]['title'], 'Latest short')
+
+    def test_video_fetch_merges_feed_and_channel_page_items(self):
+        feed = '''<?xml version="1.0" encoding="UTF-8"?>
+        <feed xmlns="http://www.w3.org/2005/Atom" xmlns:yt="http://www.youtube.com/xml/schemas/2015" xmlns:media="http://search.yahoo.com/mrss/">
+          <entry>
+            <yt:videoId>feedvideo12</yt:videoId>
+            <title>Today feed video</title>
+            <published>2026-09-05T09:00:00+05:30</published>
+            <media:group><media:thumbnail url="https://example.com/thumb.jpg" /></media:group>
+          </entry>
+        </feed>'''
+        html = (
+            '"url":"/watch?v=feedvideo12","title":{"runs":[{"text":"Duplicate feed video"}]}'
+            '"publishedTimeText":{"simpleText":"1 day ago"}'
+            '"url":"/watch?v=pagevideo12","title":{"runs":[{"text":"Yesterday page video"}]}'
+            '"publishedTimeText":{"simpleText":"1 day ago"}'
+        )
+
+        def fake_fetch(url):
+            if 'feeds/videos.xml' in url:
+                return feed
+            return html
+
+        with patch('videos.youtube.extract_youtube_channel_id', return_value='UC12345678901234567890'), patch('videos.youtube._fetch_text', side_effect=fake_fetch):
+            videos = fetch_youtube_channel_videos('https://www.youtube.com/@samachar24')
+
+        self.assertEqual([video['id'] for video in videos], ['feedvideo12', 'pagevideo12'])
+        self.assertEqual(videos[1]['title'], 'Yesterday page video')
+        self.assertTrue(videos[1]['published'])
