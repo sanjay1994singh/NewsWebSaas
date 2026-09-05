@@ -171,10 +171,6 @@ def calculate_plan_change_quote(*, tenant, subscription, plan_price, billing_mon
     ):
         paid_record = _paid_record_for_subscription_period(tenant, subscription, now)
         paid_amount = paid_record.amount if paid_record else 0
-        if not paid_amount:
-            current_price = monthly_price_for_plan(subscription.plan)
-            if current_price:
-                paid_amount = calculate_checkout_pricing(current_price, subscription.billing_months).payable_amount
         total_seconds = max((subscription.current_period_end - subscription.current_period_start).total_seconds(), 1)
         remaining_seconds = max((subscription.current_period_end - now).total_seconds(), 0)
         credit_amount = min(round(paid_amount * remaining_seconds / total_seconds), checkout_pricing.payable_amount)
