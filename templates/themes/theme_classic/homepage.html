@@ -444,6 +444,14 @@
       scroll-snap-type: x proximity;
       padding: 2px 2px 12px;
     }
+    .video-row-empty {
+      margin: 0;
+      padding: 14px;
+      border: 1px dashed var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--muted);
+    }
     .video-tabs {
       display: inline-flex;
       gap: 8px;
@@ -990,9 +998,9 @@
           <div class="video-panel" data-video-panel="videos">
             {% if youtube_videos %}
               {% for group in youtube_video_groups %}
-                {% if group.items %}
-                  <div class="video-day-row">
-                    <h3>{{ group.label }}</h3>
+                <div class="video-day-row">
+                  <h3>{{ group.label }}</h3>
+                  {% if group.items %}
                     <div class="video-strip">
                       {% for video in group.items %}
                         <article class="video-card">
@@ -1003,8 +1011,10 @@
                         </article>
                       {% endfor %}
                     </div>
-                  </div>
-                {% endif %}
+                  {% else %}
+                    <p class="video-row-empty">No videos in this row yet.</p>
+                  {% endif %}
+                </div>
               {% endfor %}
               {% if not youtube_video_groups.0.items and not youtube_video_groups.1.items and not youtube_video_groups.2.items %}
                 <p>Videos from {{ tenant.business_name|default:tenant.publication_name }} will appear here shortly.</p>
@@ -1016,9 +1026,9 @@
           <div class="video-panel" data-video-panel="shorts" hidden>
             {% if youtube_shorts %}
               {% for group in youtube_short_groups %}
-                {% if group.items %}
-                  <div class="video-day-row">
-                    <h3>{{ group.label }}</h3>
+                <div class="video-day-row">
+                  <h3>{{ group.label }}</h3>
+                  {% if group.items %}
                     <div class="video-strip">
                       {% for video in group.items %}
                         <article class="video-card">
@@ -1029,10 +1039,11 @@
                         </article>
                       {% endfor %}
                     </div>
-                  </div>
-                {% endif %}
-                {% endfor %}
-              {% endif %}
+                  {% else %}
+                    <p class="video-row-empty">No shorts in this row yet.</p>
+                  {% endif %}
+                </div>
+              {% endfor %}
             {% else %}
               <p>Latest shorts from {{ tenant.business_name|default:tenant.publication_name }} will appear here shortly.</p>
             {% endif %}
@@ -1076,6 +1087,7 @@
         {% endif %}
       </div>
     </section>
+    {% endif %}
     {% endif %}
   </main>
 
