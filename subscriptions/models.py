@@ -299,6 +299,25 @@ class OnboardingReviewEvent(TimeStampedModel):
     actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
 
 
+class OnboardingAutomationPolicy(TimeStampedModel):
+    class Mode(models.TextChoices):
+        MANUAL = 'manual', 'Manual review'
+        INSTANT = 'instant', 'Auto approve and publish instantly'
+        DELAYED = 'delayed', 'Auto approve and publish after delay'
+
+    name = models.CharField(max_length=80, default='Default onboarding policy')
+    mode = models.CharField(max_length=20, choices=Mode.choices, default=Mode.INSTANT)
+    delay_minutes = models.PositiveIntegerField(default=30)
+    is_active = models.BooleanField(default=True, db_index=True)
+
+    class Meta:
+        verbose_name = 'Onboarding automation policy'
+        verbose_name_plural = 'Onboarding automation policy'
+
+    def __str__(self):
+        return self.name
+
+
 class PlanChangeRequest(UUIDModel, TimeStampedModel):
     class ChangeType(models.TextChoices):
         UPGRADE = 'upgrade', 'Upgrade'
@@ -385,5 +404,26 @@ class PlatformPolicy(TimeStampedModel):
 
     def __str__(self):
         return self.title
+
+
+class PlatformSupportContact(TimeStampedModel):
+    name = models.CharField(max_length=120, default='Default Support')
+    support_email = models.EmailField(default='shriinfowaveprivatelimited@gmail.com')
+    whatsapp_number = models.CharField(max_length=20, default='918279408396')
+    business_hours = models.CharField(max_length=120, default='Monday to Saturday, 10:00 AM to 6:00 PM IST')
+    is_active = models.BooleanField(default=True, db_index=True)
+
+    class Meta:
+        ordering = ['-is_active', '-updated_at']
+
+    @property
+    def whatsapp_url(self):
+        digits = ''.join(ch for ch in self.whatsapp_number if ch.isdigit())
+        if len(digits) == 10:
+            digits = f'91{digits}'
+        return f'https://wa.me/{digits}'
+
+    def __str__(self):
+        return self.name
 
 # Create your models here.

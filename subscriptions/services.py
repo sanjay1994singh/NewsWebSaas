@@ -27,6 +27,7 @@ from .entitlements import get_effective_entitlements
 from .models import (
     CustomerAcquisition,
     BillingRecord,
+    OnboardingAutomationPolicy,
     OnboardingReviewEvent,
     PlanChangeRequest,
     PlanPrice,
@@ -73,6 +74,60 @@ def _paid_record_covering_current_period(tenant, now):
         .order_by('-period_end', '-created_at')
         .first()
     )
+
+
+def active_onboarding_policy():
+    policy = OnboardingAutomationPolicy.objects.filter(is_active=True).order_by('-updated_at', '-created_at').first()
+    if policy:
+        return policy
+    return OnboardingAutomationPolicy(mode=OnboardingAutomationPolicy.Mode.INSTANT, delay_minutes=30)
+
+
+def submit_onboarding_after_payment(*, onboarding, actor=None, now=None):
+    now = now or timezone.now()
+    onboarding.status = TenantOnboarding.Status.SUBMITTED_FOR_REVIEW
+    onboarding.submitted_at = onboarding.submitted_at or now
+    onboarding.save(update_fields=['status', 'submitted_at', 'updated_at'])
+    OnboardingReviewEvent.objects.get_or_create(
+        onboarding=onboarding,
+        action=OnboardingReviewEvent.Action.SUBMITTED,
+        defaults={
+            'actor': actor,
+            'notes': 'Auto-submitted after verified subscription payment.',
+        },
+    )
+    return onboarding
+
+
+def auto_approve_and_publish_onboarding(*, onboarding, actor=None, notes='Auto-approved and published after verified subscription payment.', now=None):
+    now = now or timezone.now()
+    onboarding.status = TenantOnboarding.Status.PUBLISHED
+    onboarding.submitted_at = onboarding.submitted_at or now
+    onboarding.reviewed_at = now
+    onboarding.published_at = now
+    onboarding.reviewer_notes = notes
+    onboarding.tenant.status = Tenant.Status.ACTIVE
+    onboarding.tenant.onboarding_status = Tenant.OnboardingStatus.COMPLETE
+    onboarding.tenant.save(update_fields=['status', 'onboarding_status', 'updated_at'])
+    onboarding.save(update_fields=['status', 'submitted_at', 'reviewed_at', 'published_at', 'reviewer_notes', 'updated_at'])
+    OnboardingReviewEvent.objects.get_or_create(
+        onboarding=onboarding,
+        action=OnboardingReviewEvent.Action.APPROVED,
+        defaults={
+            'actor': actor,
+            'notes': 'Auto-approved after verified subscription payment.',
+        },
+    )
+    OnboardingReviewEvent.objects.get_or_create(
+        onboarding=onboarding,
+        action=OnboardingReviewEvent.Action.PUBLISHED,
+        defaults={
+            'actor': actor,
+            'notes': 'Auto-published after verified subscription payment.',
+        },
+    )
+    ensure_required_tenant_pages(tenant=onboarding.tenant)
+    return onboarding
 
 
 def calculate_plan_change_quote(*, tenant, subscription, plan_price, billing_months=1, now=None):
@@ -275,8 +330,136 @@ def _append_issue(issues, code, message, fixed=False):
     issues.append({'code': code, 'message': message, 'fixed': fixed})
 
 
+def _tenant_display_name(tenant):
+    return tenant.business_name or tenant.publication_name or tenant.slug
+
+
+def _tenant_contact_lines(tenant):
+    lines = []
+    if tenant.email:
+        lines.append(f'<li>Email: {tenant.email}</li>')
+    if tenant.mobile:
+        lines.append(f'<li>Mobile: {tenant.mobile}</li>')
+    return ''.join(lines) or '<li>Contact details will be updated by the publication team.</li>'
+
+
 def _safe_page_content(tenant, title):
-    return f'<p>{tenant.publication_name} will update this {title.lower()} page from the dashboard.</p>'
+    site_name = _tenant_display_name(tenant)
+    publication = tenant.publication_name or site_name
+    content_map = {
+        'about-us': f'''
+            <h2>About {publication}</h2>
+            <p>{publication} is a digital news publication operated by {site_name}. We publish verified news, public-interest updates, local stories, and useful information for our readers.</p>
+            <p>Our newsroom works to keep information clear, responsible, and relevant to the audience served by this website.</p>
+        ''',
+        'privacy-policy': f'''
+            <h2>Privacy Policy</h2>
+            <p>{publication} respects reader privacy. We collect basic information only when readers register, contact us, comment, subscribe, or use website features.</p>
+            <p>Information may be used to manage accounts, improve services, respond to requests, send updates, protect the website, and meet legal requirements.</p>
+            <p>We do not sell personal information. Third-party tools such as analytics, hosting, payment, or communication providers may process data only for website operations.</p>
+        ''',
+        'terms': f'''
+            <h2>Terms and Conditions</h2>
+            <p>By using {publication}, readers agree to access the website lawfully and respectfully. Content is provided for news and information purposes.</p>
+            <p>Readers must not misuse website features, copy content without permission, or publish abusive, misleading, or unlawful material through this platform.</p>
+        ''',
+        'disclaimer': f'''
+            <h2>Disclaimer</h2>
+            <p>{publication} publishes information in good faith and aims for accuracy. News, opinions, third-party links, and public updates may change over time.</p>
+            <p>Readers should verify critical information from official sources before making legal, financial, medical, or safety decisions.</p>
+        ''',
+        'editorial-policy': f'''
+            <h2>Editorial Policy</h2>
+            <p>{publication} follows an editorial process focused on accuracy, fairness, public interest, and responsible reporting.</p>
+            <p>Reports should be checked before publication, headlines should reflect the story, and sponsored or promotional content should be identified clearly when applicable.</p>
+        ''',
+        'corrections-policy': f'''
+            <h2>Corrections Policy</h2>
+            <p>If a published story contains an error, {publication} may update, correct, clarify, or remove the content after review.</p>
+            <p>Readers can contact the publication team with the story link, correction details, and supporting information.</p>
+        ''',
+        'ethics-policy': f'''
+            <h2>Ethics Policy</h2>
+            <p>{publication} expects contributors to avoid plagiarism, undisclosed conflicts of interest, hate speech, harassment, and knowingly false information.</p>
+            <p>Editorial decisions should remain independent and should prioritize reader trust and public-interest journalism.</p>
+        ''',
+        'advertise': f'''
+            <h2>Advertise With Us</h2>
+            <p>Businesses, organizations, and agencies can contact {publication} for advertising, sponsored content, or partnership opportunities.</p>
+            <ul>{_tenant_contact_lines(tenant)}</ul>
+        ''',
+        'contact-us': f'''
+            <h2>Contact {publication}</h2>
+            <p>For newsroom queries, corrections, advertising, or support, please contact the publication team.</p>
+            <ul>{_tenant_contact_lines(tenant)}</ul>
+        ''',
+    }
+    return ' '.join(content_map.get(slugify(title), f'<p>{publication} will update this {title.lower()} page from the dashboard.</p>').split())
+
+
+def required_tenant_pages():
+    return [
+        (Page.PageType.ABOUT, 'About Us', 'about-us', 10),
+        (Page.PageType.CONTACT, 'Contact Us', 'contact-us', 20),
+        (Page.PageType.PRIVACY, 'Privacy Policy', 'privacy-policy', 30),
+        (Page.PageType.TERMS, 'Terms and Conditions', 'terms', 40),
+        (Page.PageType.DISCLAIMER, 'Disclaimer', 'disclaimer', 50),
+        (Page.PageType.EDITORIAL_POLICY, 'Editorial Policy', 'editorial-policy', 60),
+        (Page.PageType.CORRECTIONS_POLICY, 'Corrections Policy', 'corrections-policy', 70),
+        (Page.PageType.ETHICS_POLICY, 'Ethics Policy', 'ethics-policy', 80),
+        (Page.PageType.ADVERTISE, 'Advertise With Us', 'advertise', 90),
+    ]
+
+
+def ensure_required_tenant_pages(*, tenant):
+    footer_menu, _ = Menu.objects.get_or_create(
+        tenant=tenant,
+        location=Menu.Location.FOOTER,
+        defaults={'name': 'Footer Menu'},
+    )
+    pages = []
+    for page_type, title, slug, order in required_tenant_pages():
+        page, created = Page.objects.get_or_create(
+            tenant=tenant,
+            slug=slug,
+            defaults={
+                'title': title,
+                'page_type': page_type,
+                'content': _safe_page_content(tenant, slug),
+                'is_published': True,
+                'seo_title': f'{title} - {_tenant_display_name(tenant)}',
+                'meta_description': f'{title} for {_tenant_display_name(tenant)}.',
+            },
+        )
+        update_fields = []
+        if not created:
+            if not page.is_published:
+                page.is_published = True
+                update_fields.append('is_published')
+            if not page.content.strip():
+                page.content = _safe_page_content(tenant, slug)
+                update_fields.append('content')
+            if not page.seo_title:
+                page.seo_title = f'{page.title} - {_tenant_display_name(tenant)}'
+                update_fields.append('seo_title')
+            if not page.meta_description:
+                page.meta_description = f'{page.title} for {_tenant_display_name(tenant)}.'
+                update_fields.append('meta_description')
+            if update_fields:
+                page.save(update_fields=update_fields + ['updated_at'])
+        pages.append(page)
+        MenuItem.objects.update_or_create(
+            tenant=tenant,
+            menu=footer_menu,
+            page=page,
+            defaults={
+                'label': title,
+                'link_type': MenuItem.LinkType.PAGE,
+                'order': order,
+                'is_enabled': True,
+            },
+        )
+    return pages
 
 
 @transaction.atomic
@@ -408,13 +591,7 @@ def ensure_paid_tenant_integrity(*, tenant, fix=False):
         elif menu and not menu.items.exists():
             _append_issue(issues, f'missing_{location}_menu_items', f'{name} had no items.', False)
 
-    required_pages = [
-        (Page.PageType.ABOUT, 'About Us', 'about-us'),
-        (Page.PageType.CONTACT, 'Contact Us', 'contact-us'),
-        (Page.PageType.PRIVACY, 'Privacy Policy', 'privacy-policy'),
-        (Page.PageType.TERMS, 'Terms', 'terms'),
-    ]
-    for page_type, title, slug in required_pages:
+    for page_type, title, slug, _order in required_tenant_pages():
         page = Page.objects.filter(tenant=tenant, slug=slug).first()
         if page is None:
             if fix:
@@ -423,7 +600,7 @@ def ensure_paid_tenant_integrity(*, tenant, fix=False):
                     slug=slug,
                     title=title,
                     page_type=page_type,
-                    content=_safe_page_content(tenant, title),
+                    content=_safe_page_content(tenant, slug),
                     is_published=True,
                 )
             _append_issue(issues, f'missing_{page_type}_page', f'{title} page was missing.', fix)
@@ -433,6 +610,8 @@ def ensure_paid_tenant_integrity(*, tenant, fix=False):
             _append_issue(issues, f'unpublished_{page_type}_page', f'{title} page was unpublished.', True)
         elif not page.is_published:
             _append_issue(issues, f'unpublished_{page_type}_page', f'{title} page was unpublished.', False)
+    if fix:
+        ensure_required_tenant_pages(tenant=tenant)
 
     get_effective_entitlements(tenant)
     return issues
@@ -904,6 +1083,7 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
         if update_fields:
             update_fields.append('updated_at')
             acquisition.save(update_fields=update_fields)
+        ensure_required_tenant_pages(tenant=acquisition.tenant)
         return acquisition.tenant
 
     checkout_pricing = calculate_checkout_pricing(acquisition.plan_price, acquisition.billing_months)
@@ -957,15 +1137,15 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
     )
     from .models import TenantOnboarding
 
+    now = timezone.now()
     onboarding, _ = TenantOnboarding.objects.get_or_create(
         tenant=tenant,
         defaults={
-            'status': TenantOnboarding.Status.SUBMITTED_FOR_REVIEW,
+            'status': TenantOnboarding.Status.ONBOARDING,
             'site_title': tenant.business_name,
             'organization_name': tenant.business_name,
             'tagline': f'{tenant.business_name} digital newsroom',
             'meta_description': f'{tenant.business_name} publishes news, updates, videos, and public-interest stories.',
-            'submitted_at': timezone.now(),
         },
     )
     onboarding_update_fields = []
@@ -979,21 +1159,22 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
         if value and getattr(onboarding, field) != value:
             setattr(onboarding, field, value)
             onboarding_update_fields.append(field)
-    if onboarding.status == TenantOnboarding.Status.ONBOARDING:
-        onboarding.status = TenantOnboarding.Status.SUBMITTED_FOR_REVIEW
-        onboarding.submitted_at = timezone.now()
-        onboarding_update_fields.extend(['status', 'submitted_at'])
     if onboarding_update_fields:
         onboarding_update_fields.append('updated_at')
         onboarding.save(update_fields=onboarding_update_fields)
-    OnboardingReviewEvent.objects.get_or_create(
-        onboarding=onboarding,
-        action=OnboardingReviewEvent.Action.SUBMITTED,
-        defaults={
-            'actor': acquisition.user,
-            'notes': 'Auto-submitted after verified subscription payment.',
-        },
-    )
+    ensure_required_tenant_pages(tenant=tenant)
+    submit_onboarding_after_payment(onboarding=onboarding, actor=acquisition.user, now=now)
+    policy = active_onboarding_policy()
+    if policy.mode == OnboardingAutomationPolicy.Mode.INSTANT:
+        auto_approve_and_publish_onboarding(
+            onboarding=onboarding,
+            actor=acquisition.user,
+            notes='Auto-approved and published after verified subscription payment.',
+            now=now,
+        )
+    elif policy.mode == OnboardingAutomationPolicy.Mode.DELAYED:
+        onboarding.reviewer_notes = f'Auto-publish scheduled after {policy.delay_minutes} minutes if no manual admin action is needed.'
+        onboarding.save(update_fields=['reviewer_notes', 'updated_at'])
     acquisition.tenant = tenant
     acquisition.provider_order_id = provider_order_id
     acquisition.provider_payment_id = payment_reference
@@ -1056,6 +1237,8 @@ def record_onboarding_review(*, onboarding, action, actor=None, notes=''):
         update_fields.append('published_at')
     onboarding.save(update_fields=update_fields)
     OnboardingReviewEvent.objects.create(onboarding=onboarding, action=action, actor=actor, notes=notes)
+    if action == OnboardingReviewEvent.Action.PUBLISHED:
+        ensure_required_tenant_pages(tenant=onboarding.tenant)
     return onboarding
 
 
@@ -1083,10 +1266,18 @@ def publish_onboarding(*, onboarding, actor=None, notes=''):
         actor=actor,
         notes=notes,
     )
+    ensure_required_tenant_pages(tenant=onboarding.tenant)
     return onboarding
 
 
-def auto_publish_paid_onboardings(*, older_than_minutes=30, limit=100):
+def auto_publish_paid_onboardings(*, older_than_minutes=None, limit=100):
+    policy = active_onboarding_policy()
+    if policy.mode == OnboardingAutomationPolicy.Mode.MANUAL:
+        return []
+    if policy.mode == OnboardingAutomationPolicy.Mode.INSTANT:
+        older_than_minutes = 0 if older_than_minutes is None else older_than_minutes
+    else:
+        older_than_minutes = policy.delay_minutes if older_than_minutes is None else older_than_minutes
     cutoff = timezone.now() - timezone.timedelta(minutes=older_than_minutes)
     eligible_statuses = [
         TenantOnboarding.Status.ONBOARDING,

@@ -22,11 +22,13 @@ from .models import (
     BillingRecord,
     CustomerAcquisition,
     Feature,
+    OnboardingAutomationPolicy,
     OnboardingReviewEvent,
     Plan,
     PlanChangeRequest,
     PlanFeature,
     PlanPrice,
+    PlatformSupportContact,
     TenantOnboarding,
     TenantAddOn,
     TenantFeatureOverride,
@@ -189,15 +191,92 @@ class SubscriptionTests(TestCase):
         self.assertTrue(platform_domain.is_verified)
         self.assertEqual(platform_domain.ssl_status, platform_domain.SSLStatus.ACTIVE)
         onboarding = tenant.commercial_onboarding
-        self.assertEqual(onboarding.status, TenantOnboarding.Status.SUBMITTED_FOR_REVIEW)
+        self.assertEqual(onboarding.status, TenantOnboarding.Status.PUBLISHED)
         self.assertIsNotNone(onboarding.submitted_at)
+        self.assertIsNotNone(onboarding.reviewed_at)
+        self.assertIsNotNone(onboarding.published_at)
         self.assertEqual(onboarding.site_title, 'Checkout Media')
+        tenant.refresh_from_db()
+        self.assertEqual(tenant.status, Tenant.Status.ACTIVE)
+        self.assertEqual(tenant.onboarding_status, Tenant.OnboardingStatus.COMPLETE)
         self.assertTrue(
             onboarding.review_events.filter(
                 action=OnboardingReviewEvent.Action.SUBMITTED,
                 notes='Auto-submitted after verified subscription payment.',
             ).exists()
         )
+        self.assertTrue(
+            onboarding.review_events.filter(
+                action=OnboardingReviewEvent.Action.APPROVED,
+                notes='Auto-approved after verified subscription payment.',
+            ).exists()
+        )
+        self.assertTrue(
+            onboarding.review_events.filter(
+                action=OnboardingReviewEvent.Action.PUBLISHED,
+                notes='Auto-published after verified subscription payment.',
+            ).exists()
+        )
+
+    def test_manual_onboarding_policy_submits_but_does_not_publish_after_payment(self):
+        OnboardingAutomationPolicy.objects.create(
+            name='Manual review',
+            mode=OnboardingAutomationPolicy.Mode.MANUAL,
+            is_active=True,
+        )
+        acquisition = CustomerAcquisition.objects.create(
+            user=self.user,
+            plan_price=self.price,
+            business_name='Manual Media',
+            publication_name='Manual News',
+            publication_slug='manual-news',
+            email='manual@example.com',
+            mobile='9999999999',
+            status=CustomerAcquisition.Status.PAYMENT_PENDING,
+            provider_order_id='order_manual',
+        )
+
+        tenant = create_tenant_after_verified_subscription(
+            acquisition=acquisition,
+            provider_order_id='order_manual',
+            payment_reference='pay_manual',
+        )
+
+        onboarding = tenant.commercial_onboarding
+        tenant.refresh_from_db()
+        self.assertEqual(onboarding.status, TenantOnboarding.Status.SUBMITTED_FOR_REVIEW)
+        self.assertIsNone(onboarding.published_at)
+        self.assertNotEqual(tenant.onboarding_status, Tenant.OnboardingStatus.COMPLETE)
+
+    def test_delayed_onboarding_policy_uses_admin_delay_for_auto_publish(self):
+        OnboardingAutomationPolicy.objects.create(
+            name='Delayed review',
+            mode=OnboardingAutomationPolicy.Mode.DELAYED,
+            delay_minutes=45,
+            is_active=True,
+        )
+        start = timezone.now() - timezone.timedelta(minutes=30)
+        TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            status=TenantSubscription.Status.ACTIVE,
+            start_at=start,
+            current_period_start=start,
+            current_period_end=start + timezone.timedelta(days=30),
+        )
+        onboarding = TenantOnboarding.objects.create(
+            tenant=self.tenant,
+            status=TenantOnboarding.Status.SUBMITTED_FOR_REVIEW,
+            submitted_at=start,
+        )
+
+        self.assertEqual(auto_publish_paid_onboardings(), [])
+
+        self.tenant.subscription.start_at = timezone.now() - timezone.timedelta(minutes=50)
+        self.tenant.subscription.save(update_fields=['start_at', 'updated_at'])
+        published = auto_publish_paid_onboardings()
+        self.assertEqual(published, [onboarding])
 
     def test_subscription_verify_rejects_mismatched_order_id(self):
         acquisition = CustomerAcquisition.objects.create(
@@ -499,6 +578,34 @@ class SubscriptionTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response['Content-Type'], 'application/pdf')
         self.assertTrue(response.content.startswith(b'%PDF'))
+
+    def test_invoice_pdf_uses_active_admin_support_contact(self):
+        PlatformSupportContact.objects.create(
+            name='Primary Support',
+            support_email='shriinfowaveprivatelimited@gmail.com',
+            whatsapp_number='918279408396',
+            is_active=True,
+        )
+        subscription = TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            status=TenantSubscription.Status.ACTIVE,
+        )
+        invoice = BillingRecord.objects.create(
+            tenant=self.tenant,
+            subscription=subscription,
+            razorpay_payment_id='pay_support_123',
+            amount=199900,
+            currency='INR',
+            status='paid',
+        )
+
+        self.client.login(username='owner', password='testpass123')
+        response = self.client.get(reverse('subscriptions:view_invoice', kwargs={'record_id': invoice.id}))
+
+        self.assertContains(response, 'shriinfowaveprivatelimited@gmail.com')
+        self.assertContains(response, '918279408396')
 
     def test_invoice_pdf_view_opens_inline_for_tenant_owner(self):
         subscription = TenantSubscription.objects.create(
@@ -932,7 +1039,11 @@ class SubscriptionTests(TestCase):
         self.assertTrue(ThemeActivation.objects.filter(tenant=self.tenant).exists())
         self.assertTrue(HomepageLayout.objects.filter(tenant=self.tenant, status=HomepageLayout.Status.PUBLISHED).exists())
         self.assertEqual(Menu.objects.filter(tenant=self.tenant).count(), 2)
-        self.assertEqual(Page.objects.filter(tenant=self.tenant, is_published=True).count(), 4)
+        self.assertEqual(Page.objects.filter(tenant=self.tenant, is_published=True).count(), 9)
+        self.assertTrue(Page.objects.filter(tenant=self.tenant, slug='editorial-policy').exists())
+        self.assertTrue(Page.objects.filter(tenant=self.tenant, slug='privacy-policy', content__icontains='Billing News').exists())
+        footer_menu = Menu.objects.get(tenant=self.tenant, location=Menu.Location.FOOTER)
+        self.assertEqual(footer_menu.items.filter(link_type='page', is_enabled=True).count(), 9)
 
     def test_paid_tenant_integrity_management_command_runs(self):
         TenantSubscription.objects.create(

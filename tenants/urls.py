@@ -21,4 +21,5 @@ urlpatterns = [
     path('dashboard/reporters/', views.reporter_list, name='reporter_list'),
     path('dashboard/reporters/add/', views.reporter_create, name='reporter_create'),
     path('settings/<uuid:uuid>/', views.tenant_settings, name='tenant_settings'),
+    path('<slug:page>/', views.public_domain_page, name='public_static_page'),
 ]

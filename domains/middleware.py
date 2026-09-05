@@ -10,13 +10,8 @@ class TenantResolutionMiddleware:
 
     PLATFORM_ONLY_PATHS = (
         '/saas/',
-        '/about-us/',
-        '/contact-us/',
-        '/privacy-policy/',
-        '/terms-and-conditions/',
         '/refund-policy/',
         '/billing-policy/',
-        '/grievance/',
     )
 
     def __init__(self, get_response):

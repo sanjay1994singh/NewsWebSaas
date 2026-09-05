@@ -11,7 +11,7 @@ from domains.middleware import TenantResolutionMiddleware
 from domains.models import TenantDomain
 from news.models import AuthorProfile, NewsArticle
 from subscriptions.models import Plan, TenantOnboarding, TenantSubscription
-from subscriptions.services import tenant_public_site_slug, tenant_public_site_url
+from subscriptions.services import ensure_required_tenant_pages, tenant_public_site_slug, tenant_public_site_url
 
 from .models import Tenant, TenantMembership, TenantVisitor
 
@@ -154,6 +154,31 @@ class TenantIsolationTests(TestCase):
         self.assertNotContains(response, '<strong>Videos</strong>', html=True)
         self.assertNotContains(response, '<strong>Live TV</strong>', html=True)
         self.assertNotContains(response, 'Launch Your Digital News Platform')
+
+    def test_required_public_pages_open_from_tenant_domain_and_footer(self):
+        ensure_required_tenant_pages(tenant=self.tenant_a)
+
+        response = self.client.get('/', HTTP_HOST='customera.platformdomain.com')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'href="/about-us/"')
+        self.assertContains(response, 'href="/privacy-policy/"')
+        self.assertContains(response, 'Editorial Policy')
+
+        page_response = self.client.get('/privacy-policy/', HTTP_HOST='customera.platformdomain.com')
+
+        self.assertEqual(page_response.status_code, 200)
+        self.assertContains(page_response, 'Privacy Policy')
+        self.assertContains(page_response, 'A News')
+
+    def test_required_public_pages_open_from_platform_site_path(self):
+        ensure_required_tenant_pages(tenant=self.tenant_a)
+
+        response = self.client.get(reverse('tenants:public_tenant_page', args=[tenant_public_site_slug(self.tenant_a), 'about-us']))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'About Us')
+        self.assertContains(response, 'A News')
 
     def test_disabled_video_and_live_tv_public_pages_return_404(self):
         response = self.client.get('/videos/', HTTP_HOST='customera.platformdomain.com')

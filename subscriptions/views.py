@@ -58,20 +58,8 @@ from .services import (
     update_pending_customer_acquisition,
     verify_razorpay_checkout_signature,
 )
+from .support import company_profile
 from .whatsapp import notify_payment_failed, notify_payment_success
-
-COMPANY_PROFILE = {
-    'brand_name': 'Press Nexa',
-    'legal_name': 'SHRI INFOWAVE PRIVATE LIMITED',
-    'cin': 'U62012UW2026PTC257361',
-    'pan': 'ABUCS7544P',
-    'incorporated_on': '17 August 2026',
-    'registered_office': '101 Govind Kund Tila, Radha Niwas, Vrindaban, Mathura, Mathura - 281121, Uttar Pradesh, India',
-    'support_email': 'srbc500@gmail.com',
-    'whatsapp_number': '8279408396',
-    'whatsapp_url': 'https://wa.me/918279408396',
-    'business_hours': 'Monday to Saturday, 10:00 AM to 6:00 PM IST',
-}
 
 
 def _customer_tenant_context(user):
@@ -235,23 +223,38 @@ def _activate_published_tenant(tenant):
 
 
 def about_us(request):
+    if getattr(request, 'tenant', None):
+        from tenants.views import _render_public_tenant_site
+        return _render_public_tenant_site(request, request.tenant, 'about-us')
     return render(
         request,
         'subscriptions/about.html',
         {
-            'company': COMPANY_PROFILE,
+            'company': company_profile(),
             'page_title': 'About Press Nexa',
         },
     )
 
 
 def policy_page(request, policy_type):
+    tenant = getattr(request, 'tenant', None)
+    if tenant:
+        tenant_page_map = {
+            'contact': 'contact',
+            'privacy': 'privacy-policy',
+            'terms': 'terms',
+            'grievance': 'corrections-policy',
+        }
+        tenant_page = tenant_page_map.get(policy_type)
+        if tenant_page:
+            from tenants.views import _render_public_tenant_site
+            return _render_public_tenant_site(request, tenant, tenant_page)
     policy = get_object_or_404(PlatformPolicy, policy_type=policy_type, is_published=True)
     return render(
         request,
         'subscriptions/policy_page.html',
         {
-            'company': COMPANY_PROFILE,
+            'company': company_profile(),
             'policy': policy,
             'page_title': policy.title,
         },

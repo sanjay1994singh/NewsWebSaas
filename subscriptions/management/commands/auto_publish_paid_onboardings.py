@@ -7,7 +7,7 @@ class Command(BaseCommand):
     help = 'Auto-publish paid tenant onboarding records after the configured waiting period.'
 
     def add_arguments(self, parser):
-        parser.add_argument('--minutes', type=int, default=30)
+        parser.add_argument('--minutes', type=int, default=None)
         parser.add_argument('--limit', type=int, default=100)
 
     def handle(self, *args, **options):

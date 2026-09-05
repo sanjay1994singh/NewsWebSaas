@@ -10,11 +10,13 @@ from .models import (
     PlanFeature,
     PlanPrice,
     PlatformPolicy,
+    PlatformSupportContact,
     TenantAddOn,
     TenantFeatureOverride,
     TenantOnboarding,
     TenantSubscription,
     OnboardingReviewEvent,
+    OnboardingAutomationPolicy,
     WebhookEvent,
 )
 
@@ -125,6 +127,13 @@ class OnboardingReviewEventAdmin(admin.ModelAdmin):
     autocomplete_fields = ('onboarding', 'actor')
 
 
+@admin.register(OnboardingAutomationPolicy)
+class OnboardingAutomationPolicyAdmin(admin.ModelAdmin):
+    list_display = ('name', 'mode', 'delay_minutes', 'is_active', 'updated_at')
+    list_filter = ('mode', 'is_active')
+    search_fields = ('name',)
+
+
 @admin.register(PlanChangeRequest)
 class PlanChangeRequestAdmin(admin.ModelAdmin):
     list_display = ('tenant', 'change_type', 'from_plan', 'to_plan', 'status', 'effective_at', 'created_at')
@@ -151,3 +160,10 @@ class WebhookEventAdmin(admin.ModelAdmin):
 class PlatformPolicyAdmin(admin.ModelAdmin):
     list_display = ('title', 'policy_type', 'is_published', 'updated_at')
     list_filter = ('policy_type', 'is_published')
+
+
+@admin.register(PlatformSupportContact)
+class PlatformSupportContactAdmin(admin.ModelAdmin):
+    list_display = ('name', 'support_email', 'whatsapp_number', 'is_active', 'updated_at')
+    list_filter = ('is_active',)
+    search_fields = ('name', 'support_email', 'whatsapp_number')

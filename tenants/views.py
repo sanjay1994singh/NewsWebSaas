@@ -14,7 +14,7 @@ from domains.models import TenantDomain
 from news.models import NewsArticle
 from news.services import article_public_path, published_articles_for_tenant
 from pages.builder import get_or_create_layout
-from pages.models import HomepageBlock, HomepageLayout
+from pages.models import HomepageBlock, HomepageLayout, Menu, Page
 from seo.services import article_json_ld, article_meta
 from subscriptions.entitlements import get_effective_entitlements
 from subscriptions.models import CustomerAcquisition, TenantOnboarding, TenantSubscription
@@ -256,7 +256,10 @@ def reporter_create(request):
 
 def _render_public_tenant_site(request, tenant, page='home'):
     allowed_pages = {'home', 'latest-news', 'top-stories', 'blogs', 'videos', 'live-tv', 'contact'}
+    static_page = None
     if page not in allowed_pages:
+        static_page = Page.objects.filter(tenant=tenant, slug=page, is_published=True).first()
+    if page not in allowed_pages and static_page is None:
         raise Http404("Publication page not found.")
     request.tenant = tenant
     entitlements = get_effective_entitlements(tenant)
@@ -266,6 +269,12 @@ def _render_public_tenant_site(request, tenant, page='home'):
         raise Http404("Publication page not found.")
     if page == 'live-tv' and not has_live_tv:
         raise Http404("Publication page not found.")
+    footer_pages = list(
+        Page.objects
+        .filter(tenant=tenant, is_published=True, menu_items__menu__location=Menu.Location.FOOTER, menu_items__is_enabled=True)
+        .order_by('menu_items__order', 'title')
+        .distinct()
+    )
     layout = get_or_create_layout(tenant, HomepageLayout.Status.PUBLISHED)
     blocks = list(layout.blocks.filter(is_enabled=True).select_related('category'))
     blocks = [
@@ -306,6 +315,8 @@ def _render_public_tenant_site(request, tenant, page='home'):
         'has_live_tv': has_live_tv,
         'has_blogs': has_blogs,
         'page': page,
+        'static_page': static_page,
+        'footer_pages': footer_pages,
         'public_site_slug': tenant_public_site_slug(tenant),
         'preview': False,
         'can_access_dashboard': can_access_dashboard,

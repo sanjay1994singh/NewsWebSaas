@@ -4,17 +4,25 @@ from django.template.defaultfilters import date as date_filter
 from django.utils import timezone
 
 from .pricing import money_display
+from .support import BASE_COMPANY_PROFILE, active_support_contact
 
 
 COMPANY = {
-    'brand': 'Press Nexa',
-    'legal_name': 'SHRI INFOWAVE PRIVATE LIMITED',
-    'cin': 'U62012UW2026PTC257361',
-    'pan': 'ABUCS7544P',
+    'brand': BASE_COMPANY_PROFILE['brand_name'],
+    'legal_name': BASE_COMPANY_PROFILE['legal_name'],
+    'cin': BASE_COMPANY_PROFILE['cin'],
+    'pan': BASE_COMPANY_PROFILE['pan'],
     'address': '101 Govind Kund Tila, Radha Niwas, Vrindaban, Mathura, Uttar Pradesh, India',
-    'email': 'srbc500@gmail.com',
-    'whatsapp': '8279408396',
 }
+
+
+def invoice_company():
+    support = active_support_contact()
+    return {
+        **COMPANY,
+        'email': support['support_email'],
+        'whatsapp': support['whatsapp_number'],
+    }
 
 
 def invoice_number(record):
@@ -61,6 +69,7 @@ def build_invoice_pdf(record):
 def email_invoice(record):
     if not record.tenant.email:
         return False
+    company = invoice_company()
     pdf = build_invoice_pdf(record)
     subject = f"Your Press Nexa invoice {invoice_number(record)}"
     body = (
@@ -72,7 +81,7 @@ def email_invoice(record):
     message = EmailMessage(
         subject=subject,
         body=body,
-        from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', COMPANY['email']),
+        from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', company['email']),
         to=[record.tenant.email],
     )
     message.attach(invoice_filename(record), pdf, 'application/pdf')
@@ -81,6 +90,7 @@ def email_invoice(record):
 
 
 def _invoice_pdf(data):
+    company = invoice_company()
     ops = [
         '1 1 1 rg',
         '0 0 595 842 re f',
@@ -89,8 +99,8 @@ def _invoice_pdf(data):
         '0 0 0 rg',
         _text(44, 776, 18, 'Press Nexa', bold=True),
         '0.388 0.463 0.431 rg',
-        _text(44, 756, 9, COMPANY['legal_name']),
-        _text(44, 741, 8, f"CIN: {COMPANY['cin']}  |  PAN: {COMPANY['pan']}"),
+        _text(44, 756, 9, company['legal_name']),
+        _text(44, 741, 8, f"CIN: {company['cin']}  |  PAN: {company['pan']}"),
         '0 0 0 rg',
         _text(421, 776, 20, 'INVOICE', bold=True),
         '0.388 0.463 0.431 rg',
@@ -151,10 +161,10 @@ def _invoice_pdf(data):
         '0.851 0.894 0.871 RG',
         '44 106 m 551 106 l S',
         '0.082 0.376 0.310 rg',
-        _text(44, 82, 10, COMPANY['brand'], bold=True),
+        _text(44, 82, 10, company['brand'], bold=True),
         '0.388 0.463 0.431 rg',
-        _text(44, 66, 7, COMPANY['address']),
-        _text(44, 52, 7, f"Support: {COMPANY['email']} | WhatsApp: {COMPANY['whatsapp']}"),
+        _text(44, 66, 7, company['address']),
+        _text(44, 52, 7, f"Support: {company['email']} | WhatsApp: {company['whatsapp']}"),
     ]
     content = '\n'.join(ops).encode('latin-1', errors='replace')
     objects = [
