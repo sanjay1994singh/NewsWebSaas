@@ -968,7 +968,7 @@
                 {% for video in youtube_videos %}
                   <article class="video-card">
                     <div class="video-frame-wrap">
-                      <iframe src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" data-video-frame data-base-src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" title="{{ video.title }}" loading="lazy" referrerpolicy="origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                  <iframe id="youtube-player-{{ forloop.counter }}" src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" data-video-frame data-base-src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" title="{{ video.title }}" loading="lazy" referrerpolicy="origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
                     </div>
                     <h3>{{ video.title }}</h3>
                   </article>
@@ -984,7 +984,7 @@
                 {% for video in youtube_shorts %}
                   <article class="video-card">
                     <div class="video-frame-wrap">
-                      <iframe src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" data-video-frame data-base-src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" title="{{ video.title }}" loading="lazy" referrerpolicy="origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                      <iframe id="youtube-shorts-player-{{ forloop.counter }}" src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" data-video-frame data-base-src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" title="{{ video.title }}" loading="lazy" referrerpolicy="origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
                     </div>
                     <h3>{{ video.title }}</h3>
                   </article>
@@ -1095,14 +1095,12 @@
       }
 
       const videoFrames = Array.from(document.querySelectorAll('[data-video-frame]'));
+      const youtubePlayers = [];
       function pauseOtherVideos(activeFrame) {
-        videoFrames.forEach(function (frame) {
-          if (frame === activeFrame || !frame.contentWindow) return;
-          frame.contentWindow.postMessage(JSON.stringify({
-            event: 'command',
-            func: 'pauseVideo',
-            args: []
-          }), 'https://www.youtube.com');
+        youtubePlayers.forEach(function (player) {
+          const iframe = player.getIframe ? player.getIframe() : null;
+          if (iframe === activeFrame) return;
+          if (player.pauseVideo) player.pauseVideo();
         });
       }
       document.querySelectorAll('.video-frame-wrap').forEach(function (wrap) {
@@ -1111,6 +1109,28 @@
           pauseOtherVideos(frame);
         });
       });
+      if (videoFrames.length) {
+        window.onYouTubeIframeAPIReady = function () {
+          videoFrames.forEach(function (frame) {
+            youtubePlayers.push(new YT.Player(frame.id, {
+              events: {
+                onStateChange: function (event) {
+                  if (event.data === YT.PlayerState.PLAYING) {
+                    pauseOtherVideos(event.target.getIframe());
+                  }
+                }
+              }
+            }));
+          });
+        };
+        if (!window.YT) {
+          const youtubeApi = document.createElement('script');
+          youtubeApi.src = 'https://www.youtube.com/iframe_api';
+          document.head.appendChild(youtubeApi);
+        } else if (window.YT.Player) {
+          window.onYouTubeIframeAPIReady();
+        }
+      }
       const videoTabs = Array.from(document.querySelectorAll('[data-video-tab]'));
       const videoPanels = Array.from(document.querySelectorAll('[data-video-panel]'));
       videoTabs.forEach(function (tab) {

@@ -134,6 +134,47 @@ def _channel_shorts_url(channel_url, channel_id):
     return f'https://www.youtube.com/channel/{channel_id}/shorts'
 
 
+def _clean_youtube_text(value):
+    text = unescape(value or '')
+    text = text.encode('utf-8').decode('unicode_escape', errors='ignore')
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+
+def _shorts_titles_from_html(html):
+    titles = {}
+    for video_id in _shorts_ids_from_html(html):
+        position = html.find(video_id)
+        if position < 0:
+            continue
+        chunk = html[position:position + 2200]
+        patterns = (
+            r'"title":\{"runs":\[\{"text":"(?P<title>[^"]+)"',
+            r'"simpleText":"(?P<title>[^"]+)"',
+            r'"accessibilityData":\{"label":"(?P<title>[^"]+)"',
+            r'"text":"(?P<title>[^"]+)"',
+        )
+        for pattern in patterns:
+            match = re.search(pattern, chunk)
+            title = _clean_youtube_text(match.group('title')) if match else ''
+            if title and not title.lower().startswith(('watch ', 'shorts ', 'play ')):
+                titles[video_id] = title
+                break
+    return titles
+
+
+def _shorts_ids_from_html(html):
+    ids = re.findall(r'"/shorts/([0-9A-Za-z_-]{11})"', html)
+    ids.extend(re.findall(r'"url":"/shorts/([0-9A-Za-z_-]{11})"', html))
+    if not ids:
+        ids.extend(re.findall(r'"videoId":"([0-9A-Za-z_-]{11})"', html))
+    unique_ids = []
+    for video_id in ids:
+        if video_id not in unique_ids:
+            unique_ids.append(video_id)
+    return unique_ids
+
+
 def fetch_youtube_channel_shorts(channel_url, limit=12):
     channel_id = extract_youtube_channel_id(channel_url)
     if not channel_id:
@@ -150,21 +191,17 @@ def fetch_youtube_channel_shorts(channel_url, limit=12):
         cache.set(cache_key, [], 60 * 5)
         return []
 
-    titles = {}
-    for match in re.finditer(r'"videoId":"(?P<id>[0-9A-Za-z_-]{11})".{0,900}?"title":\{"runs":\[\{"text":"(?P<title>[^"]+)"', html):
-        titles.setdefault(match.group('id'), unescape(match.group('title')))
-    for match in re.finditer(r'"videoId":"(?P<id>[0-9A-Za-z_-]{11})".{0,900}?"simpleText":"(?P<title>[^"]+)"', html):
-        titles.setdefault(match.group('id'), unescape(match.group('title')))
+    titles = _shorts_titles_from_html(html)
 
     seen = set()
     shorts = []
-    for video_id in re.findall(r'"videoId":"([0-9A-Za-z_-]{11})"', html):
+    for video_id in _shorts_ids_from_html(html):
         if video_id in seen:
             continue
         seen.add(video_id)
         shorts.append({
             'id': video_id,
-            'title': titles.get(video_id) or 'YouTube Short',
+            'title': titles.get(video_id) or 'Latest short',
             'url': f'https://www.youtube.com/shorts/{video_id}',
             'embed_url': f'https://www.youtube.com/embed/{video_id}?enablejsapi=1&rel=0',
         })
