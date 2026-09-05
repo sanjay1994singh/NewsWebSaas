@@ -10,9 +10,9 @@
   .form-grid { display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
   .field.full { grid-column:1 / -1; }
   .field-help { margin-top:4px; color:var(--muted); font-size:13px; }
-  .field-label-row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:6px; }
-  .field-label-row label { margin:0; }
-  .mini-add-btn { display:inline-grid; place-items:center; width:34px; height:34px; border:1px solid var(--brand); border-radius:6px; background:#fff; color:var(--brand); font-size:22px; line-height:1; font-weight:900; cursor:pointer; }
+  .field-control-row { display:grid; grid-template-columns:minmax(0, 1fr) 44px; gap:8px; align-items:stretch; }
+  .field-control-row select { min-width:0; width:100%; }
+  .mini-add-btn { display:inline-grid; place-items:center; width:44px; min-width:44px; height:44px; border:1px solid var(--brand); border-radius:6px; background:#fff; color:var(--brand); font-size:24px; line-height:1; font-weight:900; cursor:pointer; }
   .required-note { color:var(--muted); font-size:13px; }
   .ck-editor__editable { min-height:320px; }
   .current-image { display:grid; gap:8px; margin-bottom:10px; }
@@ -30,7 +30,7 @@
   .modal-card input, .modal-card textarea { width:100%; border:1px solid var(--line); border-radius:6px; padding:11px; font:inherit; }
   .modal-errors { color:var(--danger); font-weight:800; margin-bottom:10px; }
   @media (max-width:900px) { .editor-form { grid-template-columns:1fr; } .side-card { position:static; } }
-  @media (max-width:640px) { .editor-head, .form-grid { display:block; } .editor-head .btn, .form-actions .btn { width:100%; } .ck-editor__editable { min-height:240px; } }
+  @media (max-width:640px) { .editor-head, .form-grid { display:block; } .editor-head .btn, .form-actions .btn { width:100%; } .field-control-row { grid-template-columns:minmax(0, 1fr) 44px; } .ck-editor__editable { min-height:240px; } }
 {% endblock %}
 
 {% block content %}
@@ -58,11 +58,11 @@
             <div class="field-help">Slug title se auto generate hoga. Hindi/English dono title support hain.</div>
           </div>
           <div class="field">
-            <div class="field-label-row">
-              <label for="{{ form.category.id_for_label }}">Category *</label>
+            <label for="{{ form.category.id_for_label }}">Category *</label>
+            <div class="field-control-row">
+              {{ form.category }}
               <button class="mini-add-btn" type="button" data-modal-open="category-modal" aria-label="Add category">+</button>
             </div>
-            {{ form.category }}
             {{ form.category.errors }}
           </div>
           <div class="field">
@@ -72,11 +72,11 @@
             <div class="field-help">Ye naam public post par dikhega. Blank chhodne par publisher name hide rahega.</div>
           </div>
           <div class="field">
-            <div class="field-label-row">
-              <label for="{{ form.author.id_for_label }}">Author</label>
+            <label for="{{ form.author.id_for_label }}">Author</label>
+            <div class="field-control-row">
+              {{ form.author }}
               <button class="mini-add-btn" type="button" data-modal-open="author-modal" aria-label="Add author">+</button>
             </div>
-            {{ form.author }}
             {{ form.author.errors }}
             <div class="field-help">Author internal profile/byline record hai. Publisher name public post par dikhne wala naam hai.</div>
           </div>
