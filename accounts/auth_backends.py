@@ -16,15 +16,14 @@ class IdentifierBackend(ModelBackend):
             return None
 
         User = get_user_model()
-        user = User.objects.filter(Q(username__iexact=identifier) | Q(email__iexact=identifier)).first()
-        if not user:
-            digits = _digits(identifier)
-            if digits:
-                for acquisition in CustomerAcquisition.objects.select_related('user').filter(mobile__icontains=digits[-10:]):
-                    if _digits(acquisition.mobile).endswith(digits[-10:]):
-                        user = acquisition.user
-                        break
+        candidates = list(User.objects.filter(Q(username__iexact=identifier) | Q(email__iexact=identifier)).order_by('id'))
+        digits = _digits(identifier)
+        if digits:
+            for acquisition in CustomerAcquisition.objects.select_related('user').filter(mobile__icontains=digits[-10:]).order_by('id'):
+                if _digits(acquisition.mobile).endswith(digits[-10:]) and acquisition.user not in candidates:
+                    candidates.append(acquisition.user)
 
-        if user and user.check_password(password) and self.user_can_authenticate(user):
-            return user
+        for user in candidates:
+            if user.check_password(password) and self.user_can_authenticate(user):
+                return user
         return None

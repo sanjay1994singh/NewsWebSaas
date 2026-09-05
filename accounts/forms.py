@@ -1,14 +1,8 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm
-from django.db.models import Q
 
 from subscriptions.forms import disable_autofill
-from subscriptions.models import CustomerAcquisition
-
-
-def _digits(value):
-    return ''.join(char for char in str(value or '') if char.isdigit())
 
 
 class IdentifierAuthenticationForm(AuthenticationForm):
@@ -25,18 +19,7 @@ class IdentifierAuthenticationForm(AuthenticationForm):
         disable_autofill(self.fields)
 
     def clean_username(self):
-        identifier = self.cleaned_data['username'].strip()
-        User = get_user_model()
-        user = User.objects.filter(Q(username__iexact=identifier) | Q(email__iexact=identifier)).first()
-        if not user:
-            digits = _digits(identifier)
-            if digits:
-                candidates = CustomerAcquisition.objects.select_related('user').filter(mobile__icontains=digits[-10:])
-                for acquisition in candidates:
-                    if _digits(acquisition.mobile).endswith(digits[-10:]):
-                        user = acquisition.user
-                        break
-        return user.get_username() if user else identifier
+        return self.cleaned_data['username'].strip()
 
 
 class ProfileForm(forms.ModelForm):
