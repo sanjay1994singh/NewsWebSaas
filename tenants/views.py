@@ -6,7 +6,9 @@ from django.contrib import messages
 from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.dateparse import parse_datetime
 from django.utils import timezone
+from datetime import timedelta
 
 from analytics.services import record_article_view
 from core.models import user_can_access_tenant
@@ -28,6 +30,29 @@ from .models import Tenant, TenantMembership, TenantVisitor
 
 def is_platform_admin(user):
     return user.is_authenticated and (user.is_superuser or user.is_super_admin or user.is_support_admin)
+
+
+def _group_youtube_items_by_day(items):
+    today = timezone.localdate()
+    groups = [
+        {'key': 'today', 'label': 'Today', 'items': []},
+        {'key': 'yesterday', 'label': 'Yesterday', 'items': []},
+        {'key': 'week', 'label': 'This Week', 'items': []},
+    ]
+    lookup = {group['key']: group for group in groups}
+    for item in items:
+        published_at = parse_datetime(item.get('published') or '')
+        if published_at:
+            published_date = timezone.localdate(published_at)
+            if published_date == today:
+                lookup['today']['items'].append(item)
+            elif published_date == today - timedelta(days=1):
+                lookup['yesterday']['items'].append(item)
+            else:
+                lookup['week']['items'].append(item)
+        else:
+            lookup['today']['items'].append(item)
+    return groups
 
 
 def _tenant_for_user(user):
@@ -339,10 +364,14 @@ def _render_public_tenant_site(request, tenant, page='home', category_slug=''):
         onboarding = None
     youtube_videos = []
     youtube_shorts = []
+    youtube_video_groups = []
+    youtube_short_groups = []
     if page == 'videos' and has_videos and onboarding and onboarding.youtube_channel_url:
         youtube_videos = fetch_youtube_channel_videos(onboarding.youtube_channel_url)
         if entitlements.get('youtube_shorts', {}).get('is_enabled'):
             youtube_shorts = fetch_youtube_channel_shorts(onboarding.youtube_channel_url)
+        youtube_video_groups = _group_youtube_items_by_day(youtube_videos)
+        youtube_short_groups = _group_youtube_items_by_day(youtube_shorts)
     can_access_dashboard = user_can_access_tenant(request.user, tenant)
     is_registered_visitor = (
         request.user.is_authenticated
@@ -366,6 +395,8 @@ def _render_public_tenant_site(request, tenant, page='home', category_slug=''):
         'footer_pages': footer_pages,
         'youtube_videos': youtube_videos,
         'youtube_shorts': youtube_shorts,
+        'youtube_video_groups': youtube_video_groups,
+        'youtube_short_groups': youtube_short_groups,
         'youtube_embed_origin': f'{request.scheme}://{request.get_host()}',
         'public_site_slug': tenant_public_site_slug(tenant),
         'preview': False,

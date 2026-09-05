@@ -426,6 +426,24 @@
       gap: 18px;
       margin-top: 18px;
     }
+    .video-day-row {
+      margin-top: 18px;
+    }
+    .video-day-row h3 {
+      margin: 0 0 10px;
+      font-size: 20px;
+      line-height: 1.2;
+    }
+    .video-strip {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(280px, 32%);
+      gap: 14px;
+      overflow-x: auto;
+      overscroll-behavior-inline: contain;
+      scroll-snap-type: x proximity;
+      padding: 2px 2px 12px;
+    }
     .video-tabs {
       display: inline-flex;
       gap: 8px;
@@ -458,6 +476,7 @@
       border-radius: 8px;
       overflow: hidden;
       background: #fff;
+      scroll-snap-align: start;
     }
     .video-frame-wrap {
       position: relative;
@@ -583,6 +602,9 @@
       .video-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
+      .video-strip {
+        grid-auto-columns: minmax(250px, 46%);
+      }
     }
     @media (max-width: 800px) {
       .section-grid,
@@ -590,6 +612,9 @@
       .contact-grid,
       .video-grid {
         grid-template-columns: 1fr;
+      }
+      .video-strip {
+        grid-auto-columns: minmax(230px, 86%);
       }
       .footer-row {
         grid-template-columns: 1fr;
@@ -964,32 +989,50 @@
           </div>
           <div class="video-panel" data-video-panel="videos">
             {% if youtube_videos %}
-              <div class="video-grid">
-                {% for video in youtube_videos %}
-                  <article class="video-card">
-                    <div class="video-frame-wrap">
-                  <iframe id="youtube-player-{{ forloop.counter }}" src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" data-video-frame data-base-src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" title="{{ video.title }}" loading="lazy" referrerpolicy="origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+              {% for group in youtube_video_groups %}
+                {% if group.items %}
+                  <div class="video-day-row">
+                    <h3>{{ group.label }}</h3>
+                    <div class="video-strip">
+                      {% for video in group.items %}
+                        <article class="video-card">
+                          <div class="video-frame-wrap">
+                            <iframe id="youtube-player-{{ group.key }}-{{ forloop.counter }}" src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" data-video-frame data-base-src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" title="{{ video.title }}" loading="lazy" referrerpolicy="origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                          </div>
+                          <h3>{{ video.title }}</h3>
+                        </article>
+                      {% endfor %}
                     </div>
-                    <h3>{{ video.title }}</h3>
-                  </article>
-                {% endfor %}
-              </div>
+                  </div>
+                {% endif %}
+              {% endfor %}
+              {% if not youtube_video_groups.0.items and not youtube_video_groups.1.items and not youtube_video_groups.2.items %}
+                <p>Videos from {{ tenant.business_name|default:tenant.publication_name }} will appear here shortly.</p>
+              {% endif %}
             {% else %}
               <p>Videos from {{ tenant.business_name|default:tenant.publication_name }} will appear here shortly.</p>
             {% endif %}
           </div>
           <div class="video-panel" data-video-panel="shorts" hidden>
             {% if youtube_shorts %}
-              <div class="video-grid">
-                {% for video in youtube_shorts %}
-                  <article class="video-card">
-                    <div class="video-frame-wrap">
-                      <iframe id="youtube-shorts-player-{{ forloop.counter }}" src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" data-video-frame data-base-src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" title="{{ video.title }}" loading="lazy" referrerpolicy="origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+              {% for group in youtube_short_groups %}
+                {% if group.items %}
+                  <div class="video-day-row">
+                    <h3>{{ group.label }}</h3>
+                    <div class="video-strip">
+                      {% for video in group.items %}
+                        <article class="video-card">
+                          <div class="video-frame-wrap">
+                            <iframe id="youtube-shorts-player-{{ group.key }}-{{ forloop.counter }}" src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" data-video-frame data-base-src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" title="{{ video.title }}" loading="lazy" referrerpolicy="origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                          </div>
+                          <h3>{{ video.title }}</h3>
+                        </article>
+                      {% endfor %}
                     </div>
-                    <h3>{{ video.title }}</h3>
-                  </article>
+                  </div>
+                {% endif %}
                 {% endfor %}
-              </div>
+              {% endif %}
             {% else %}
               <p>Latest shorts from {{ tenant.business_name|default:tenant.publication_name }} will appear here shortly.</p>
             {% endif %}
@@ -1033,7 +1076,6 @@
         {% endif %}
       </div>
     </section>
-    {% endif %}
     {% endif %}
   </main>
 

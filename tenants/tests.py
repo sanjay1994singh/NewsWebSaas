@@ -3,6 +3,7 @@ from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
+from datetime import timedelta
 from unittest.mock import patch
 
 from core.models import user_can_access_tenant
@@ -241,9 +242,15 @@ class TenantIsolationTests(TestCase):
             'title': 'A Media Report',
             'description': 'Latest video from the newsroom.',
             'embed_url': 'https://www.youtube.com/embed/video123?enablejsapi=1&rel=0',
+            'published': timezone.now().isoformat(),
+        }, {
+            'title': 'A Media Yesterday Report',
+            'embed_url': 'https://www.youtube.com/embed/yesterday12?enablejsapi=1&rel=0',
+            'published': (timezone.now() - timedelta(days=1)).isoformat(),
         }]), patch('tenants.views.fetch_youtube_channel_shorts', return_value=[{
             'title': 'A Media Short',
             'embed_url': 'https://www.youtube.com/embed/short123abc?enablejsapi=1&rel=0',
+            'published': timezone.now().isoformat(),
         }]):
             response = self.client.get('/videos/', HTTP_HOST='customera.platformdomain.com')
 
@@ -251,7 +258,10 @@ class TenantIsolationTests(TestCase):
         self.assertContains(response, 'href="/videos/"')
         self.assertContains(response, 'data-video-tab="videos"')
         self.assertContains(response, 'data-video-tab="shorts"')
+        self.assertContains(response, 'Today')
+        self.assertContains(response, 'Yesterday')
         self.assertContains(response, 'A Media Report')
+        self.assertContains(response, 'A Media Yesterday Report')
         self.assertContains(response, 'A Media Short')
         self.assertContains(response, 'https://www.youtube.com/embed/video123')
         self.assertContains(response, 'https://www.youtube.com/embed/short123abc')
