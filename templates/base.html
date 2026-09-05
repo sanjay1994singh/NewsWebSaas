@@ -172,7 +172,7 @@
           form.querySelectorAll('input:not([type="password"]):not([type="file"]):not([type="hidden"]), textarea').forEach(function (field) {
             field.value = field.value.trim();
           });
-          if (form.dataset.noLoader === 'true') return;
+          if (form.dataset.noLoader === 'true' || form.dataset.ajaxCreate) return;
           if (form.dataset.submitting === 'true') {
             event.preventDefault();
             return;

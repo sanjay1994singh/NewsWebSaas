@@ -173,7 +173,7 @@
       <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="category-modal-title">
         <h2 id="category-modal-title">Add Category</h2>
         <div class="modal-errors" data-modal-errors></div>
-        <form data-ajax-create="category" data-url="{% url 'news:ajax_category_create' %}">
+        <form data-ajax-create="category" data-url="{% url 'news:ajax_category_create' %}" data-no-loader="true">
           {% csrf_token %}
           <label>Category name <input name="name" required></label>
           <label>Description <textarea name="description" rows="3"></textarea></label>
@@ -191,7 +191,7 @@
       <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="author-modal-title">
         <h2 id="author-modal-title">Add Author</h2>
         <div class="modal-errors" data-modal-errors></div>
-        <form data-ajax-create="author" data-url="{% url 'news:ajax_author_create' %}">
+        <form data-ajax-create="author" data-url="{% url 'news:ajax_author_create' %}" data-no-loader="true">
           {% csrf_token %}
           <label>Author name <input name="display_name" required></label>
           <label>Designation <input name="designation" placeholder="Reporter, Editor, City Desk"></label>
