@@ -245,6 +245,7 @@ class TenantIsolationTests(TestCase):
             response = self.client.get('/videos/', HTTP_HOST='customera.platformdomain.com')
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'href="/videos/"')
         self.assertContains(response, 'A Media Report')
         self.assertContains(response, 'https://www.youtube.com/embed/video123')
 
