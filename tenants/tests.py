@@ -248,6 +248,8 @@ class TenantIsolationTests(TestCase):
         self.assertContains(response, 'href="/videos/"')
         self.assertContains(response, 'A Media Report')
         self.assertContains(response, 'https://www.youtube.com/embed/video123')
+        self.assertContains(response, 'data-play-video')
+        self.assertNotContains(response, 'Latest video from the newsroom.')
 
     def test_tenant_domain_account_menu_shows_dashboard_and_logout_for_logged_in_owner(self):
         self.client.force_login(self.user_a)

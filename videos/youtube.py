@@ -115,7 +115,7 @@ def fetch_youtube_channel_videos(channel_url, limit=12):
                 'description': description,
                 'thumbnail': thumbnail or f'https://i.ytimg.com/vi/{video_id}/hqdefault.jpg',
                 'url': f'https://www.youtube.com/watch?v={video_id}',
-                'embed_url': f'https://www.youtube.com/embed/{video_id}',
+                'embed_url': f'https://www.youtube.com/embed/{video_id}?enablejsapi=1&rel=0',
                 'published': published,
             })
 

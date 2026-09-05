@@ -433,6 +433,10 @@
       overflow: hidden;
       background: #fff;
     }
+    .video-frame-wrap {
+      position: relative;
+      background: #102f29;
+    }
     .video-card iframe {
       display: block;
       width: 100%;
@@ -447,9 +451,20 @@
       font-size: 18px;
       line-height: 1.25;
     }
-    .video-card p {
-      padding: 0 14px 14px;
+    .video-play {
+      position: absolute;
+      right: 10px;
+      bottom: 10px;
+      width: auto;
+      min-height: 34px;
+      padding: 8px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.75);
+      background: rgba(255,255,255,0.94);
+      color: #102f29;
       font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
     }
     .empty-actions {
       display: grid;
@@ -935,9 +950,11 @@
           <div class="video-grid">
             {% for video in youtube_videos %}
               <article class="video-card">
-                <iframe src="{{ video.embed_url }}" title="{{ video.title }}" loading="lazy" allowfullscreen></iframe>
+                <div class="video-frame-wrap">
+                  <iframe src="{{ video.embed_url }}" data-video-frame data-base-src="{{ video.embed_url }}" title="{{ video.title }}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                  <button class="video-play" type="button" data-play-video>Play here</button>
+                </div>
                 <h3>{{ video.title }}</h3>
-                {% if video.description %}<p>{{ video.description|truncatewords:18 }}</p>{% endif %}
               </article>
             {% endfor %}
           </div>
@@ -1009,34 +1026,51 @@
       const accountToggle = document.querySelector('.account-toggle');
       const accountBackdrop = document.querySelector('.account-drawer-backdrop');
       const drawerClose = document.querySelector('.drawer-close');
-      if (!accountMenu || !accountToggle) return;
       function setAccountMenu(open) {
+        if (!accountMenu || !accountToggle) return;
         accountMenu.classList.toggle('is-open', open);
         accountToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
       }
-      accountToggle.setAttribute('aria-expanded', 'false');
-      accountToggle.addEventListener('click', function (event) {
-        event.preventDefault();
-        setAccountMenu(!accountMenu.classList.contains('is-open'));
-      });
-      if (accountBackdrop) {
-        accountBackdrop.addEventListener('click', function () {
-          setAccountMenu(false);
+      if (accountMenu && accountToggle) {
+        accountToggle.setAttribute('aria-expanded', 'false');
+        accountToggle.addEventListener('click', function (event) {
+          event.preventDefault();
+          setAccountMenu(!accountMenu.classList.contains('is-open'));
         });
-      }
-      if (drawerClose) {
-        drawerClose.addEventListener('click', function () {
-          setAccountMenu(false);
-        });
-      }
-      document.addEventListener('click', function (event) {
-        if (accountMenu.contains(event.target)) return;
-        setAccountMenu(false);
-      });
-      document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape') {
-          setAccountMenu(false);
+        if (accountBackdrop) {
+          accountBackdrop.addEventListener('click', function () {
+            setAccountMenu(false);
+          });
         }
+        if (drawerClose) {
+          drawerClose.addEventListener('click', function () {
+            setAccountMenu(false);
+          });
+        }
+        document.addEventListener('click', function (event) {
+          if (accountMenu.contains(event.target)) return;
+          setAccountMenu(false);
+        });
+        document.addEventListener('keydown', function (event) {
+          if (event.key === 'Escape') {
+            setAccountMenu(false);
+          }
+        });
+      }
+
+      const videoButtons = Array.from(document.querySelectorAll('[data-play-video]'));
+      const videoFrames = Array.from(document.querySelectorAll('[data-video-frame]'));
+      function autoplayUrl(src) {
+        return src + (src.includes('?') ? '&' : '?') + 'autoplay=1';
+      }
+      videoButtons.forEach(function (button) {
+        button.addEventListener('click', function () {
+          const frame = button.closest('.video-card').querySelector('[data-video-frame]');
+          videoFrames.forEach(function (item) {
+            const baseSrc = item.dataset.baseSrc || item.src;
+            item.src = item === frame ? autoplayUrl(baseSrc) : baseSrc;
+          });
+        });
       });
     })();
   </script>
