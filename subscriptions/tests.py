@@ -377,6 +377,23 @@ class SubscriptionTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.cleaned_data['publication_slug'], 'aaj-tak')
 
+    def test_signup_email_is_optional(self):
+        form = CustomerSignupForm(
+            data={
+                'business_name': 'No Email News',
+                'publication_name': 'No Email News',
+                'email': '',
+                'mobile': '9999999999',
+                'password': 'testpass123',
+                'confirm_password': 'testpass123',
+                'price_id': self.price.id,
+                'accepted_purchase_terms': 'on',
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['email'], '')
+
     @override_settings(STORAGES={
         'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
         'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},

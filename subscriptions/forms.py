@@ -45,7 +45,7 @@ class CheckoutDurationForm(forms.Form):
 class CustomerSignupForm(forms.Form):
     business_name = forms.CharField(max_length=255, label='Channel name / Paper name')
     publication_name = forms.CharField(max_length=255)
-    email = forms.EmailField()
+    email = forms.EmailField(required=False)
     mobile = forms.CharField(max_length=32)
     password = forms.CharField(
         min_length=8,
@@ -79,6 +79,7 @@ class CustomerSignupForm(forms.Form):
             'password': 'Create password',
             'confirm_password': 'Confirm password',
         }
+        self.fields['email'].label = 'Email (optional)'
         disable_autofill(self.fields)
         for name, field in self.fields.items():
             if name in placeholders:
