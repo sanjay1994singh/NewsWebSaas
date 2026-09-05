@@ -2,7 +2,7 @@ import json
 import re
 from html import unescape
 from urllib.error import URLError
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, quote, urlparse
 from urllib.request import Request, urlopen
 from xml.etree import ElementTree
 
@@ -10,6 +10,7 @@ from django.core.cache import cache
 
 
 YOUTUBE_FEED_URL = 'https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}'
+YOUTUBE_OEMBED_URL = 'https://www.youtube.com/oembed?url={video_url}&format=json'
 YOUTUBE_TIMEOUT = 6
 YOUTUBE_USER_AGENT = 'PressNexaBot/1.0'
 
@@ -175,6 +176,24 @@ def _shorts_ids_from_html(html):
     return unique_ids
 
 
+def _youtube_oembed_title(video_id):
+    cache_key = f'youtube-oembed-title:{video_id}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    video_url = quote(f'https://www.youtube.com/shorts/{video_id}', safe='')
+    try:
+        payload = json.loads(_fetch_text(YOUTUBE_OEMBED_URL.format(video_url=video_url)))
+    except (OSError, URLError, ValueError, json.JSONDecodeError):
+        cache.set(cache_key, '', 60 * 10)
+        return ''
+
+    title = _clean_youtube_text(payload.get('title', ''))
+    cache.set(cache_key, title, 60 * 60 * 24)
+    return title
+
+
 def fetch_youtube_channel_shorts(channel_url, limit=12):
     channel_id = extract_youtube_channel_id(channel_url)
     if not channel_id:
@@ -199,9 +218,10 @@ def fetch_youtube_channel_shorts(channel_url, limit=12):
         if video_id in seen:
             continue
         seen.add(video_id)
+        title = titles.get(video_id) or _youtube_oembed_title(video_id) or 'YouTube short'
         shorts.append({
             'id': video_id,
-            'title': titles.get(video_id) or 'Latest short',
+            'title': title,
             'url': f'https://www.youtube.com/shorts/{video_id}',
             'embed_url': f'https://www.youtube.com/embed/{video_id}?enablejsapi=1&rel=0',
         })

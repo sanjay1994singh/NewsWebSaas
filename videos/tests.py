@@ -5,7 +5,9 @@ from django.test import TestCase
 from tenants.models import Tenant
 
 from .models import Video
-from .youtube import _shorts_ids_from_html, _shorts_titles_from_html
+from unittest.mock import patch
+
+from .youtube import _shorts_ids_from_html, _shorts_titles_from_html, fetch_youtube_channel_shorts
 
 
 class VideoTests(TestCase):
@@ -28,3 +30,17 @@ class VideoTests(TestCase):
         titles = _shorts_titles_from_html(html)
         self.assertEqual(titles['abc123def45'], 'Mathura latest short')
         self.assertEqual(titles['xyz987uvw65'], 'Gorakhpur report short')
+
+    def test_shorts_fetch_uses_oembed_title_when_page_title_is_missing(self):
+        html = '"channelId":"UC12345678901234567890","url":"/shorts/abc123def45"'
+
+        def fake_fetch(url):
+            if 'oembed' in url:
+                return '{"title": "Actual short title from YouTube"}'
+            return html
+
+        with patch('videos.youtube._fetch_text', side_effect=fake_fetch):
+            shorts = fetch_youtube_channel_shorts('https://www.youtube.com/@samachar24', limit=1)
+
+        self.assertEqual(shorts[0]['title'], 'Actual short title from YouTube')
+        self.assertNotEqual(shorts[0]['title'], 'Latest short')
