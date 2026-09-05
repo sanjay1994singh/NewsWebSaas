@@ -105,6 +105,10 @@
           <div class="detail-row"><span>Selected plan</span><strong>{{ selected_price.plan.name }}</strong></div>
           <div class="detail-row"><span>Plan amount</span><strong>{{ quote.list_display }}</strong></div>
           <div class="detail-row"><span>Offer discount</span><strong>{{ quote.discount_percent }}% (-{{ quote.discount_display }})</strong></div>
+          {% if selected_price.plan_id != subscription.plan_id %}
+            <div class="detail-row"><span>Old plan paid amount</span><strong>{{ quote.credit_source_display }}</strong></div>
+            <div class="detail-row"><span>Unused days</span><strong>{{ quote.remaining_days }} / {{ quote.total_days }} days</strong></div>
+          {% endif %}
           <div class="detail-row"><span>{% if selected_price.plan_id == subscription.plan_id %}Renewal credit{% else %}Unused old-plan credit{% endif %}</span><strong>-{{ quote.credit_display }}</strong></div>
           <div class="detail-row"><span>Final payable</span><strong>{{ quote.payable_display }}</strong></div>
           <div class="detail-row"><span>New period</span><strong>{{ quote.period_start|date:"d M Y" }} - {{ quote.period_end|date:"d M Y" }}</strong></div>
@@ -148,6 +152,8 @@
           <div class="detail-list">
             <div class="detail-row"><span>Plan amount</span><strong data-quote-plan-amount>{{ option.quote.list_display }}</strong></div>
             <div class="detail-row"><span>50% offer discount</span><strong data-quote-discount>-{{ option.quote.discount_display }}</strong></div>
+            <div class="detail-row" data-upgrade-only{% if option.is_current_plan %} hidden{% endif %}><span>Old paid amount</span><strong data-quote-credit-source>{{ option.quote.credit_source_display }}</strong></div>
+            <div class="detail-row" data-upgrade-only{% if option.is_current_plan %} hidden{% endif %}><span>Unused days</span><strong data-quote-unused-days>{{ option.quote.remaining_days }} / {{ option.quote.total_days }} days</strong></div>
             <div class="detail-row"><span data-quote-credit-label>{% if option.is_current_plan %}Renewal credit{% else %}Unused old-plan credit{% endif %}</span><strong data-quote-credit>-{{ option.quote.credit_display }}</strong></div>
             <div class="detail-row final-row"><span>Final payable</span><strong data-quote-final>{{ option.quote.payable_display }}</strong></div>
             <div class="detail-row"><span>Period</span><strong data-quote-period>{{ option.quote.period_start|date:"d M Y" }} - {{ option.quote.period_end|date:"d M Y" }}</strong></div>
@@ -278,6 +284,8 @@
           form.querySelector('[data-quote-help]').textContent = quote.help_text;
           form.querySelector('[data-quote-plan-amount]').textContent = quote.plan_amount;
           form.querySelector('[data-quote-discount]').textContent = quote.discount;
+          form.querySelector('[data-quote-credit-source]').textContent = quote.credit_source;
+          form.querySelector('[data-quote-unused-days]').textContent = quote.unused_days;
           form.querySelector('[data-quote-credit-label]').textContent = quote.credit_label;
           form.querySelector('[data-quote-credit]').textContent = quote.credit;
           form.querySelector('[data-quote-final]').textContent = quote.final_payable;

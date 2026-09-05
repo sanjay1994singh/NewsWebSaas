@@ -76,6 +76,28 @@ def _paid_record_covering_current_period(tenant, now):
     )
 
 
+def _paid_record_for_subscription_period(tenant, subscription, now):
+    queryset = (
+        BillingRecord.objects
+        .filter(
+            tenant=tenant,
+            subscription=subscription,
+            status='paid',
+            period_start__lte=now,
+            period_end__gt=now,
+        )
+        .order_by('-period_end', '-created_at')
+    )
+    for record in queryset:
+        payload = record.payload or {}
+        checkout = payload.get('checkout') or {}
+        plan_id = payload.get('plan_id') or checkout.get('plan_id')
+        if plan_id and int(plan_id) != subscription.plan_id:
+            continue
+        return record
+    return None
+
+
 def active_onboarding_policy():
     policy = OnboardingAutomationPolicy.objects.filter(is_active=True).order_by('-updated_at', '-created_at').first()
     if policy:
@@ -147,7 +169,7 @@ def calculate_plan_change_quote(*, tenant, subscription, plan_price, billing_mon
         and subscription.current_period_end
         and subscription.current_period_end > now
     ):
-        paid_record = _paid_record_covering_current_period(tenant, now)
+        paid_record = _paid_record_for_subscription_period(tenant, subscription, now)
         paid_amount = paid_record.amount if paid_record else 0
         if not paid_amount:
             current_price = monthly_price_for_plan(subscription.plan)
@@ -173,9 +195,11 @@ def calculate_plan_change_quote(*, tenant, subscription, plan_price, billing_mon
         'period_end': period_end,
         'remaining_days': remaining_days,
         'total_days': total_days,
+        'credit_source_amount': paid_amount if not is_same_plan else 0,
         'list_display': money_display(checkout_pricing.list_amount, checkout_pricing.currency),
         'discount_display': money_display(checkout_pricing.discount_amount, checkout_pricing.currency),
         'credit_display': money_display(credit_amount, checkout_pricing.currency),
+        'credit_source_display': money_display(paid_amount if not is_same_plan else 0, checkout_pricing.currency),
         'payable_display': money_display(payable_amount, checkout_pricing.currency),
     }
 

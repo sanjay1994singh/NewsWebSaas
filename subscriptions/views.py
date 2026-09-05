@@ -911,6 +911,8 @@ def upgrade_plan_quote(request):
             'price': money_display(after_offer_amount, quote['currency']),
             'plan_amount': quote['list_display'],
             'discount': f"-{quote['discount_display']}",
+            'credit_source': quote['credit_source_display'],
+            'unused_days': f"{quote['remaining_days']} / {quote['total_days']} days",
             'credit': f"-{quote['credit_display']}",
             'credit_label': 'Renewal credit' if is_current_plan else 'Unused old-plan credit',
             'final_payable': quote['payable_display'],
