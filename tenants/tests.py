@@ -240,17 +240,26 @@ class TenantIsolationTests(TestCase):
         with patch('tenants.views.fetch_youtube_channel_videos', return_value=[{
             'title': 'A Media Report',
             'description': 'Latest video from the newsroom.',
-            'embed_url': 'https://www.youtube.com/embed/video123',
+            'embed_url': 'https://www.youtube.com/embed/video123?enablejsapi=1&rel=0',
+        }]), patch('tenants.views.fetch_youtube_channel_shorts', return_value=[{
+            'title': 'A Media Short',
+            'embed_url': 'https://www.youtube.com/embed/short123abc?enablejsapi=1&rel=0',
         }]):
             response = self.client.get('/videos/', HTTP_HOST='customera.platformdomain.com')
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'href="/videos/"')
+        self.assertContains(response, 'data-video-tab="videos"')
+        self.assertContains(response, 'data-video-tab="shorts"')
         self.assertContains(response, 'A Media Report')
+        self.assertContains(response, 'A Media Short')
         self.assertContains(response, 'https://www.youtube.com/embed/video123')
+        self.assertContains(response, 'https://www.youtube.com/embed/short123abc')
         self.assertContains(response, 'origin=http%3A//customera.platformdomain.com')
         self.assertContains(response, 'referrerpolicy="origin"')
         self.assertContains(response, 'pauseVideo')
+        self.assertContains(response, 'pointerdown')
+        self.assertNotContains(response, 'pointerenter')
         self.assertNotContains(response, 'data-play-video')
         self.assertNotContains(response, 'Play here')
         self.assertNotContains(response, 'Latest video from the newsroom.')

@@ -121,3 +121,55 @@ def fetch_youtube_channel_videos(channel_url, limit=12):
 
     cache.set(cache_key, json.loads(json.dumps(videos)), 60 * 30)
     return videos
+
+
+def _channel_shorts_url(channel_url, channel_id):
+    parsed = urlparse((channel_url or '').strip())
+    if parsed.netloc:
+        path = parsed.path.strip('/')
+        if path:
+            first_part = path.split('/')[0]
+            if first_part in {'@', 'channel', 'c', 'user'} or path.startswith('@'):
+                return f'https://www.youtube.com/{path.split("/shorts", 1)[0].strip("/")}/shorts'
+    return f'https://www.youtube.com/channel/{channel_id}/shorts'
+
+
+def fetch_youtube_channel_shorts(channel_url, limit=12):
+    channel_id = extract_youtube_channel_id(channel_url)
+    if not channel_id:
+        return []
+
+    cache_key = f'youtube-shorts:{channel_id}:{limit}'
+    cached = cache.get(cache_key)
+    if cached is not None:
+        return cached
+
+    try:
+        html = _fetch_text(_channel_shorts_url(channel_url, channel_id))
+    except (OSError, URLError, ValueError):
+        cache.set(cache_key, [], 60 * 5)
+        return []
+
+    titles = {}
+    for match in re.finditer(r'"videoId":"(?P<id>[0-9A-Za-z_-]{11})".{0,900}?"title":\{"runs":\[\{"text":"(?P<title>[^"]+)"', html):
+        titles.setdefault(match.group('id'), unescape(match.group('title')))
+    for match in re.finditer(r'"videoId":"(?P<id>[0-9A-Za-z_-]{11})".{0,900}?"simpleText":"(?P<title>[^"]+)"', html):
+        titles.setdefault(match.group('id'), unescape(match.group('title')))
+
+    seen = set()
+    shorts = []
+    for video_id in re.findall(r'"videoId":"([0-9A-Za-z_-]{11})"', html):
+        if video_id in seen:
+            continue
+        seen.add(video_id)
+        shorts.append({
+            'id': video_id,
+            'title': titles.get(video_id) or 'YouTube Short',
+            'url': f'https://www.youtube.com/shorts/{video_id}',
+            'embed_url': f'https://www.youtube.com/embed/{video_id}?enablejsapi=1&rel=0',
+        })
+        if len(shorts) >= limit:
+            break
+
+    cache.set(cache_key, json.loads(json.dumps(shorts)), 60 * 30)
+    return shorts

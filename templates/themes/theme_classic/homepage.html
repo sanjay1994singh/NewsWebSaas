@@ -426,6 +426,32 @@
       gap: 18px;
       margin-top: 18px;
     }
+    .video-tabs {
+      display: inline-flex;
+      gap: 8px;
+      margin-top: 12px;
+      padding: 4px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff;
+    }
+    .video-tab {
+      min-height: 36px;
+      padding: 8px 16px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--ink);
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .video-tab.is-active {
+      background: var(--brand);
+      color: #fff;
+    }
+    .video-panel[hidden] {
+      display: none;
+    }
     .video-card {
       min-width: 0;
       border: 1px solid var(--line);
@@ -931,16 +957,42 @@
     {% if has_videos and page == "videos" %}
       <section class="empty-card content-section">
         <h2>Videos</h2>
-        {% if youtube_videos %}
-          <div class="video-grid">
-            {% for video in youtube_videos %}
-              <article class="video-card">
-                <div class="video-frame-wrap">
-                  <iframe src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" data-video-frame data-base-src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" title="{{ video.title }}" loading="lazy" referrerpolicy="origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-                </div>
-                <h3>{{ video.title }}</h3>
-              </article>
-            {% endfor %}
+        {% if youtube_videos or youtube_shorts %}
+          <div class="video-tabs" role="tablist" aria-label="Video sections">
+            <button class="video-tab is-active" type="button" role="tab" aria-selected="true" data-video-tab="videos">Videos</button>
+            <button class="video-tab" type="button" role="tab" aria-selected="false" data-video-tab="shorts">Shorts</button>
+          </div>
+          <div class="video-panel" data-video-panel="videos">
+            {% if youtube_videos %}
+              <div class="video-grid">
+                {% for video in youtube_videos %}
+                  <article class="video-card">
+                    <div class="video-frame-wrap">
+                      <iframe src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" data-video-frame data-base-src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" title="{{ video.title }}" loading="lazy" referrerpolicy="origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                    </div>
+                    <h3>{{ video.title }}</h3>
+                  </article>
+                {% endfor %}
+              </div>
+            {% else %}
+              <p>Videos from {{ tenant.business_name|default:tenant.publication_name }} will appear here shortly.</p>
+            {% endif %}
+          </div>
+          <div class="video-panel" data-video-panel="shorts" hidden>
+            {% if youtube_shorts %}
+              <div class="video-grid">
+                {% for video in youtube_shorts %}
+                  <article class="video-card">
+                    <div class="video-frame-wrap">
+                      <iframe src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" data-video-frame data-base-src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" title="{{ video.title }}" loading="lazy" referrerpolicy="origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                    </div>
+                    <h3>{{ video.title }}</h3>
+                  </article>
+                {% endfor %}
+              </div>
+            {% else %}
+              <p>Latest shorts from {{ tenant.business_name|default:tenant.publication_name }} will appear here shortly.</p>
+            {% endif %}
           </div>
         {% elif onboarding.youtube_channel_url %}
           <p>Videos from {{ tenant.business_name|default:tenant.publication_name }} will appear here shortly. You can also open the <a class="read-more" href="{{ onboarding.youtube_channel_url }}" target="_blank" rel="noopener">YouTube channel</a>.</p>
@@ -1055,12 +1107,25 @@
       }
       document.querySelectorAll('.video-frame-wrap').forEach(function (wrap) {
         const frame = wrap.querySelector('[data-video-frame]');
-        wrap.addEventListener('pointerenter', function () {
+        wrap.addEventListener('pointerdown', function () {
           pauseOtherVideos(frame);
         });
-        wrap.addEventListener('touchstart', function () {
-          pauseOtherVideos(frame);
-        }, { passive: true });
+      });
+      const videoTabs = Array.from(document.querySelectorAll('[data-video-tab]'));
+      const videoPanels = Array.from(document.querySelectorAll('[data-video-panel]'));
+      videoTabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          const selected = tab.dataset.videoTab;
+          pauseOtherVideos(null);
+          videoTabs.forEach(function (item) {
+            const active = item.dataset.videoTab === selected;
+            item.classList.toggle('is-active', active);
+            item.setAttribute('aria-selected', active ? 'true' : 'false');
+          });
+          videoPanels.forEach(function (panel) {
+            panel.hidden = panel.dataset.videoPanel !== selected;
+          });
+        });
       });
     })();
   </script>
