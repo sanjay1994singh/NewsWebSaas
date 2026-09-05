@@ -90,6 +90,19 @@
           {% endif %}
         {% endfor %}
       </section>
+      <section class="form-section">
+        <h2 class="section-title">Video channel</h2>
+        {% for field in form %}
+          {% if field.name == 'youtube_channel_url' %}
+            <div class="form-field full {% if field.errors %}has-error{% endif %}">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+              {% if field.help_text %}<p class="field-help">{{ field.help_text }}</p>{% endif %}
+              {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+            </div>
+          {% endif %}
+        {% endfor %}
+      </section>
       <div class="onboarding-note">
         <p class="muted">Only these details are needed for the first setup. More branding, menu, social, YouTube, Live TV, and pages can be updated after login from the dashboard.</p>
       </div>

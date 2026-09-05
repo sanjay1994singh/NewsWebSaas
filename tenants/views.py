@@ -20,6 +20,7 @@ from seo.services import article_json_ld, article_meta
 from subscriptions.entitlements import get_effective_entitlements
 from subscriptions.models import CustomerAcquisition, TenantOnboarding, TenantSubscription
 from subscriptions.services import ensure_required_tenant_pages, tenant_public_site_slug, tenant_public_site_url
+from videos.youtube import fetch_youtube_channel_videos
 
 from .forms import ReporterCreateForm, TenantSettingsForm, VisitorRegistrationForm
 from .models import Tenant, TenantMembership, TenantVisitor
@@ -336,6 +337,9 @@ def _render_public_tenant_site(request, tenant, page='home', category_slug=''):
         onboarding = tenant.commercial_onboarding
     except TenantOnboarding.DoesNotExist:
         onboarding = None
+    youtube_videos = []
+    if page == 'videos' and has_videos and onboarding and onboarding.youtube_channel_url:
+        youtube_videos = fetch_youtube_channel_videos(onboarding.youtube_channel_url)
     can_access_dashboard = user_can_access_tenant(request.user, tenant)
     is_registered_visitor = (
         request.user.is_authenticated
@@ -357,6 +361,7 @@ def _render_public_tenant_site(request, tenant, page='home', category_slug=''):
         'active_category': active_category,
         'nav_categories': nav_categories,
         'footer_pages': footer_pages,
+        'youtube_videos': youtube_videos,
         'public_site_slug': tenant_public_site_slug(tenant),
         'preview': False,
         'can_access_dashboard': can_access_dashboard,

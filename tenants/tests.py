@@ -3,6 +3,7 @@ from django.core.exceptions import PermissionDenied
 from django.test import RequestFactory, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
+from unittest.mock import patch
 
 from core.models import user_can_access_tenant
 from categories.models import Category
@@ -230,6 +231,22 @@ class TenantIsolationTests(TestCase):
         self.assertEqual(response.status_code, 404)
         response = self.client.get('/live-tv/', HTTP_HOST='customera.platformdomain.com')
         self.assertEqual(response.status_code, 404)
+
+    def test_videos_page_shows_youtube_channel_videos_without_uploads(self):
+        plan = Plan.objects.create(name='News Pro', code=Plan.Code.NEWS_PRO, entitlements={'youtube_videos': True, 'youtube_shorts': True})
+        TenantSubscription.objects.create(tenant=self.tenant_a, plan=plan, status=TenantSubscription.Status.ACTIVE)
+        TenantOnboarding.objects.create(tenant=self.tenant_a, youtube_channel_url='https://www.youtube.com/@amedia')
+
+        with patch('tenants.views.fetch_youtube_channel_videos', return_value=[{
+            'title': 'A Media Report',
+            'description': 'Latest video from the newsroom.',
+            'embed_url': 'https://www.youtube.com/embed/video123',
+        }]):
+            response = self.client.get('/videos/', HTTP_HOST='customera.platformdomain.com')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'A Media Report')
+        self.assertContains(response, 'https://www.youtube.com/embed/video123')
 
     def test_tenant_domain_account_menu_shows_dashboard_and_logout_for_logged_in_owner(self):
         self.client.force_login(self.user_a)

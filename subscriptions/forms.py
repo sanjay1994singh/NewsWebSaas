@@ -202,6 +202,7 @@ class OnboardingForm(forms.ModelForm):
             'logo': 'Logo',
             'primary_color': 'Primary color',
             'secondary_color': 'Secondary color',
+            'youtube_channel_url': 'YouTube channel link',
             'site_title': 'Channel name / Paper name',
             'meta_description': 'Website description',
         }
@@ -210,6 +211,7 @@ class OnboardingForm(forms.ModelForm):
             'address': 'Example: 101 Govind Kund Tila, Vrindaban, Mathura, Uttar Pradesh, India',
             'primary_color': 'Example: #0F5331',
             'secondary_color': 'Example: #D71920',
+            'youtube_channel_url': 'Example: https://www.youtube.com/@yourchannel',
             'site_title': 'Example: The UP Media',
             'meta_description': 'Example: The UP Media covers breaking news, local updates, videos, ePaper, and digital stories.',
         }
@@ -217,6 +219,7 @@ class OnboardingForm(forms.ModelForm):
             'logo': 'Optional. You can upload or change it later from the dashboard.',
             'primary_color': 'Optional. Use a hex color code.',
             'secondary_color': 'Optional. Use a hex color code.',
+            'youtube_channel_url': 'Add your channel link. Videos and shorts will be fetched automatically without direct video upload.',
         }
         disable_autofill(self.fields)
         for field in self.fields.values():
@@ -240,6 +243,7 @@ class OnboardingForm(forms.ModelForm):
             'logo',
             'primary_color',
             'secondary_color',
+            'youtube_channel_url',
             'site_title',
             'meta_description',
         )

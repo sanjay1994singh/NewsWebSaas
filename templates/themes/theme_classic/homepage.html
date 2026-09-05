@@ -420,6 +420,37 @@
     .content-section {
       margin: 28px 0;
     }
+    .video-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      margin-top: 18px;
+    }
+    .video-card {
+      min-width: 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .video-card iframe {
+      display: block;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      height: auto;
+      border: 0;
+      background: #102f29;
+    }
+    .video-card h3 {
+      margin: 0;
+      padding: 14px 14px 6px;
+      font-size: 18px;
+      line-height: 1.25;
+    }
+    .video-card p {
+      padding: 0 14px 14px;
+      font-size: 13px;
+    }
     .empty-actions {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -522,14 +553,16 @@
       }
       .section-grid,
       .empty-actions,
-      .contact-grid {
+      .contact-grid,
+      .video-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
     @media (max-width: 800px) {
       .section-grid,
       .empty-actions,
-      .contact-grid {
+      .contact-grid,
+      .video-grid {
         grid-template-columns: 1fr;
       }
       .footer-row {
@@ -896,7 +929,21 @@
     {% if has_videos and page == "videos" %}
       <section class="empty-card content-section">
         <h2>Videos</h2>
-        <p>Video reports, interviews, and short clips from {{ tenant.business_name|default:tenant.publication_name }} will appear here when the newsroom publishes them.</p>
+        {% if youtube_videos %}
+          <div class="video-grid">
+            {% for video in youtube_videos %}
+              <article class="video-card">
+                <iframe src="{{ video.embed_url }}" title="{{ video.title }}" loading="lazy" allowfullscreen></iframe>
+                <h3>{{ video.title }}</h3>
+                {% if video.description %}<p>{{ video.description|truncatewords:18 }}</p>{% endif %}
+              </article>
+            {% endfor %}
+          </div>
+        {% elif onboarding.youtube_channel_url %}
+          <p>Videos from {{ tenant.business_name|default:tenant.publication_name }} will appear here shortly. You can also open the <a class="read-more" href="{{ onboarding.youtube_channel_url }}" target="_blank" rel="noopener">YouTube channel</a>.</p>
+        {% else %}
+          <p>Video reports, interviews, and short clips from {{ tenant.business_name|default:tenant.publication_name }} will appear here after the newsroom adds its YouTube channel link.</p>
+        {% endif %}
       </section>
     {% endif %}
 
