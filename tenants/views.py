@@ -52,13 +52,6 @@ def _group_youtube_items_by_day(items):
                 lookup['week']['items'].append(item)
         else:
             lookup['today']['items'].append(item)
-    occupied_groups = sum(1 for group in groups if group['items'])
-    if items and occupied_groups < 3 and len(items) >= 3:
-        chunk_size = max((len(items) + 2) // 3, 1)
-        for index, group in enumerate(groups):
-            start = index * chunk_size
-            end = start + chunk_size
-            group['items'] = items[start:end]
     return groups
 
 
@@ -374,9 +367,9 @@ def _render_public_tenant_site(request, tenant, page='home', category_slug=''):
     youtube_video_groups = []
     youtube_short_groups = []
     if page == 'videos' and has_videos and onboarding and onboarding.youtube_channel_url:
-        youtube_videos = fetch_youtube_channel_videos(onboarding.youtube_channel_url)
+        youtube_videos = fetch_youtube_channel_videos(onboarding.youtube_channel_url, limit=50)
         if entitlements.get('youtube_shorts', {}).get('is_enabled'):
-            youtube_shorts = fetch_youtube_channel_shorts(onboarding.youtube_channel_url)
+            youtube_shorts = fetch_youtube_channel_shorts(onboarding.youtube_channel_url, limit=50)
         youtube_video_groups = _group_youtube_items_by_day(youtube_videos)
         youtube_short_groups = _group_youtube_items_by_day(youtube_shorts)
     can_access_dashboard = user_can_access_tenant(request.user, tenant)

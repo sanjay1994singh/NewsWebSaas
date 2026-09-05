@@ -7,6 +7,7 @@ from urllib.request import Request, urlopen
 from xml.etree import ElementTree
 
 from django.core.cache import cache
+from django.utils import timezone
 
 
 YOUTUBE_FEED_URL = 'https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}'
@@ -137,9 +138,48 @@ def _channel_shorts_url(channel_url, channel_id):
 
 def _clean_youtube_text(value):
     text = unescape(value or '')
-    text = text.encode('utf-8').decode('unicode_escape', errors='ignore')
+    text = text.replace('\\u0026', '&').replace('\\/', '/')
+    text = re.sub(r'\\u([0-9a-fA-F]{4})', lambda match: chr(int(match.group(1), 16)), text)
     text = re.sub(r'\s+', ' ', text).strip()
     return text
+
+
+def _published_from_relative_text(value):
+    text = _clean_youtube_text(value).lower()
+    match = re.search(r'(\d+)\s+(minute|minutes|hour|hours|day|days|week|weeks)\s+ago', text)
+    if not match:
+        return ''
+    amount = int(match.group(1))
+    unit = match.group(2)
+    if unit.startswith('minute'):
+        delta = timezone.timedelta(minutes=amount)
+    elif unit.startswith('hour'):
+        delta = timezone.timedelta(hours=amount)
+    elif unit.startswith('day'):
+        delta = timezone.timedelta(days=amount)
+    else:
+        delta = timezone.timedelta(weeks=amount)
+    return (timezone.now() - delta).isoformat()
+
+
+def _shorts_published_from_html(html):
+    published = {}
+    for video_id in _shorts_ids_from_html(html):
+        position = html.find(video_id)
+        if position < 0:
+            continue
+        chunk = html[position:position + 2600]
+        patterns = (
+            r'"publishedTimeText":\{"simpleText":"(?P<text>[^"]+)"',
+            r'"publishedTimeText":\{"runs":\[\{"text":"(?P<text>[^"]+)"',
+        )
+        for pattern in patterns:
+            match = re.search(pattern, chunk)
+            published_at = _published_from_relative_text(match.group('text')) if match else ''
+            if published_at:
+                published[video_id] = published_at
+                break
+    return published
 
 
 def _shorts_titles_from_html(html):
@@ -158,7 +198,9 @@ def _shorts_titles_from_html(html):
         for pattern in patterns:
             match = re.search(pattern, chunk)
             title = _clean_youtube_text(match.group('title')) if match else ''
-            if title and not title.lower().startswith(('watch ', 'shorts ', 'play ')):
+            title_lower = title.lower()
+            is_relative_time = bool(re.match(r'^\d+\s+(minute|minutes|hour|hours|day|days|week|weeks)\s+ago$', title_lower))
+            if title and not is_relative_time and not title_lower.startswith(('watch ', 'shorts ', 'play ')):
                 titles[video_id] = title
                 break
     return titles
@@ -211,6 +253,7 @@ def fetch_youtube_channel_shorts(channel_url, limit=12):
         return []
 
     titles = _shorts_titles_from_html(html)
+    published_dates = _shorts_published_from_html(html)
 
     seen = set()
     shorts = []
@@ -224,6 +267,7 @@ def fetch_youtube_channel_shorts(channel_url, limit=12):
             'title': title,
             'url': f'https://www.youtube.com/shorts/{video_id}',
             'embed_url': f'https://www.youtube.com/embed/{video_id}?enablejsapi=1&rel=0',
+            'published': published_dates.get(video_id, ''),
         })
         if len(shorts) >= limit:
             break

@@ -236,32 +236,33 @@ class TenantIsolationTests(TestCase):
         plan = Plan.objects.create(name='News Pro', code=Plan.Code.NEWS_PRO, entitlements={'youtube_videos': True, 'youtube_shorts': True})
         TenantSubscription.objects.create(tenant=self.tenant_a, plan=plan, status=TenantSubscription.Status.ACTIVE)
         TenantOnboarding.objects.create(tenant=self.tenant_a, youtube_channel_url='https://www.youtube.com/@amedia')
+        now = timezone.now()
 
         with patch('tenants.views.fetch_youtube_channel_videos', return_value=[{
             'title': 'A Media Report',
             'description': 'Latest video from the newsroom.',
             'embed_url': 'https://www.youtube.com/embed/video123?enablejsapi=1&rel=0',
-            'published': timezone.now().isoformat(),
+            'published': now.isoformat(),
         }, {
             'title': 'A Media Yesterday Report',
             'embed_url': 'https://www.youtube.com/embed/yesterday12?enablejsapi=1&rel=0',
-            'published': timezone.now().isoformat(),
+            'published': (now - timezone.timedelta(days=1)).isoformat(),
         }, {
             'title': 'A Media Weekly Report',
             'embed_url': 'https://www.youtube.com/embed/weeklyvid12?enablejsapi=1&rel=0',
-            'published': timezone.now().isoformat(),
+            'published': (now - timezone.timedelta(days=3)).isoformat(),
         }]), patch('tenants.views.fetch_youtube_channel_shorts', return_value=[{
             'title': 'A Media Short',
             'embed_url': 'https://www.youtube.com/embed/short123abc?enablejsapi=1&rel=0',
-            'published': timezone.now().isoformat(),
+            'published': now.isoformat(),
         }, {
             'title': 'A Media Second Short',
             'embed_url': 'https://www.youtube.com/embed/short456def?enablejsapi=1&rel=0',
-            'published': timezone.now().isoformat(),
+            'published': (now - timezone.timedelta(days=1)).isoformat(),
         }, {
             'title': 'A Media Third Short',
             'embed_url': 'https://www.youtube.com/embed/short789ghi?enablejsapi=1&rel=0',
-            'published': timezone.now().isoformat(),
+            'published': (now - timezone.timedelta(days=3)).isoformat(),
         }]):
             response = self.client.get('/videos/', HTTP_HOST='customera.platformdomain.com')
 
@@ -272,8 +273,6 @@ class TenantIsolationTests(TestCase):
         self.assertContains(response, 'Today')
         self.assertContains(response, 'Yesterday')
         self.assertContains(response, 'This Week')
-        self.assertNotContains(response, 'No videos in this row yet.')
-        self.assertNotContains(response, 'No shorts in this row yet.')
         self.assertContains(response, 'A Media Report')
         self.assertContains(response, 'A Media Yesterday Report')
         self.assertContains(response, 'A Media Weekly Report')
