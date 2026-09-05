@@ -70,12 +70,12 @@ def _entry_text(entry, name, namespaces):
     return unescape(found.text or '').strip() if found is not None else ''
 
 
-def fetch_youtube_channel_videos(channel_url, limit=12):
+def fetch_youtube_channel_videos(channel_url, limit=None):
     channel_id = extract_youtube_channel_id(channel_url)
     if not channel_id:
         return []
 
-    cache_key = f'youtube-feed:{channel_id}:{limit}'
+    cache_key = f'youtube-feed:{channel_id}:{limit or "all"}'
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -98,7 +98,10 @@ def fetch_youtube_channel_videos(channel_url, limit=12):
         cache.set(cache_key, [], 60 * 5)
         return []
 
-    for entry in root.findall('atom:entry', namespaces)[:limit]:
+    entries = root.findall('atom:entry', namespaces)
+    if limit:
+        entries = entries[:limit]
+    for entry in entries:
         video_id = _entry_text(entry, 'yt:videoId', namespaces)
         title = _entry_text(entry, 'atom:title', namespaces)
         published = _entry_text(entry, 'atom:published', namespaces)
@@ -236,12 +239,12 @@ def _youtube_oembed_title(video_id):
     return title
 
 
-def fetch_youtube_channel_shorts(channel_url, limit=12):
+def fetch_youtube_channel_shorts(channel_url, limit=None):
     channel_id = extract_youtube_channel_id(channel_url)
     if not channel_id:
         return []
 
-    cache_key = f'youtube-shorts:{channel_id}:{limit}'
+    cache_key = f'youtube-shorts:{channel_id}:{limit or "all"}'
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -269,7 +272,7 @@ def fetch_youtube_channel_shorts(channel_url, limit=12):
             'embed_url': f'https://www.youtube.com/embed/{video_id}?enablejsapi=1&rel=0',
             'published': published_dates.get(video_id, ''),
         })
-        if len(shorts) >= limit:
+        if limit and len(shorts) >= limit:
             break
 
     cache.set(cache_key, json.loads(json.dumps(shorts)), 60 * 30)

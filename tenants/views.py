@@ -38,9 +38,15 @@ def _group_youtube_items_by_day(items):
         {'key': 'today', 'label': 'Today', 'items': []},
         {'key': 'yesterday', 'label': 'Yesterday', 'items': []},
         {'key': 'week', 'label': 'This Week', 'items': []},
+        {'key': 'month', 'label': 'This Month', 'items': []},
     ]
     lookup = {group['key']: group for group in groups}
+    seen_ids = set()
     for item in items:
+        video_id = item.get('id') or item.get('embed_url') or item.get('url') or item.get('title')
+        if video_id in seen_ids:
+            continue
+        seen_ids.add(video_id)
         published_at = parse_datetime(item.get('published') or '')
         if published_at:
             published_date = timezone.localdate(published_at)
@@ -48,8 +54,10 @@ def _group_youtube_items_by_day(items):
                 lookup['today']['items'].append(item)
             elif published_date == today - timedelta(days=1):
                 lookup['yesterday']['items'].append(item)
-            else:
+            elif published_date >= today - timedelta(days=7):
                 lookup['week']['items'].append(item)
+            elif published_date >= today - timedelta(days=30):
+                lookup['month']['items'].append(item)
         else:
             lookup['today']['items'].append(item)
     return groups
@@ -367,9 +375,12 @@ def _render_public_tenant_site(request, tenant, page='home', category_slug=''):
     youtube_video_groups = []
     youtube_short_groups = []
     if page == 'videos' and has_videos and onboarding and onboarding.youtube_channel_url:
-        youtube_videos = fetch_youtube_channel_videos(onboarding.youtube_channel_url, limit=50)
         if entitlements.get('youtube_shorts', {}).get('is_enabled'):
-            youtube_shorts = fetch_youtube_channel_shorts(onboarding.youtube_channel_url, limit=50)
+            youtube_shorts = fetch_youtube_channel_shorts(onboarding.youtube_channel_url)
+        youtube_videos = fetch_youtube_channel_videos(onboarding.youtube_channel_url)
+        short_ids = {video.get('id') for video in youtube_shorts if video.get('id')}
+        if short_ids:
+            youtube_videos = [video for video in youtube_videos if video.get('id') not in short_ids]
         youtube_video_groups = _group_youtube_items_by_day(youtube_videos)
         youtube_short_groups = _group_youtube_items_by_day(youtube_shorts)
     can_access_dashboard = user_can_access_tenant(request.user, tenant)
