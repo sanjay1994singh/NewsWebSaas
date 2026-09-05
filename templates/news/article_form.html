@@ -81,11 +81,6 @@
             <div class="field-help">Author internal profile/byline record hai. Publisher name public post par dikhne wala naam hai.</div>
           </div>
           <div class="field">
-            <label for="{{ form.city.id_for_label }}">City *</label>
-            {{ form.city }}
-            {{ form.city.errors }}
-          </div>
-          <div class="field">
             <label for="{{ form.country.id_for_label }}">Country *</label>
             {{ form.country }}
             {{ form.country.errors }}
@@ -94,6 +89,11 @@
             <label for="{{ form.state.id_for_label }}">State *</label>
             {{ form.state }}
             {{ form.state.errors }}
+          </div>
+          <div class="field">
+            <label for="{{ form.city.id_for_label }}">City *</label>
+            {{ form.city }}
+            {{ form.city.errors }}
           </div>
           <div class="field full">
             <label for="{{ form.content.id_for_label }}">Content *</label>
