@@ -250,7 +250,9 @@ class TenantIsolationTests(TestCase):
         self.assertContains(response, 'https://www.youtube.com/embed/video123')
         self.assertContains(response, 'origin=http%3A//customera.platformdomain.com')
         self.assertContains(response, 'referrerpolicy="origin"')
-        self.assertContains(response, 'data-play-video')
+        self.assertContains(response, 'pauseVideo')
+        self.assertNotContains(response, 'data-play-video')
+        self.assertNotContains(response, 'Play here')
         self.assertNotContains(response, 'Latest video from the newsroom.')
 
     def test_tenant_domain_account_menu_shows_dashboard_and_logout_for_logged_in_owner(self):

@@ -451,21 +451,6 @@
       font-size: 18px;
       line-height: 1.25;
     }
-    .video-play {
-      position: absolute;
-      right: 10px;
-      bottom: 10px;
-      width: auto;
-      min-height: 34px;
-      padding: 8px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.75);
-      background: rgba(255,255,255,0.94);
-      color: #102f29;
-      font-size: 13px;
-      font-weight: 900;
-      cursor: pointer;
-    }
     .empty-actions {
       display: grid;
       grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -952,7 +937,6 @@
               <article class="video-card">
                 <div class="video-frame-wrap">
                   <iframe src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" data-video-frame data-base-src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" title="{{ video.title }}" loading="lazy" referrerpolicy="origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
-                  <button class="video-play" type="button" data-play-video>Play here</button>
                 </div>
                 <h3>{{ video.title }}</h3>
               </article>
@@ -1058,19 +1042,25 @@
         });
       }
 
-      const videoButtons = Array.from(document.querySelectorAll('[data-play-video]'));
       const videoFrames = Array.from(document.querySelectorAll('[data-video-frame]'));
-      function autoplayUrl(src) {
-        return src + (src.includes('?') ? '&' : '?') + 'autoplay=1';
-      }
-      videoButtons.forEach(function (button) {
-        button.addEventListener('click', function () {
-          const frame = button.closest('.video-card').querySelector('[data-video-frame]');
-          videoFrames.forEach(function (item) {
-            const baseSrc = item.dataset.baseSrc || item.src;
-            item.src = item === frame ? autoplayUrl(baseSrc) : baseSrc;
-          });
+      function pauseOtherVideos(activeFrame) {
+        videoFrames.forEach(function (frame) {
+          if (frame === activeFrame || !frame.contentWindow) return;
+          frame.contentWindow.postMessage(JSON.stringify({
+            event: 'command',
+            func: 'pauseVideo',
+            args: []
+          }), 'https://www.youtube.com');
         });
+      }
+      document.querySelectorAll('.video-frame-wrap').forEach(function (wrap) {
+        const frame = wrap.querySelector('[data-video-frame]');
+        wrap.addEventListener('pointerenter', function () {
+          pauseOtherVideos(frame);
+        });
+        wrap.addEventListener('touchstart', function () {
+          pauseOtherVideos(frame);
+        }, { passive: true });
       });
     })();
   </script>
