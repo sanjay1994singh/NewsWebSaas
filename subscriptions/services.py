@@ -77,7 +77,7 @@ def _paid_record_covering_current_period(tenant, now):
 
 
 def _paid_record_for_subscription_period(tenant, subscription, now):
-    queryset = (
+    period_queryset = (
         BillingRecord.objects
         .filter(
             tenant=tenant,
@@ -88,14 +88,35 @@ def _paid_record_for_subscription_period(tenant, subscription, now):
         )
         .order_by('-period_end', '-created_at')
     )
-    for record in queryset:
+    for record in period_queryset:
+        if _billing_record_matches_subscription_plan(record, subscription):
+            return record
+
+    fallback_queryset = (
+        BillingRecord.objects
+        .filter(
+            tenant=tenant,
+            subscription=subscription,
+            status='paid',
+        )
+        .order_by('-period_end', '-created_at')
+    )
+    for record in fallback_queryset:
+        if _billing_record_matches_subscription_plan(record, subscription):
+            return record
+    return None
+
+
+def _billing_record_matches_subscription_plan(record, subscription):
+    try:
         payload = record.payload or {}
         checkout = payload.get('checkout') or {}
         plan_id = payload.get('plan_id') or checkout.get('plan_id')
-        if plan_id and int(plan_id) != subscription.plan_id:
-            continue
-        return record
-    return None
+        if plan_id:
+            return int(plan_id) == subscription.plan_id
+    except (TypeError, ValueError):
+        return False
+    return True
 
 
 def active_onboarding_policy():

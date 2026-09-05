@@ -993,6 +993,48 @@ class SubscriptionTests(TestCase):
         self.assertEqual(quote['credit_amount'], expected_credit)
         self.assertLess(quote['credit_amount'], 100)
 
+    def test_upgrade_quote_uses_latest_paid_invoice_when_invoice_period_is_missing(self):
+        new_plan = Plan.objects.create(name='News Pro', code=Plan.Code.NEWS_PRO, entitlements={'news_articles': 2000})
+        new_price = PlanPrice.objects.create(plan=new_plan, billing_cycle=PlanPrice.BillingCycle.MONTHLY, amount=159800)
+        now = timezone.now()
+        period_start = now - timezone.timedelta(days=1)
+        period_end = now + timezone.timedelta(days=29)
+        subscription = TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            billing_months=1,
+            status=TenantSubscription.Status.ACTIVE,
+            start_at=period_start,
+            current_period_start=period_start,
+            current_period_end=period_end,
+            charge_at=period_end,
+        )
+        BillingRecord.objects.create(
+            tenant=self.tenant,
+            subscription=subscription,
+            razorpay_payment_id='pay_missing_period',
+            amount=100,
+            billing_months=1,
+            list_amount=200,
+            discount_percent=50,
+            discount_amount=100,
+            currency='INR',
+            status='paid',
+        )
+
+        quote = calculate_plan_change_quote(
+            tenant=self.tenant,
+            subscription=subscription,
+            plan_price=new_price,
+            billing_months=1,
+            now=now,
+        )
+
+        expected_credit = round(100 * ((period_end - now).total_seconds()) / ((period_end - period_start).total_seconds()))
+        self.assertEqual(quote['credit_source_amount'], 100)
+        self.assertEqual(quote['credit_amount'], expected_credit)
+
     @override_settings(ALLOWED_HOSTS=['testserver', 'billing-news.live-app.in'])
     def test_tenant_domain_base_header_does_not_show_press_nexa_logo(self):
         TenantDomain.objects.create(
