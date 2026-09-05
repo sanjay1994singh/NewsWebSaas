@@ -554,7 +554,7 @@ def verify_subscription(request, acquisition_id):
     )
     messages.success(
         request,
-        'Payment successful. Your website is being developed now. Within 30 minutes your workspace, website, and publishing access will be fully available.',
+        'Payment successful. Aapki site develop ho rahi hai. 30 minutes ke andar aapki site ready ho sakti hai. Domain/SSL setup complete hote hi website live open hogi.',
     )
     return redirect('tenants:tenant_dashboard')
 

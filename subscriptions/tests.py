@@ -230,7 +230,7 @@ class SubscriptionTests(TestCase):
         self.assertIsNotNone(subscription.charge_at)
         self.assertGreater(subscription.current_period_end, subscription.current_period_start)
         platform_domain = tenant.domains.get(is_primary=True)
-        self.assertEqual(platform_domain.domain, 'checkout-media.live-app.in')
+        self.assertEqual(platform_domain.domain, 'checkoutmedia.live-app.in')
         self.assertTrue(platform_domain.is_verified)
         self.assertEqual(platform_domain.ssl_status, platform_domain.SSLStatus.ACTIVE)
         onboarding = tenant.commercial_onboarding
