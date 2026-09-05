@@ -2,9 +2,8 @@
   <title id="title">Press Nexa logo</title>
   <desc id="desc">Press Nexa wordmark with a deep green PN monogram.</desc>
   <rect x="16" y="32" width="176" height="176" rx="42" fill="#0f332c"/>
-  <path fill="#f6faf8" d="M54 164V72h49c22 0 36 13 36 32 0 20-15 33-37 33H81v27H54Zm27-49h19c7 0 12-4 12-10s-5-10-12-10H81v20Z"/>
-  <path fill="#d39b3b" d="M140 164V72h26v92h-26Z"/>
-  <path fill="#f6faf8" d="M141 72h26l31 92h-27l-5-18h-25l-5 18h-26l31-92Zm6 54h14l-7-23-7 23Z"/>
+  <text x="104" y="137" text-anchor="middle" fill="#f6faf8" font-family="Arial, Helvetica, sans-serif" font-size="66" font-weight="900" letter-spacing="-7">PN</text>
+  <path d="M63 158h82" stroke="#d39b3b" stroke-width="10" stroke-linecap="round"/>
   <text x="226" y="112" fill="#102f29" font-family="Arial, Helvetica, sans-serif" font-size="66" font-weight="900" letter-spacing="0">Press Nexa</text>
   <text x="230" y="158" fill="#66766e" font-family="Arial, Helvetica, sans-serif" font-size="25" font-weight="700" letter-spacing="0">Digital publishing workspace</text>
   <path d="M231 183h314" stroke="#d39b3b" stroke-width="8" stroke-linecap="round"/>
