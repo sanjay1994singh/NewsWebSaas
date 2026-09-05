@@ -29,6 +29,7 @@ from .models import (
     PlanChangeRequest,
     PlanFeature,
     PlanPrice,
+    PlatformPurchaseAgreement,
     PlatformSupportContact,
     TenantOnboarding,
     TenantAddOn,
@@ -328,11 +329,70 @@ class SubscriptionTests(TestCase):
                 'password': 'testpass123',
                 'confirm_password': 'testpass123',
                 'price_id': self.price.id,
+                'accepted_purchase_terms': 'on',
             }
         )
 
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.cleaned_data['publication_slug'], 'aaj-tak')
+
+    @override_settings(STORAGES={
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+    })
+    def test_signup_requires_purchase_agreement_acceptance_before_payment(self):
+        response = self.client.post(
+            reverse('public_saas_signup'),
+            {
+                'business_name': 'Agreement News',
+                'publication_name': 'Agreement News',
+                'email': 'agreement@example.com',
+                'mobile': '9999999999',
+                'password': 'testpass123',
+                'confirm_password': 'testpass123',
+                'price_id': self.price.id,
+                'billing_months': '1',
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Please read and accept the plan purchase terms to continue.')
+        self.assertFalse(CustomerAcquisition.objects.filter(publication_slug='agreement-news').exists())
+
+    @override_settings(STORAGES={
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+    })
+    def test_signup_shows_admin_purchase_agreement_and_continues_when_accepted(self):
+        PlatformPurchaseAgreement.objects.create(
+            title='Read Before Purchase',
+            content='Plan activation starts after verified payment. No direct tenant is created before payment.',
+            checkbox_label='I accept Press Nexa purchase rules.',
+            is_active=True,
+        )
+
+        get_response = self.client.get(reverse('public_saas_signup'), {'price': self.price.id, 'months': '1'})
+        self.assertContains(get_response, 'Read Before Purchase')
+        self.assertContains(get_response, 'Plan activation starts after verified payment.')
+        self.assertContains(get_response, 'I accept Press Nexa purchase rules.')
+
+        response = self.client.post(
+            reverse('public_saas_signup'),
+            {
+                'business_name': 'Accepted News',
+                'publication_name': 'Accepted News',
+                'email': 'accepted@example.com',
+                'mobile': '9999999999',
+                'password': 'testpass123',
+                'confirm_password': 'testpass123',
+                'price_id': self.price.id,
+                'billing_months': '1',
+                'accepted_purchase_terms': 'on',
+            },
+        )
+
+        acquisition = CustomerAcquisition.objects.get(publication_slug='accepted-news')
+        self.assertRedirects(response, reverse('subscriptions:checkout', kwargs={'acquisition_id': acquisition.uuid}), fetch_redirect_response=False)
 
     def test_sync_tenant_site_slugs_command_uses_channel_or_paper_name(self):
         self.tenant.business_name = 'Aaj Tak'

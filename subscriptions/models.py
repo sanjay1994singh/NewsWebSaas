@@ -426,4 +426,20 @@ class PlatformSupportContact(TimeStampedModel):
     def __str__(self):
         return self.name
 
+
+class PlatformPurchaseAgreement(TimeStampedModel):
+    title = models.CharField(max_length=180, default='Plan Purchase Agreement')
+    content = models.TextField()
+    checkbox_label = models.CharField(
+        max_length=255,
+        default='I have read and agree to the plan purchase terms.',
+    )
+    is_active = models.BooleanField(default=True, db_index=True)
+
+    class Meta:
+        ordering = ['-is_active', '-updated_at']
+
+    def __str__(self):
+        return self.title
+
 # Create your models here.

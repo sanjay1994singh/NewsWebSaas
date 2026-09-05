@@ -16,7 +16,7 @@ def disable_autofill(fields):
             'data-lpignore': 'true',
             'data-form-type': 'other',
         })
-        if not isinstance(field.widget, (forms.FileInput, forms.HiddenInput, forms.Select, forms.Textarea)):
+        if not isinstance(field.widget, (forms.CheckboxInput, forms.FileInput, forms.HiddenInput, forms.Select, forms.Textarea)):
             field.widget.attrs.setdefault('readonly', 'readonly')
             field.widget.attrs.setdefault('onfocus', "this.removeAttribute('readonly')")
 
@@ -62,6 +62,11 @@ class CustomerSignupForm(forms.Form):
         choices=[(str(months), '1 month' if months == 1 else f'{months} months') for months in ALLOWED_BILLING_MONTHS],
         initial='1',
         required=False,
+    )
+    accepted_purchase_terms = forms.BooleanField(
+        label='I have read and agree to the plan purchase terms.',
+        required=True,
+        error_messages={'required': 'Please read and accept the plan purchase terms to continue.'},
     )
 
     def __init__(self, *args, **kwargs):
@@ -118,6 +123,11 @@ class CustomerWorkspaceForm(forms.Form):
         choices=[(str(months), '1 month' if months == 1 else f'{months} months') for months in ALLOWED_BILLING_MONTHS],
         initial='1',
         required=False,
+    )
+    accepted_purchase_terms = forms.BooleanField(
+        label='I have read and agree to the plan purchase terms.',
+        required=True,
+        error_messages={'required': 'Please read and accept the plan purchase terms to continue.'},
     )
 
     def __init__(self, *args, user=None, **kwargs):

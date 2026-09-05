@@ -33,6 +33,7 @@ from .models import (
     PlanFeature,
     PlanPrice,
     PlatformPolicy,
+    PlatformPurchaseAgreement,
     TenantAddOn,
     TenantOnboarding,
     TenantSubscription,
@@ -214,6 +215,15 @@ def _public_plan_context():
     return {'plans': plans, 'plan_cards': plan_cards, 'features': features, 'comparison_rows': comparison_rows}
 
 
+def active_purchase_agreement():
+    return (
+        PlatformPurchaseAgreement.objects
+        .filter(is_active=True)
+        .order_by('-updated_at', '-created_at')
+        .first()
+    )
+
+
 def _activate_published_tenant(tenant):
     if tenant.status == Tenant.Status.ACTIVE and tenant.onboarding_status == Tenant.OnboardingStatus.COMPLETE:
         return
@@ -298,6 +308,7 @@ def public_plan_quote(request):
 @require_http_methods(['GET', 'POST'])
 def signup(request):
     initial_price_id = request.GET.get('price')
+    purchase_agreement = active_purchase_agreement()
     if request.user.is_authenticated:
         tenant, subscription, onboarding_record = _customer_tenant_context(request.user)
         if tenant and subscription:
@@ -322,6 +333,8 @@ def signup(request):
                 return redirect('subscriptions:checkout', acquisition_id=pending_acquisition.uuid)
         if request.method == 'POST':
             form = CustomerWorkspaceForm(request.POST, user=request.user)
+            if purchase_agreement:
+                form.fields['accepted_purchase_terms'].label = purchase_agreement.checkbox_label
             if form.is_valid():
                 if form.existing_acquisition:
                     acquisition, checkout = update_pending_customer_acquisition(
@@ -351,6 +364,8 @@ def signup(request):
                 return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
         else:
             form = CustomerWorkspaceForm(initial={'price_id': initial_price_id, 'billing_months': request.GET.get('months', '1')}, user=request.user)
+            if purchase_agreement:
+                form.fields['accepted_purchase_terms'].label = purchase_agreement.checkbox_label
         return render(
             request,
             'subscriptions/signup.html',
@@ -358,11 +373,14 @@ def signup(request):
                 'form': form,
                 'plans': _public_plan_context()['plans'],
                 'is_workspace_flow': True,
+                'purchase_agreement': purchase_agreement,
             },
         )
 
     if request.method == 'POST':
         form = CustomerSignupForm(request.POST)
+        if purchase_agreement:
+            form.fields['accepted_purchase_terms'].label = purchase_agreement.checkbox_label
         if form.is_valid():
             acquisition, checkout = reserve_customer_acquisition(
                 business_name=form.cleaned_data['business_name'],
@@ -380,7 +398,9 @@ def signup(request):
             return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
     else:
         form = CustomerSignupForm(initial={'price_id': initial_price_id, 'billing_months': request.GET.get('months', '1')})
-    return render(request, 'subscriptions/signup.html', {'form': form, 'plans': _public_plan_context()['plans']})
+        if purchase_agreement:
+            form.fields['accepted_purchase_terms'].label = purchase_agreement.checkbox_label
+    return render(request, 'subscriptions/signup.html', {'form': form, 'plans': _public_plan_context()['plans'], 'purchase_agreement': purchase_agreement})
 
 
 @login_required

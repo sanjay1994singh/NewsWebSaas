@@ -10,6 +10,7 @@ from .models import (
     PlanFeature,
     PlanPrice,
     PlatformPolicy,
+    PlatformPurchaseAgreement,
     PlatformSupportContact,
     TenantAddOn,
     TenantFeatureOverride,
@@ -167,3 +168,10 @@ class PlatformSupportContactAdmin(admin.ModelAdmin):
     list_display = ('name', 'support_email', 'whatsapp_number', 'is_active', 'updated_at')
     list_filter = ('is_active',)
     search_fields = ('name', 'support_email', 'whatsapp_number')
+
+
+@admin.register(PlatformPurchaseAgreement)
+class PlatformPurchaseAgreementAdmin(admin.ModelAdmin):
+    list_display = ('title', 'is_active', 'updated_at')
+    list_filter = ('is_active',)
+    search_fields = ('title', 'content', 'checkbox_label')

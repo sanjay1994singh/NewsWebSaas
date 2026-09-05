@@ -23,6 +23,13 @@
 .password-toggle:hover { background:#eef6f2; }
 .field-error { margin:6px 0 0; color:var(--danger); font-size:13px; }
 .form-error-box { margin:0 0 16px; padding:12px 14px; border:1px solid #f0c5bd; background:#fff4f2; color:var(--danger); border-radius:8px; }
+.agreement-block { grid-column:1 / -1; display:grid; gap:12px; margin-top:4px; padding:16px; border:1px solid var(--line); border-radius:8px; background:#fbfdfc; }
+.agreement-block h2 { margin:0; font-size:20px; }
+.agreement-content { max-height:220px; overflow:auto; padding:12px; border:1px solid #d9e4de; border-radius:8px; background:#fff; color:#314840; font-size:14px; }
+.agreement-content p:first-child { margin-top:0; }
+.agreement-check { display:flex; align-items:flex-start; gap:10px; font-weight:800; }
+.agreement-check input { width:18px; min-width:18px; height:18px; margin-top:3px; padding:0; }
+.agreement-check label { margin:0; }
 .signup-actions { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:24px; padding-top:22px; border-top:1px solid var(--line); }
 .signup-actions .muted { max-width:520px; font-size:14px; }
 .duration-field { grid-column:1 / -1; }
@@ -68,6 +75,23 @@
         {% for field in form %}
           {% if field.is_hidden %}
             {{ field }}
+          {% elif field.name == 'accepted_purchase_terms' %}
+            <div class="agreement-block {% if field.errors %}has-error{% endif %}">
+              {% if purchase_agreement %}
+                <h2>{{ purchase_agreement.title }}</h2>
+                <div class="agreement-content">{{ purchase_agreement.content|linebreaks }}</div>
+              {% else %}
+                <h2>Plan Purchase Agreement</h2>
+                <div class="agreement-content">
+                  <p>Please review your selected plan, billing duration, payable amount, and publication details before continuing. Your workspace is created only after successful payment verification.</p>
+                </div>
+              {% endif %}
+              <div class="agreement-check">
+                {{ field }}
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              </div>
+              {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+            </div>
           {% else %}
             <div class="form-field {% if field.name == 'billing_months' %}duration-field{% endif %} {% if field.errors %}has-error{% endif %}">
               <label for="{{ field.id_for_label }}">{{ field.label }}</label>
