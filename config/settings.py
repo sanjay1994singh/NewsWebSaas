@@ -165,7 +165,7 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STORAGES = {
     'default': {
-        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+        'BACKEND': 'core.storage.OptimizedMediaStorage',
     },
     'staticfiles': {
         'BACKEND': 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage',
@@ -173,6 +173,9 @@ STORAGES = {
 }
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_IMAGE_MAX_EDGE = int(os.getenv("MEDIA_IMAGE_MAX_EDGE", "2200"))
+MEDIA_IMAGE_JPEG_QUALITY = int(os.getenv("MEDIA_IMAGE_JPEG_QUALITY", "82"))
+MEDIA_IMAGE_WEBP_QUALITY = int(os.getenv("MEDIA_IMAGE_WEBP_QUALITY", "82"))
 
 SECURE_SSL_REDIRECT = env_bool("DJANGO_SECURE_SSL_REDIRECT", not DEBUG)
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")

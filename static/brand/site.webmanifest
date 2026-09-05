@@ -1,0 +1,17 @@
+{
+  "name": "Press Nexa",
+  "short_name": "Press Nexa",
+  "description": "Digital publishing workspace for news websites.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6faf8",
+  "theme_color": "#0f332c",
+  "icons": [
+    {
+      "src": "/static/brand/press-nexa-mark.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

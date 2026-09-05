@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Press Nexa mark</title>
+  <desc id="desc">A deep green Press Nexa monogram for site icons and favicon use.</desc>
+  <rect width="512" height="512" rx="112" fill="#0f332c"/>
+  <path fill="#f6faf8" d="M126 354V128h118c52 0 86 31 86 77 0 48-35 79-89 79h-49v70h-66Zm66-126h45c17 0 28-9 28-23s-11-23-28-23h-45v46Z"/>
+  <path fill="#d39b3b" d="M310 354V128h64v226h-64Z"/>
+  <path fill="#f6faf8" d="M312 128h64l76 226h-67l-13-44h-60l-13 44h-63l76-226Zm14 132h33l-16-56-17 56Z"/>
+</svg>

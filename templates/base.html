@@ -1,9 +1,14 @@
+{% load static %}
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ site_brand_name|default:"Press Nexa" }}{% endblock %}</title>
+  <link rel="icon" href="{% static 'brand/favicon.svg' %}" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="{% static 'brand/press-nexa-mark.svg' %}">
+  <link rel="manifest" href="{% static 'brand/site.webmanifest' %}">
+  <meta name="theme-color" content="#0f332c">
   {% block meta %}{% endblock %}
   <style>
     :root { --ink:#13201b; --muted:#66766e; --line:#d9e4de; --paper:#f6faf8; --brand:#15614f; --deep:#102f29; --danger:#9a3328; }
@@ -12,7 +17,8 @@
     a { color:inherit; }
     .site-nav { position:sticky; top:0; z-index:20; background:rgba(255,255,255,.96); border-bottom:1px solid var(--line); backdrop-filter:blur(10px); }
     .nav-wrap { width:min(1160px, calc(100% - 32px)); min-height:66px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:18px; }
-    .brand { min-width:0; font-weight:900; font-size:22px; text-decoration:none; color:var(--deep); overflow-wrap:anywhere; }
+    .brand { min-width:0; display:inline-flex; align-items:center; gap:10px; font-weight:900; font-size:22px; text-decoration:none; color:var(--deep); overflow-wrap:anywhere; }
+    .brand-logo { width:34px; height:34px; border-radius:8px; flex:0 0 34px; }
     .nav-links { display:flex; gap:16px; align-items:center; justify-content:flex-end; min-width:0; font-size:14px; color:var(--muted); font-weight:700; }
     .nav-links a { text-decoration:none; }
     .account-menu { position:relative; }
@@ -59,7 +65,10 @@
 <body>
   <nav class="site-nav">
     <div class="nav-wrap">
-      <a class="brand" href="{% url 'home' %}">{{ site_brand_name|default:"Press Nexa" }}</a>
+      <a class="brand" href="{% url 'home' %}">
+        <img class="brand-logo" src="{% static 'brand/press-nexa-mark.svg' %}" alt="" aria-hidden="true">
+        <span>{{ site_brand_name|default:"Press Nexa" }}</span>
+      </a>
       <div class="nav-links">
         {% for link in customer_nav_links|slice:":3" %}
           <a class="hide-sm" href="{{ link.url }}">{{ link.label }}</a>
