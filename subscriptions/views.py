@@ -51,6 +51,7 @@ from .services import (
     create_razorpay_order_for_acquisition,
     process_webhook,
     record_onboarding_review,
+    record_purchase_agreement_acceptance,
     request_plan_change,
     reserve_customer_acquisition,
     reserve_customer_acquisition_for_user,
@@ -361,6 +362,12 @@ def signup(request):
                     )
                     messages.success(request, 'Workspace reserved. Complete the verified subscription step to activate your tenant.')
                 request.session['pending_checkout'] = checkout
+                record_purchase_agreement_acceptance(
+                    user=request.user,
+                    acquisition=acquisition,
+                    agreement=purchase_agreement,
+                    request=request,
+                )
                 return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
         else:
             form = CustomerWorkspaceForm(initial={'price_id': initial_price_id, 'billing_months': request.GET.get('months', '1')}, user=request.user)
@@ -394,6 +401,12 @@ def signup(request):
             )
             login(request, acquisition.user)
             request.session['pending_checkout'] = checkout
+            record_purchase_agreement_acceptance(
+                user=acquisition.user,
+                acquisition=acquisition,
+                agreement=purchase_agreement,
+                request=request,
+            )
             messages.success(request, 'Account reserved. Complete the verified subscription step to create your tenant workspace.')
             return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
     else:

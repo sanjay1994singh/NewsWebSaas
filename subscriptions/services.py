@@ -31,6 +31,7 @@ from .models import (
     OnboardingReviewEvent,
     PlanChangeRequest,
     PlanPrice,
+    PurchaseAgreementAcceptance,
     TenantAddOn,
     TenantOnboarding,
     TenantSubscription,
@@ -663,6 +664,31 @@ def verify_razorpay_signature(*, body, signature, secret):
     if not hmac.compare_digest(expected, signature or ''):
         raise ValidationError("Invalid Razorpay signature.")
     return True
+
+
+def record_purchase_agreement_acceptance(*, user, acquisition, agreement=None, request=None):
+    default_title = 'Plan Purchase Agreement'
+    default_content = 'User confirmed the plan purchase terms before continuing to payment.'
+    default_checkbox_label = 'I have read and agree to the plan purchase terms.'
+    ip_address = None
+    user_agent = ''
+    if request is not None:
+        forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_address = (forwarded_for.split(',', 1)[0] or request.META.get('REMOTE_ADDR') or '').strip() or None
+        user_agent = request.META.get('HTTP_USER_AGENT', '')[:1000]
+    return PurchaseAgreementAcceptance.objects.create(
+        user=user,
+        acquisition=acquisition,
+        agreement=agreement,
+        agreement_title=agreement.title if agreement else default_title,
+        agreement_content=agreement.content if agreement else default_content,
+        checkbox_label=agreement.checkbox_label if agreement else default_checkbox_label,
+        plan_name=acquisition.plan_price.plan.name if acquisition.plan_price_id else '',
+        billing_months=acquisition.billing_months,
+        ip_address=ip_address,
+        user_agent=user_agent,
+        accepted_at=timezone.now(),
+    )
 
 
 def get_razorpay_client():

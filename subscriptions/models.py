@@ -442,4 +442,28 @@ class PlatformPurchaseAgreement(TimeStampedModel):
     def __str__(self):
         return self.title
 
+
+class PurchaseAgreementAcceptance(TimeStampedModel):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='purchase_agreement_acceptances')
+    acquisition = models.ForeignKey(CustomerAcquisition, on_delete=models.CASCADE, related_name='purchase_agreement_acceptances')
+    agreement = models.ForeignKey(PlatformPurchaseAgreement, on_delete=models.SET_NULL, null=True, blank=True, related_name='acceptances')
+    agreement_title = models.CharField(max_length=180)
+    agreement_content = models.TextField()
+    checkbox_label = models.CharField(max_length=255)
+    plan_name = models.CharField(max_length=120, blank=True)
+    billing_months = models.PositiveIntegerField(default=1)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    accepted_at = models.DateTimeField(db_index=True)
+
+    class Meta:
+        ordering = ['-accepted_at', '-created_at']
+        indexes = [
+            models.Index(fields=['user', 'accepted_at']),
+            models.Index(fields=['acquisition', 'accepted_at']),
+        ]
+
+    def __str__(self):
+        return f'{self.user} accepted {self.agreement_title}'
+
 # Create your models here.

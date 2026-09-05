@@ -12,6 +12,7 @@ from .models import (
     PlatformPolicy,
     PlatformPurchaseAgreement,
     PlatformSupportContact,
+    PurchaseAgreementAcceptance,
     TenantAddOn,
     TenantFeatureOverride,
     TenantOnboarding,
@@ -175,3 +176,26 @@ class PlatformPurchaseAgreementAdmin(admin.ModelAdmin):
     list_display = ('title', 'is_active', 'updated_at')
     list_filter = ('is_active',)
     search_fields = ('title', 'content', 'checkbox_label')
+
+
+@admin.register(PurchaseAgreementAcceptance)
+class PurchaseAgreementAcceptanceAdmin(admin.ModelAdmin):
+    list_display = ('user', 'agreement_title', 'plan_name', 'billing_months', 'accepted_at')
+    list_filter = ('agreement', 'billing_months', 'accepted_at')
+    search_fields = ('user__username', 'user__email', 'agreement_title', 'agreement_content', 'plan_name')
+    autocomplete_fields = ('user', 'acquisition', 'agreement')
+    readonly_fields = (
+        'user',
+        'acquisition',
+        'agreement',
+        'agreement_title',
+        'agreement_content',
+        'checkbox_label',
+        'plan_name',
+        'billing_months',
+        'ip_address',
+        'user_agent',
+        'accepted_at',
+        'created_at',
+        'updated_at',
+    )

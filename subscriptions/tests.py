@@ -31,6 +31,7 @@ from .models import (
     PlanPrice,
     PlatformPurchaseAgreement,
     PlatformSupportContact,
+    PurchaseAgreementAcceptance,
     TenantOnboarding,
     TenantAddOn,
     TenantFeatureOverride,
@@ -358,6 +359,7 @@ class SubscriptionTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Please read and accept the plan purchase terms to continue.')
         self.assertFalse(CustomerAcquisition.objects.filter(publication_slug='agreement-news').exists())
+        self.assertFalse(PurchaseAgreementAcceptance.objects.exists())
 
     @override_settings(STORAGES={
         'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
@@ -393,6 +395,13 @@ class SubscriptionTests(TestCase):
 
         acquisition = CustomerAcquisition.objects.get(publication_slug='accepted-news')
         self.assertRedirects(response, reverse('subscriptions:checkout', kwargs={'acquisition_id': acquisition.uuid}), fetch_redirect_response=False)
+        acceptance = PurchaseAgreementAcceptance.objects.get(acquisition=acquisition)
+        self.assertEqual(acceptance.user, acquisition.user)
+        self.assertEqual(acceptance.agreement_title, 'Read Before Purchase')
+        self.assertIn('Plan activation starts after verified payment.', acceptance.agreement_content)
+        self.assertEqual(acceptance.checkbox_label, 'I accept Press Nexa purchase rules.')
+        self.assertEqual(acceptance.plan_name, self.plan.name)
+        self.assertEqual(acceptance.billing_months, 1)
 
     def test_sync_tenant_site_slugs_command_uses_channel_or_paper_name(self):
         self.tenant.business_name = 'Aaj Tak'
