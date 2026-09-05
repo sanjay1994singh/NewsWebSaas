@@ -951,7 +951,7 @@
             {% for video in youtube_videos %}
               <article class="video-card">
                 <div class="video-frame-wrap">
-                  <iframe src="{{ video.embed_url }}" data-video-frame data-base-src="{{ video.embed_url }}" title="{{ video.title }}" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+                  <iframe src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" data-video-frame data-base-src="{{ video.embed_url }}&origin={{ youtube_embed_origin|urlencode }}" title="{{ video.title }}" loading="lazy" referrerpolicy="origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
                   <button class="video-play" type="button" data-play-video>Play here</button>
                 </div>
                 <h3>{{ video.title }}</h3>

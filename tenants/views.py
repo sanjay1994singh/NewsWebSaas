@@ -362,6 +362,7 @@ def _render_public_tenant_site(request, tenant, page='home', category_slug=''):
         'nav_categories': nav_categories,
         'footer_pages': footer_pages,
         'youtube_videos': youtube_videos,
+        'youtube_embed_origin': f'{request.scheme}://{request.get_host()}',
         'public_site_slug': tenant_public_site_slug(tenant),
         'preview': False,
         'can_access_dashboard': can_access_dashboard,

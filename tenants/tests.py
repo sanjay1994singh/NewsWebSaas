@@ -248,6 +248,8 @@ class TenantIsolationTests(TestCase):
         self.assertContains(response, 'href="/videos/"')
         self.assertContains(response, 'A Media Report')
         self.assertContains(response, 'https://www.youtube.com/embed/video123')
+        self.assertContains(response, 'origin=http%3A//customera.platformdomain.com')
+        self.assertContains(response, 'referrerpolicy="origin"')
         self.assertContains(response, 'data-play-video')
         self.assertNotContains(response, 'Latest video from the newsroom.')
 
