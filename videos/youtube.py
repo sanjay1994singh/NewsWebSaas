@@ -8,18 +8,31 @@ from xml.etree import ElementTree
 
 from django.core.cache import cache
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 
 
 YOUTUBE_FEED_URL = 'https://www.youtube.com/feeds/videos.xml?channel_id={channel_id}'
 YOUTUBE_OEMBED_URL = 'https://www.youtube.com/oembed?url={video_url}&format=json'
+YOUTUBE_BROWSE_URL = 'https://www.youtube.com/youtubei/v1/browse?key={api_key}'
 YOUTUBE_TIMEOUT = 6
 YOUTUBE_USER_AGENT = 'PressNexaBot/1.0'
+YOUTUBE_CACHE_VERSION = 'v5'
 
 
 def _fetch_text(url):
     request = Request(url, headers={'User-Agent': YOUTUBE_USER_AGENT})
     with urlopen(request, timeout=YOUTUBE_TIMEOUT) as response:
         return response.read().decode('utf-8', errors='replace')
+
+
+def _fetch_json(url, payload):
+    request = Request(
+        url,
+        data=json.dumps(payload).encode('utf-8'),
+        headers={'Content-Type': 'application/json', 'User-Agent': YOUTUBE_USER_AGENT},
+    )
+    with urlopen(request, timeout=YOUTUBE_TIMEOUT) as response:
+        return json.loads(response.read().decode('utf-8', errors='replace'))
 
 
 def extract_youtube_channel_id(channel_url):
@@ -91,6 +104,172 @@ def _video_ids_from_html(html):
     return unique_ids
 
 
+def _youtube_initial_data(html):
+    markers = ('var ytInitialData = ', 'window["ytInitialData"] = ', 'ytInitialData = ')
+    decoder = json.JSONDecoder()
+    for marker in markers:
+        position = html.find(marker)
+        if position < 0:
+            continue
+        start = position + len(marker)
+        try:
+            data, _ = decoder.raw_decode(html[start:].lstrip())
+        except json.JSONDecodeError:
+            continue
+        return data
+    return {}
+
+
+def _innertube_context(html):
+    api_key_match = re.search(r'"INNERTUBE_API_KEY"\s*:\s*"(?P<key>[^"]+)"', html)
+    version_match = re.search(r'"INNERTUBE_CONTEXT_CLIENT_VERSION"\s*:\s*"(?P<version>[^"]+)"', html)
+    if not api_key_match:
+        return '', {}
+    return api_key_match.group('key'), {
+        'client': {
+            'clientName': 'WEB',
+            'clientVersion': version_match.group('version') if version_match else '2.20260905.01.00',
+        },
+    }
+
+
+def _walk_youtube_data(node):
+    if isinstance(node, dict):
+        yield node
+        for value in node.values():
+            yield from _walk_youtube_data(value)
+    elif isinstance(node, list):
+        for value in node:
+            yield from _walk_youtube_data(value)
+
+
+def _youtube_text(value):
+    if not isinstance(value, dict):
+        return ''
+    if value.get('content'):
+        return _clean_youtube_text(value.get('content'))
+    if value.get('simpleText'):
+        return _clean_youtube_text(value.get('simpleText'))
+    runs = value.get('runs')
+    if isinstance(runs, list):
+        return _clean_youtube_text(''.join(run.get('text', '') for run in runs if isinstance(run, dict)))
+    return ''
+
+
+def _initial_video_items_from_data(data, url_prefix):
+    items = []
+    seen = set()
+    for node in _walk_youtube_data(data):
+        lockup = node.get('lockupViewModel')
+        if isinstance(lockup, dict):
+            video_id = lockup.get('contentId')
+            content_type = lockup.get('contentType')
+            if not video_id or video_id in seen:
+                continue
+            if url_prefix == '/watch' and content_type != 'LOCKUP_CONTENT_TYPE_VIDEO':
+                continue
+            metadata = lockup.get('metadata', {}).get('lockupMetadataViewModel', {})
+            title = _youtube_text(metadata.get('title'))
+            published = ''
+            content_metadata = metadata.get('metadata', {}).get('contentMetadataViewModel', {})
+            for row in content_metadata.get('metadataRows', []):
+                for part in row.get('metadataParts', []):
+                    published = _published_from_relative_text(_youtube_text(part.get('text')))
+                    if published:
+                        break
+                if published:
+                    break
+            seen.add(video_id)
+            items.append({
+                'id': video_id,
+                'title': title,
+                'published': published,
+            })
+            continue
+        renderer = node.get('videoRenderer') or node.get('gridVideoRenderer') or node.get('reelItemRenderer')
+        if not isinstance(renderer, dict):
+            continue
+        video_id = renderer.get('videoId')
+        if not video_id or video_id in seen:
+            continue
+        navigation = renderer.get('navigationEndpoint', {})
+        url = (
+            navigation.get('commandMetadata', {})
+            .get('webCommandMetadata', {})
+            .get('url', '')
+        )
+        if url and not url.startswith(url_prefix):
+            continue
+        title = _youtube_text(renderer.get('title')) or _youtube_text(renderer.get('headline'))
+        published = _published_from_relative_text(
+            _youtube_text(renderer.get('publishedTimeText'))
+            or _youtube_text(renderer.get('shortBylineText'))
+        )
+        seen.add(video_id)
+        items.append({
+            'id': video_id,
+            'title': title,
+            'published': published,
+        })
+    return items
+
+
+def _initial_video_items_from_html(html, url_prefix):
+    return _initial_video_items_from_data(_youtube_initial_data(html), url_prefix)
+
+
+def _continuation_tokens_from_data(data):
+    tokens = []
+    for node in _walk_youtube_data(data):
+        command = node.get('continuationCommand')
+        if isinstance(command, dict) and command.get('token') and command['token'] not in tokens:
+            tokens.append(command['token'])
+    return tokens
+
+
+def _continuation_items_from_html(html, url_prefix, max_pages=8):
+    api_key, context = _innertube_context(html)
+    if not api_key:
+        return []
+    tokens = _continuation_tokens_from_data(_youtube_initial_data(html))
+    items = []
+    seen_ids = set()
+    seen_tokens = set()
+    today = timezone.localdate()
+    for _ in range(max_pages):
+        if not tokens:
+            break
+        token = tokens.pop(0)
+        if token in seen_tokens:
+            continue
+        seen_tokens.add(token)
+        try:
+            data = _fetch_json(YOUTUBE_BROWSE_URL.format(api_key=api_key), {
+                'context': context,
+                'continuation': token,
+            })
+        except (OSError, URLError, ValueError, json.JSONDecodeError):
+            break
+        batch = []
+        for item in _initial_video_items_from_data(data, url_prefix):
+            if item['id'] in seen_ids:
+                continue
+            seen_ids.add(item['id'])
+            items.append(item)
+            batch.append(item)
+        for next_token in _continuation_tokens_from_data(data):
+            if next_token not in seen_tokens and next_token not in tokens:
+                tokens.append(next_token)
+        dates = []
+        for item in batch:
+            published_at = parse_datetime(item.get('published') or '')
+            if published_at:
+                dates.append(timezone.localdate(published_at))
+        if dates and max(dates) < today - timezone.timedelta(days=30):
+            break
+    return items
+
+
 def _titles_from_html(html, video_ids):
     titles = {}
     for video_id in video_ids:
@@ -158,7 +337,7 @@ def fetch_youtube_channel_videos(channel_url, limit=None):
     if not channel_id:
         return []
 
-    cache_key = f'youtube-feed:{channel_id}:{limit or "all"}'
+    cache_key = f'{YOUTUBE_CACHE_VERSION}:youtube-feed:{channel_id}:{limit or "all"}'
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -210,6 +389,26 @@ def fetch_youtube_channel_videos(channel_url, limit=None):
         html = ''
     if html:
         existing_ids = {video['id'] for video in videos}
+        initial_items = _initial_video_items_from_html(html, '/watch')
+        for item in initial_items:
+            if item['id'] in existing_ids:
+                for video in videos:
+                    if video['id'] == item['id'] and item.get('published'):
+                        video['published'] = item['published']
+                continue
+            title = item.get('title') or _youtube_oembed_title(item['id']) or 'YouTube video'
+            videos.append({
+                'id': item['id'],
+                'title': title,
+                'description': '',
+                'thumbnail': f'https://i.ytimg.com/vi/{item["id"]}/hqdefault.jpg',
+                'url': f'https://www.youtube.com/watch?v={item["id"]}',
+                'embed_url': f'https://www.youtube.com/embed/{item["id"]}?enablejsapi=1&rel=0',
+                'published': item.get('published', ''),
+            })
+            existing_ids.add(item['id'])
+            if limit and len(videos) >= limit:
+                break
         video_ids = _video_ids_from_html(html)
         titles = _titles_from_html(html, video_ids)
         published_dates = _published_from_html(html, video_ids)
@@ -226,6 +425,23 @@ def fetch_youtube_channel_videos(channel_url, limit=None):
                 'embed_url': f'https://www.youtube.com/embed/{video_id}?enablejsapi=1&rel=0',
                 'published': published_dates.get(video_id, ''),
             })
+            existing_ids.add(video_id)
+            if limit and len(videos) >= limit:
+                break
+        for item in _continuation_items_from_html(html, '/watch'):
+            if item['id'] in existing_ids:
+                continue
+            title = item.get('title') or _youtube_oembed_title(item['id']) or 'YouTube video'
+            videos.append({
+                'id': item['id'],
+                'title': title,
+                'description': '',
+                'thumbnail': f'https://i.ytimg.com/vi/{item["id"]}/hqdefault.jpg',
+                'url': f'https://www.youtube.com/watch?v={item["id"]}',
+                'embed_url': f'https://www.youtube.com/embed/{item["id"]}?enablejsapi=1&rel=0',
+                'published': item.get('published', ''),
+            })
+            existing_ids.add(item['id'])
             if limit and len(videos) >= limit:
                 break
 
@@ -326,7 +542,7 @@ def fetch_youtube_channel_shorts(channel_url, limit=None):
     if not channel_id:
         return []
 
-    cache_key = f'youtube-shorts:{channel_id}:{limit or "all"}'
+    cache_key = f'{YOUTUBE_CACHE_VERSION}:youtube-shorts:{channel_id}:{limit or "all"}'
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
@@ -337,12 +553,25 @@ def fetch_youtube_channel_shorts(channel_url, limit=None):
         cache.set(cache_key, [], 60 * 5)
         return []
 
+    initial_items = _initial_video_items_from_html(html, '/shorts')
     titles = _shorts_titles_from_html(html)
     published_dates = _shorts_published_from_html(html)
+    for item in initial_items:
+        if item.get('title'):
+            titles[item['id']] = item['title']
+        if item.get('published'):
+            published_dates[item['id']] = item['published']
+    continuation_items = _continuation_items_from_html(html, '/shorts')
+    for item in continuation_items:
+        if item.get('title'):
+            titles[item['id']] = item['title']
+        if item.get('published'):
+            published_dates[item['id']] = item['published']
 
     seen = set()
     shorts = []
-    for video_id in _shorts_ids_from_html(html):
+    ordered_ids = [item['id'] for item in initial_items] + _shorts_ids_from_html(html) + [item['id'] for item in continuation_items]
+    for video_id in ordered_ids:
         if video_id in seen:
             continue
         seen.add(video_id)
