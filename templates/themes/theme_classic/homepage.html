@@ -48,35 +48,35 @@
     }
     .brand-block {
       display: flex;
-      align-items: center;
-      gap: 16px;
+      align-items: flex-start;
+      gap: 12px;
       min-width: 0;
     }
     .brand-copy {
       display: flex;
       min-width: 0;
       flex-direction: column;
-      justify-content: center;
-      padding-top: 1px;
+      justify-content: flex-start;
+      padding-top: 0;
     }
     .brand-mark {
       display: grid;
       place-items: center;
-      width: 50px;
-      height: 50px;
-      flex: 0 0 50px;
+      width: 42px;
+      height: 42px;
+      flex: 0 0 42px;
       border-radius: 6px;
       background: var(--brand);
       color: #fff;
-      font-size: 25px;
+      font-size: 21px;
       font-weight: 800;
       line-height: 1;
       text-transform: uppercase;
     }
     .site-title {
       margin: 0;
-      font-size: 38px;
-      line-height: 1.12;
+      font-size: 34px;
+      line-height: 42px;
       letter-spacing: 0;
       text-transform: capitalize;
     }
@@ -548,7 +548,7 @@
       .brand-block {
         flex: 1 1 auto;
         gap: 10px;
-        align-items: center;
+        align-items: flex-start;
         min-width: 0;
       }
       .brand-copy {
@@ -558,7 +558,7 @@
         flex-basis: 44px;
         width: 44px;
         height: 44px;
-        font-size: 23px;
+        font-size: 22px;
       }
       .mast-actions {
         flex: 0 0 auto;
@@ -668,8 +668,8 @@
         min-height: 300px;
       }
       .site-title {
-        font-size: 31px;
-        line-height: 1.12;
+        font-size: 32px;
+        line-height: 44px;
         overflow-wrap: anywhere;
       }
       .tagline {
@@ -746,6 +746,8 @@
         {% if has_blogs %}<a href="/blogs/">Blogs</a>{% endif %}
         {% if has_videos %}<a href="/videos/">Videos</a>{% endif %}
         {% if has_live_tv %}<a href="/live-tv/">Live TV</a>{% endif %}
+        <a href="/about-us/">About Us</a>
+        <a href="/privacy-policy/">Privacy Policy</a>
         <a href="/contact/">Contact</a>
       {% else %}
         <a href="/site/{{ public_site_slug }}/">Home</a>
@@ -754,6 +756,8 @@
         {% if has_blogs %}<a href="/site/{{ public_site_slug }}/blogs/">Blogs</a>{% endif %}
         {% if has_videos %}<a href="/site/{{ public_site_slug }}/videos/">Videos</a>{% endif %}
         {% if has_live_tv %}<a href="/site/{{ public_site_slug }}/live-tv/">Live TV</a>{% endif %}
+        <a href="/site/{{ public_site_slug }}/about-us/">About Us</a>
+        <a href="/site/{{ public_site_slug }}/privacy-policy/">Privacy Policy</a>
         <a href="/site/{{ public_site_slug }}/contact/">Contact</a>
       {% endif %}
     </nav>

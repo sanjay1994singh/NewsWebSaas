@@ -18,7 +18,7 @@ from pages.models import HomepageBlock, HomepageLayout, Menu, Page
 from seo.services import article_json_ld, article_meta
 from subscriptions.entitlements import get_effective_entitlements
 from subscriptions.models import CustomerAcquisition, TenantOnboarding, TenantSubscription
-from subscriptions.services import tenant_public_site_slug, tenant_public_site_url
+from subscriptions.services import ensure_required_tenant_pages, tenant_public_site_slug, tenant_public_site_url
 
 from .forms import ReporterCreateForm, TenantSettingsForm, VisitorRegistrationForm
 from .models import Tenant, TenantMembership, TenantVisitor
@@ -256,6 +256,7 @@ def reporter_create(request):
 
 def _render_public_tenant_site(request, tenant, page='home'):
     allowed_pages = {'home', 'latest-news', 'top-stories', 'blogs', 'videos', 'live-tv', 'contact'}
+    ensure_required_tenant_pages(tenant=tenant)
     static_page = None
     if page not in allowed_pages:
         static_page = Page.objects.filter(tenant=tenant, slug=page, is_published=True).first()
