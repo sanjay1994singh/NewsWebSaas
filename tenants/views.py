@@ -52,6 +52,13 @@ def _group_youtube_items_by_day(items):
                 lookup['week']['items'].append(item)
         else:
             lookup['today']['items'].append(item)
+    occupied_groups = sum(1 for group in groups if group['items'])
+    if items and occupied_groups < 3 and len(items) >= 3:
+        chunk_size = max((len(items) + 2) // 3, 1)
+        for index, group in enumerate(groups):
+            start = index * chunk_size
+            end = start + chunk_size
+            group['items'] = items[start:end]
     return groups
 
 
