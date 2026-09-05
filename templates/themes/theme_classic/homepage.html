@@ -52,6 +52,13 @@
       gap: 16px;
       min-width: 0;
     }
+    .brand-copy {
+      display: flex;
+      min-width: 0;
+      flex-direction: column;
+      justify-content: center;
+      padding-top: 1px;
+    }
     .brand-mark {
       display: grid;
       place-items: center;
@@ -68,15 +75,16 @@
     }
     .site-title {
       margin: 0;
-      font-size: 40px;
-      line-height: 1.05;
+      font-size: 38px;
+      line-height: 1.12;
       letter-spacing: 0;
       text-transform: capitalize;
     }
     .tagline {
-      margin: 8px 0 0;
+      margin: 4px 0 0;
       color: var(--muted);
       font-size: 15px;
+      line-height: 1.35;
     }
     .date-pill {
       border: 1px solid var(--line);
@@ -543,6 +551,9 @@
         align-items: center;
         min-width: 0;
       }
+      .brand-copy {
+        padding-top: 0;
+      }
       .brand-mark {
         flex-basis: 44px;
         width: 44px;
@@ -657,8 +668,8 @@
         min-height: 300px;
       }
       .site-title {
-        font-size: 34px;
-        line-height: 1.05;
+        font-size: 31px;
+        line-height: 1.12;
         overflow-wrap: anywhere;
       }
       .tagline {
@@ -686,7 +697,7 @@
       {% with site_name=tenant.business_name|default:tenant.publication_name %}
         <div class="brand-mark">{{ site_name|first }}</div>
       {% endwith %}
-      <div>
+      <div class="brand-copy">
         <h1 class="site-title">{{ tenant.business_name|default:tenant.publication_name }}</h1>
         <p class="tagline">{{ onboarding.tagline|default:"Trusted news, updates, videos, and public-interest stories." }}</p>
       </div>
