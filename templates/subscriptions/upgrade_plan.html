@@ -185,9 +185,9 @@
               <td data-label="Date">{{ invoice.created_at|date:"d M Y" }}</td>
               <td data-label="Plan">{% if invoice.subscription %}{{ invoice.subscription.plan.name }}{% else %}Subscription{% endif %}</td>
               <td data-label="Period">{% if invoice.period_start and invoice.period_end %}{{ invoice.period_start|date:"d M Y" }} - {{ invoice.period_end|date:"d M Y" }}{% else %}{{ invoice.billing_months }} month{% if invoice.billing_months != 1 %}s{% endif %}{% endif %}</td>
-              <td data-label="Plan amount">{{ invoice.currency }} {{ invoice.list_amount|default:invoice.amount|paise_to_rupees }}</td>
-              <td data-label="Discount/Credit">{{ invoice.currency }} {{ invoice.discount_amount|default:0|paise_to_rupees }}</td>
-              <td data-label="Paid">{{ invoice.currency }} {{ invoice.amount|paise_to_rupees }}</td>
+              <td data-label="Plan amount">{% money_amount invoice.currency invoice.list_amount|default:invoice.amount %}</td>
+              <td data-label="Discount/Credit">{% money_amount invoice.currency invoice.discount_amount|default:0 %}</td>
+              <td data-label="Paid">{% money_amount invoice.currency invoice.amount %}</td>
               <td data-label="Status">{{ invoice.status|title }}</td>
             </tr>
           {% endfor %}
@@ -220,8 +220,8 @@
               <td data-label="From">{{ change.from_plan.name }}</td>
               <td data-label="To">{{ change.to_plan.name }}</td>
               <td data-label="Duration">{{ change.billing_months }} month{% if change.billing_months != 1 %}s{% endif %}</td>
-              <td data-label="Credit">{{ change.currency }} {{ change.credit_amount|paise_to_rupees }}</td>
-              <td data-label="Payable">{{ change.currency }} {{ change.payable_amount|paise_to_rupees }}</td>
+              <td data-label="Credit">{% money_amount change.currency change.credit_amount %}</td>
+              <td data-label="Payable">{% money_amount change.currency change.payable_amount %}</td>
               <td data-label="Status">{{ change.get_status_display }}</td>
             </tr>
           {% endfor %}

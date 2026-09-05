@@ -1,5 +1,6 @@
 from django.contrib import admin
 
+from .pricing import money_display
 from .models import (
     AddOn,
     BillingRecord,
@@ -84,9 +85,13 @@ class TenantFeatureOverrideAdmin(admin.ModelAdmin):
 
 @admin.register(PlanPrice)
 class PlanPriceAdmin(admin.ModelAdmin):
-    list_display = ('plan', 'billing_cycle', 'amount', 'currency', 'is_active')
+    list_display = ('plan', 'billing_cycle', 'amount_display', 'currency', 'is_active')
     list_filter = ('billing_cycle', 'currency', 'is_active')
     search_fields = ('plan__name', 'plan__code', 'currency')
+
+    @admin.display(description='Amount')
+    def amount_display(self, obj):
+        return money_display(obj.amount, obj.currency)
 
 
 @admin.register(TenantSubscription)
@@ -147,11 +152,15 @@ class PlanChangeRequestAdmin(admin.ModelAdmin):
 
 @admin.register(BillingRecord)
 class BillingRecordAdmin(admin.ModelAdmin):
-    list_display = ('tenant', 'status', 'amount', 'currency', 'razorpay_order_id', 'razorpay_payment_id', 'razorpay_invoice_id', 'created_at')
+    list_display = ('tenant', 'status', 'amount_display', 'currency', 'razorpay_order_id', 'razorpay_payment_id', 'razorpay_invoice_id', 'created_at')
     list_filter = ('status', 'currency')
     search_fields = ('tenant__publication_name', 'tenant__slug', 'razorpay_order_id', 'razorpay_payment_id', 'razorpay_invoice_id')
     autocomplete_fields = ('tenant', 'subscription')
     readonly_fields = ('entitlement_snapshot',)
+
+    @admin.display(description='Amount')
+    def amount_display(self, obj):
+        return money_display(obj.amount, obj.currency)
 
 
 @admin.register(WebhookEvent)

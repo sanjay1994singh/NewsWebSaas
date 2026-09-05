@@ -506,8 +506,8 @@ class SubscriptionTests(TestCase):
         self.assertEqual(response.status_code, 200)
         data = response.json()
         self.assertEqual(data['billing_months'], 12)
-        self.assertEqual(data['list_display'], 'INR 23,988')
-        self.assertEqual(data['payable_display'], 'INR 11,994')
+        self.assertEqual(data['list_display'], '₹ 23,988')
+        self.assertEqual(data['payable_display'], '₹ 11,994')
         self.assertIn(f'price={self.price.id}', data['signup_url'])
         self.assertIn('months=12', data['signup_url'])
 
@@ -660,7 +660,7 @@ class SubscriptionTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Current Plan')
         self.assertContains(response, 'Invoices')
-        self.assertContains(response, 'INR 399')
+        self.assertContains(response, '₹ 399')
         self.assertContains(response, reverse('subscriptions:view_invoice', kwargs={'record_id': invoice.id}))
         self.assertNotContains(response, 'Change Plan')
         self.assertNotContains(response, 'Add-ons')
@@ -1320,7 +1320,7 @@ class SubscriptionTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         data = response.json()
-        self.assertEqual(data['price'], 'INR 23,988')
+        self.assertEqual(data['price'], '₹ 23,988')
         self.assertIn('Old plan credit', data['help_text'])
         self.assertEqual(data['action_label'], 'Upgrade')
 

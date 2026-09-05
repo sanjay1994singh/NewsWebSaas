@@ -61,4 +61,5 @@ def calculate_checkout_pricing(plan_price, billing_months=1, discount_percent=OF
 def money_display(amount, currency="INR"):
     value = int(amount or 0) / 100
     value_text = f"{value:,.0f}" if value.is_integer() else f"{value:,.2f}"
-    return f"{currency} {value_text}"
+    currency_text = "₹" if currency == "INR" else currency
+    return f"{currency_text} {value_text}"

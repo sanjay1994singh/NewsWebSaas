@@ -97,9 +97,9 @@
                       {{ invoice.billing_months }} month{% if invoice.billing_months != 1 %}s{% endif %}
                     {% endif %}
                   </td>
-                  <td data-label="Plan amount">{{ invoice.currency }} {{ invoice.list_amount|default:invoice.amount|paise_to_rupees }}</td>
-                  <td data-label="Discount">{{ invoice.discount_percent|default:0 }}% / {{ invoice.currency }} {{ invoice.discount_amount|default:0|paise_to_rupees }}</td>
-                  <td data-label="Paid">{{ invoice.currency }} {{ invoice.amount|paise_to_rupees }}</td>
+                  <td data-label="Plan amount">{% money_amount invoice.currency invoice.list_amount|default:invoice.amount %}</td>
+                  <td data-label="Discount">{{ invoice.discount_percent|default:0 }}% / {% money_amount invoice.currency invoice.discount_amount|default:0 %}</td>
+                  <td data-label="Paid">{% money_amount invoice.currency invoice.amount %}</td>
                   <td data-label="Status">{{ invoice.status|title }}</td>
                   <td data-label="Actions">
                     <div class="invoice-actions">

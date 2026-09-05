@@ -179,9 +179,7 @@ def send_session_document(*, to, document_url, filename='invoice.pdf'):
 
 
 def money_text(price):
-    amount = price.amount / 100
-    amount_text = f'{amount:,.0f}' if amount.is_integer() else f'{amount:,.2f}'
-    return f'{price.currency} {amount_text}'
+    return money_display(price.amount, price.currency)
 
 
 def _account_display_name(user):
