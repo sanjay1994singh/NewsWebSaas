@@ -157,8 +157,8 @@
         <p class="nav-label">Workspace</p>
         <a class="active" href="{% url 'tenants:tenant_dashboard' %}">Dashboard <span>Overview</span></a>
         {% if site_url %}<a href="{{ site_url }}" target="_blank" rel="noopener">Home <span>Website</span></a>{% endif %}
-        <a href="/cms/">Create News <span>Publish</span></a>
-        <a href="/cms/?type=blog">Blog Posts <span>Write</span></a>
+        {% if can_publish_news %}<a href="/cms/">Create News <span>Publish</span></a>{% endif %}
+        {% if can_publish_blog %}<a href="/cms/?type=blog">Blog Posts <span>Write</span></a>{% endif %}
         <a href="{% url 'news:category_list' %}">Categories <span>Manage</span></a>
         <a href="{% url 'tenants:reporter_list' %}">Reporters <span>Add</span></a>
         <a href="{% url 'pages:tenant_static_page_list' %}">Pages <span>Legal</span></a>
@@ -220,14 +220,18 @@
       {% endif %}
 
       <section class="quick-grid">
-        <a class="quick-card" href="/cms/">
-          <strong>Create News</strong>
-          <span>Write and publish your first article.</span>
-        </a>
-        <a class="quick-card" href="/cms/?type=blog">
-          <strong>Blog Posts</strong>
-          <span>Create, update, list, and delete blog content.</span>
-        </a>
+        {% if can_publish_news %}
+          <a class="quick-card" href="/cms/">
+            <strong>Create News</strong>
+            <span>Write and publish your first article.</span>
+          </a>
+        {% endif %}
+        {% if can_publish_blog %}
+          <a class="quick-card" href="/cms/?type=blog">
+            <strong>Blog Posts</strong>
+            <span>Create, update, list, and delete blog content.</span>
+          </a>
+        {% endif %}
         <a class="quick-card" href="{% url 'news:category_list' %}">
           <strong>Categories</strong>
           <span>Manage categories for this publication website.</span>
@@ -261,7 +265,7 @@
           {% else %}
             <p class="muted">Your workspace is active. Start publishing, review your domain, or manage enabled features.</p>
             <div class="actions">
-              <a class="btn" href="/cms/">Create News</a>
+              {% if can_publish_news %}<a class="btn" href="/cms/">Create News</a>{% endif %}
               <a class="btn secondary" href="{% url 'tenants:tenant_settings' tenant.uuid %}">Manage Branding</a>
             </div>
           {% endif %}

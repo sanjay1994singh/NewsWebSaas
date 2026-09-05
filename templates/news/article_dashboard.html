@@ -63,7 +63,7 @@
 
     <nav class="tabs" aria-label="Publishing type">
       <a class="{% if not is_blog %}active{% endif %}" href="{% url 'news:article_dashboard' %}?type=news">News Posts</a>
-      <a class="{% if is_blog %}active{% endif %}" href="{% url 'news:article_dashboard' %}?type=blog">Blog Posts</a>
+      {% if can_publish_blog %}<a class="{% if is_blog %}active{% endif %}" href="{% url 'news:article_dashboard' %}?type=blog">Blog Posts</a>{% endif %}
     </nav>
 
     <section class="stats">

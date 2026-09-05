@@ -18,6 +18,8 @@ from .forms import CategoryForm, NewsArticleForm, state_choices_for_country
 from .models import AuthorProfile
 from .models import NewsArticle
 from .services import active_breaking_news_for_tenant, search_articles, validate_news_article_monthly_limit
+from subscriptions.entitlements import get_effective_entitlements
+from subscriptions.models import TenantSubscription
 
 
 def _active_tenant_for_user(request):
@@ -57,6 +59,23 @@ def _article_dashboard_url(content_type):
     return redirect('news:article_dashboard').url
 
 
+def _tenant_has_paid_feature(tenant, feature_code):
+    try:
+        subscription = tenant.subscription
+    except TenantSubscription.DoesNotExist:
+        return True
+    if subscription.status != TenantSubscription.Status.ACTIVE:
+        return True
+    return bool(get_effective_entitlements(tenant).get(feature_code, {}).get('is_enabled'))
+
+
+def _ensure_content_type_access(tenant, content_type):
+    if content_type == NewsArticle.ContentType.BLOG and not _tenant_has_paid_feature(tenant, 'blog'):
+        raise PermissionDenied("Blog publishing is not included in your active plan.")
+    if content_type == NewsArticle.ContentType.NEWS and not _tenant_has_paid_feature(tenant, 'news_articles'):
+        raise PermissionDenied("News publishing is not included in your active plan.")
+
+
 @login_required
 def ckeditor_image_upload(request):
     tenant = _active_tenant_for_user(request)
@@ -88,6 +107,7 @@ def article_dashboard(request):
     content_type = request.GET.get('type') or NewsArticle.ContentType.NEWS
     if content_type not in NewsArticle.ContentType.values:
         content_type = NewsArticle.ContentType.NEWS
+    _ensure_content_type_access(tenant, content_type)
     articles = (
         NewsArticle.objects
         .for_tenant(tenant)
@@ -108,6 +128,7 @@ def article_dashboard(request):
         'stats': stats,
         'content_type': content_type,
         'is_blog': content_type == NewsArticle.ContentType.BLOG,
+        'can_publish_blog': _tenant_has_paid_feature(tenant, 'blog'),
     })
 
 
@@ -119,6 +140,7 @@ def article_create(request):
     content_type = request.GET.get('type') or NewsArticle.ContentType.NEWS
     if content_type not in NewsArticle.ContentType.values:
         content_type = NewsArticle.ContentType.NEWS
+    _ensure_content_type_access(tenant, content_type)
     _ensure_publishing_defaults(tenant, request.user)
     form = NewsArticleForm(
         request.POST or None,
@@ -159,6 +181,7 @@ def article_detail(request, uuid):
     )
     if not user_can_access_tenant(request.user, article.tenant):
         raise PermissionDenied("You do not have access to this article.")
+    _ensure_content_type_access(article.tenant, article.content_type)
     return render(request, 'news/article_detail.html', {'article': article})
 
 
@@ -171,6 +194,7 @@ def article_update(request, uuid):
         NewsArticle.objects.for_tenant(tenant).select_related('tenant', 'category', 'author'),
         uuid=uuid,
     )
+    _ensure_content_type_access(tenant, article.content_type)
     form = NewsArticleForm(request.POST or None, request.FILES or None, instance=article, tenant=tenant)
     form.fields['content_type'].widget = form.fields['content_type'].hidden_widget()
     if request.method == 'POST' and form.is_valid():
@@ -198,6 +222,7 @@ def article_delete(request, uuid):
     if tenant is None:
         return redirect('tenants:tenant_dashboard')
     article = get_object_or_404(NewsArticle.objects.for_tenant(tenant), uuid=uuid)
+    _ensure_content_type_access(tenant, article.content_type)
     if request.method == 'POST':
         article.delete()
         messages.success(request, 'Post deleted successfully.')

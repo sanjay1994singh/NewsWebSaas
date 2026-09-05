@@ -91,6 +91,8 @@ def tenant_dashboard(request):
         onboarding = None
 
     entitlements = get_effective_entitlements(tenant)
+    can_publish_news = bool(entitlements.get('news_articles', {}).get('is_enabled'))
+    can_publish_blog = bool(entitlements.get('blog', {}).get('is_enabled'))
     primary_domain = TenantDomain.objects.filter(tenant=tenant, is_primary=True).first()
     site_url = tenant_public_site_url(tenant)
     article_queryset = NewsArticle.objects.filter(tenant=tenant)
@@ -102,6 +104,7 @@ def tenant_dashboard(request):
     }
     feature_menu = [
         ('news_articles', 'News Publishing', '/cms/'),
+        ('blog', 'Blog Publishing', '/cms/?type=blog'),
         ('epaper', 'E-Paper', '/dashboard/epaper/'),
         ('youtube_videos', 'Videos', '/cms/videos/'),
         ('youtube_shorts', 'Shorts', '/cms/shorts/'),
@@ -118,7 +121,7 @@ def tenant_dashboard(request):
             'label': label,
             'url': url,
             'entitlement': entitlements.get(code),
-            'source_label': 'Included in plan' if entitlements.get(code, {}).get('source') == 'plan_feature' else 'Custom access',
+            'source_label': 'Included in plan' if entitlements.get(code, {}).get('source') in {'plan_feature', 'purchased_plan_snapshot'} else 'Custom access',
         }
         for code, label, url in feature_menu
         if entitlements.get(code, {}).get('is_enabled')
@@ -135,6 +138,8 @@ def tenant_dashboard(request):
             'primary_domain': primary_domain,
             'site_url': site_url,
             'news_stats': news_stats,
+            'can_publish_news': can_publish_news,
+            'can_publish_blog': can_publish_blog,
         },
     )
 
@@ -287,9 +292,12 @@ def _render_public_tenant_site(request, tenant, page='home', category_slug=''):
     entitlements = get_effective_entitlements(tenant)
     has_videos = entitlements.get('youtube_videos', {}).get('is_enabled') or entitlements.get('youtube_shorts', {}).get('is_enabled')
     has_live_tv = entitlements.get('live_tv', {}).get('is_enabled')
+    has_blog_access = entitlements.get('blog', {}).get('is_enabled')
     if page == 'videos' and not has_videos:
         raise Http404("Publication page not found.")
     if page == 'live-tv' and not has_live_tv:
+        raise Http404("Publication page not found.")
+    if page == 'blogs' and not has_blog_access:
         raise Http404("Publication page not found.")
     footer_pages = list(
         Page.objects
@@ -322,7 +330,7 @@ def _render_public_tenant_site(request, tenant, page='home', category_slug=''):
         articles = list(article_queryset.order_by('-published_at', '-created_at')[:12])
     latest_source = article_queryset if active_category else published_queryset.filter(content_type=NewsArticle.ContentType.NEWS)
     latest_articles = list(latest_source.order_by('-published_at', '-created_at')[:3])
-    has_blogs = published_queryset.filter(content_type=NewsArticle.ContentType.BLOG).exists()
+    has_blogs = has_blog_access and published_queryset.filter(content_type=NewsArticle.ContentType.BLOG).exists()
     top_article = article_queryset.order_by('-view_count', '-published_at', '-created_at').first()
     try:
         onboarding = tenant.commercial_onboarding
@@ -365,6 +373,9 @@ def public_article_detail(request, uuid):
         published_articles_for_tenant(tenant),
         uuid=uuid,
     )
+    entitlements = get_effective_entitlements(tenant)
+    if article.content_type == NewsArticle.ContentType.BLOG and not entitlements.get('blog', {}).get('is_enabled'):
+        raise Http404("Article not found.")
     meta = article_meta(article)
     if article.featured_image:
         meta['og_image'] = request.build_absolute_uri(article.featured_image.url)

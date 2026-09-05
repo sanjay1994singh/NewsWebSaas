@@ -241,6 +241,43 @@ class TenantNewsCMSTests(TestCase):
         self.assertContains(response, 'Your monthly news article limit is 1')
         self.assertFalse(NewsArticle.objects.filter(tenant=self.tenant_a, slug='second-published-story').exists())
 
+    @override_settings(STORAGES={
+        'default': {'BACKEND': 'django.core.files.storage.FileSystemStorage'},
+        'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+    })
+    def test_blog_publishing_requires_blog_plan_feature(self):
+        plan = Plan.objects.create(name='News Starter', code=Plan.Code.NEWS_STARTER)
+        TenantSubscription.objects.create(
+            tenant=self.tenant_a,
+            plan=plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            status=TenantSubscription.Status.ACTIVE,
+            entitlement_snapshot={
+                'news_articles': {
+                    'is_enabled': True,
+                    'limit_value': 150,
+                    'configuration': {},
+                    'source': 'purchased_plan_snapshot',
+                },
+                'blog': {
+                    'is_enabled': False,
+                    'limit_value': None,
+                    'configuration': {},
+                    'source': 'purchased_plan_snapshot',
+                },
+            },
+            entitlement_snapshot_at=timezone.now(),
+        )
+        self.client.force_login(self.user_a)
+
+        news_response = self.client.get(f"{reverse('news:article_dashboard')}?type=news")
+        self.assertEqual(news_response.status_code, 200)
+        self.assertContains(news_response, 'News Posts')
+        self.assertNotContains(news_response, 'Blog Posts')
+
+        blog_response = self.client.get(f"{reverse('news:article_dashboard')}?type=blog")
+        self.assertEqual(blog_response.status_code, 403)
+
     def test_article_create_remembers_last_country_and_state(self):
         self.client.force_login(self.user_a)
         response = self.client.post(
