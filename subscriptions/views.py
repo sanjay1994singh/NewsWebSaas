@@ -677,6 +677,32 @@ def review_status(request):
 
 
 @login_required
+def review_status_state(request):
+    tenant = _owned_tenant_for_user(request.user)
+    if tenant is None:
+        return JsonResponse({'status': 'missing', 'redirect_url': reverse('subscriptions:account_status')})
+    onboarding_record, _ = TenantOnboarding.objects.get_or_create(tenant=tenant)
+    redirect_url = ''
+    public_url = tenant_public_site_url(tenant)
+    if onboarding_record.status == TenantOnboarding.Status.PUBLISHED:
+        _activate_published_tenant(tenant)
+        redirect_url = reverse('tenants:tenant_dashboard')
+    elif onboarding_record.status in {
+        TenantOnboarding.Status.APPROVED,
+        TenantOnboarding.Status.READY_TO_PUBLISH,
+    }:
+        redirect_url = reverse('subscriptions:ready_to_publish')
+    return JsonResponse(
+        {
+            'status': onboarding_record.status,
+            'status_display': onboarding_record.get_status_display(),
+            'redirect_url': redirect_url,
+            'public_url': public_url,
+        }
+    )
+
+
+@login_required
 def ready_to_publish(request):
     tenant = _owned_tenant_for_user(request.user)
     if tenant is None:
@@ -1119,5 +1145,6 @@ def feature_access_check(request, tenant_slug, feature_code):
             'source': entitlement['source'],
         }
     )
+
 
 

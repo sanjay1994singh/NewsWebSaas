@@ -33,7 +33,7 @@
     </section>
 
     {% if auto_publish_at %}
-      <section class="card publish-timer" data-review-timer data-auto-publish-at="{{ auto_publish_at|date:'c' }}">
+      <section class="card publish-timer" data-review-timer data-auto-publish-at="{{ auto_publish_at|date:'c' }}" data-status-url="{% url 'subscriptions:review_status_state' %}">
         <div class="timer-head">
           <div>
             <strong data-timer-title>Auto publishing in</strong>
@@ -85,29 +85,67 @@
       const firstSeen = Date.now();
       const total = Math.max(target - firstSeen, 1000);
       function two(value) { return String(value).padStart(2, '0'); }
+      function showPublishingSoon() {
+        countdown.textContent = 'Soon';
+        fill.style.width = '100%';
+        title.textContent = 'Publishing soon';
+        message.textContent = 'Auto-publish time has arrived. Your workspace is waiting for final approval and publish completion.';
+        soon.classList.add('is-active');
+        if (pill) {
+          pill.textContent = 'Publishing soon';
+          pill.classList.add('is-publishing');
+        }
+      }
+      function showPublished(statusText) {
+        countdown.textContent = 'Live';
+        fill.style.width = '100%';
+        title.textContent = 'Published';
+        message.textContent = 'Your workspace has been approved and published. Redirecting you now.';
+        soon.classList.remove('is-active');
+        if (pill) {
+          pill.textContent = statusText || 'Published';
+          pill.classList.remove('is-publishing');
+        }
+      }
+      function pollStatus() {
+        const statusUrl = timer.dataset.statusUrl;
+        if (!statusUrl) return;
+        fetch(statusUrl, {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+          .then(function (response) { return response.ok ? response.json() : null; })
+          .then(function (data) {
+            if (!data) return;
+            if (data.status_display && pill && !pill.classList.contains('is-publishing')) {
+              pill.textContent = data.status_display;
+            }
+            if (data.status === 'published' || data.status === 'approved' || data.status === 'ready_to_publish') {
+              showPublished(data.status_display);
+              window.setTimeout(function () {
+                window.location.href = data.redirect_url || data.public_url || '/';
+              }, 900);
+            }
+          })
+          .catch(function () {});
+      }
       function render() {
         const now = Date.now();
         const remaining = target - now;
         if (remaining <= 0) {
-          countdown.textContent = 'Soon';
-          fill.style.width = '100%';
-          title.textContent = 'Publishing soon';
-          message.textContent = 'Auto-publish time has arrived. Your workspace is waiting for final approval and publish completion.';
-          soon.classList.add('is-active');
-          if (pill) {
-            pill.textContent = 'Publishing soon';
-            pill.classList.add('is-publishing');
-          }
+          showPublishingSoon();
+          window.setTimeout(pollStatus, 1000);
+          window.setTimeout(render, 5000);
           return;
         }
         const seconds = Math.ceil(remaining / 1000);
         const minutes = Math.floor(seconds / 60);
         countdown.textContent = `${two(minutes)}:${two(seconds % 60)}`;
         fill.style.width = `${Math.min(100, Math.max(0, ((total - remaining) / total) * 100))}%`;
+        if (seconds % 5 === 0) pollStatus();
         window.setTimeout(render, 1000);
       }
+      pollStatus();
       render();
     })();
   </script>
 {% endblock %}
+
 

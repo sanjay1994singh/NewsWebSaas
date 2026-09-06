@@ -13,6 +13,7 @@ urlpatterns = [
     path('saas/checkout/<uuid:acquisition_id>/failed/', views.payment_failed, name='payment_failed'),
     path('onboarding/', views.onboarding, name='onboarding'),
     path('onboarding/review-status/', views.review_status, name='review_status'),
+    path('onboarding/review-status/state/', views.review_status_state, name='review_status_state'),
     path('onboarding/ready-to-publish/', views.ready_to_publish, name='ready_to_publish'),
     path('onboarding/review/<uuid:onboarding_id>/', views.onboarding_review, name='onboarding_review'),
     path('account/billing/', views.billing_dashboard, name='billing_dashboard'),
@@ -29,3 +30,4 @@ urlpatterns = [
     path('webhooks/razorpay/', views.razorpay_webhook, name='razorpay_webhook'),
     path('features/<slug:tenant_slug>/<slug:feature_code>/check/', views.feature_access_check, name='feature_access_check'),
 ]
+
