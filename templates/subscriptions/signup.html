@@ -8,7 +8,7 @@
 .signup-head h1 { margin:0; font-size:38px; line-height:1.05; }
 .signup-copy { margin:12px 0 0; color:var(--muted); max-width:620px; }
 .plan-chip { align-self:center; justify-self:end; width:min(100%,300px); background:#fff; border:1px solid var(--line); border-radius:8px; padding:16px; box-shadow:0 16px 40px rgba(19,32,27,.08); }
-.plan-chip span { display:block; color:var(--muted); font-size:13px; font-weight:700; }
+.plan-chip > span { display:block; color:var(--muted); font-size:13px; font-weight:700; }
 .plan-chip strong { display:block; margin-top:4px; font-size:18px; }
 .signup-form { padding:30px 32px 32px; }
 .form-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:18px; row-gap:16px; }
@@ -32,6 +32,10 @@
 .agreement-check label { margin:0; }
 .signup-actions { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:24px; padding-top:22px; border-top:1px solid var(--line); }
 .signup-actions .muted { max-width:520px; font-size:14px; }
+.plan-details { margin-top:12px; padding:16px; background:#eef7f2; border:1px solid var(--line); border-radius:8px; }
+.plan-details h2 { margin:0 0 8px; font-size:18px; }
+.plan-details ul { margin:0; padding-left:20px; }
+.plan-details li { margin:6px 0; }
 .duration-field { grid-column:1 / -1; }
 @media (max-width:760px) {
   .signup-card { margin-top:0; }
@@ -108,6 +112,12 @@
               {% else %}
                 {{ field }}
               {% endif %}
+              {% if field.name == 'price_id' %}
+                <section class="plan-details" data-plan-details aria-live="polite" {% if not form.selected_quote %}hidden{% endif %}>
+                  <h2 data-details-title>{{ form.selected_quote.name }} includes</h2>
+                  <ul data-plan-features>{% for feature in form.selected_quote.features %}<li>{{ feature }}</li>{% empty %}<li>Feature details are not available for this plan yet.</li>{% endfor %}</ul>
+                </section>
+              {% endif %}
               {% if field.help_text %}<div class="muted">{{ field.help_text }}</div>{% endif %}
               {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
             </div>
@@ -132,7 +142,18 @@
       const quote = (prices[plan.value] || {})[duration.value || '1'];
       document.querySelector('[data-plan-name]').textContent = quote ? quote.name : 'Choose a plan below';
       summary.hidden = !quote;
+      const details = document.querySelector('[data-plan-details]');
+      const list = document.querySelector('[data-plan-features]');
+      details.hidden = !quote;
+      list.replaceChildren();
       if (!quote) return;
+      document.querySelector('[data-details-title]').textContent = quote.name + ' includes';
+      const features = quote.features.length ? quote.features : ['Feature details are not available for this plan yet.'];
+      features.forEach(function (feature) {
+        const item = document.createElement('li');
+        item.textContent = feature;
+        list.appendChild(item);
+      });
       ['payable', 'duration', 'list', 'percent', 'discount'].forEach(function (key) {
         document.querySelector('[data-plan-' + key + ']').textContent = quote[key];
       });

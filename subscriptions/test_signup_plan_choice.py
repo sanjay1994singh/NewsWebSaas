@@ -62,3 +62,20 @@ class SignupPlanChoiceTests(TestCase):
         self.assertEqual(form['business_name'].value(), 'New publication')
         self.assertEqual(form['price_id'].value(), str(self.pro_price.pk))
         self.assertEqual(form.selected_quote['name'], 'News Pro')
+
+    def test_plan_details_show_only_public_enabled_features_and_monthly_limits(self):
+        from .models import Feature, PlanFeature
+        articles = Feature.objects.create(code='news_articles', name='News Articles', feature_type='limit')
+        private = Feature.objects.create(code='internal', name='Private feature', is_public=False)
+        disabled = Feature.objects.create(code='videos', name='Videos')
+        for plan, limit in [(self.starter, 150), (self.pro, 1500)]:
+            PlanFeature.objects.create(plan=plan, feature=articles, is_enabled=True, limit_value=limit)
+        PlanFeature.objects.create(plan=self.starter, feature=private, is_enabled=True)
+        PlanFeature.objects.create(plan=self.starter, feature=disabled, is_enabled=False)
+        form = CustomerSignupForm(initial={'price_id': self.price.pk, 'billing_months': 12})
+        self.assertEqual(form.selected_quote['features'], ['News Articles: 150 / month'])
+        self.assertEqual(form.plan_quotes[str(self.pro_price.pk)]['1']['features'], ['News Articles: 1500 / month'])
+        response = self.client.get('/saas/signup/', {'price': self.price.pk})
+        self.assertContains(response, 'News Articles: 150 / month')
+        self.assertNotContains(response, 'Private feature')
+        self.assertContains(response, 'data-plan-details')

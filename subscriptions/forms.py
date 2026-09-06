@@ -1,4 +1,5 @@
 from django import forms
+from django.utils.functional import cached_property
 
 from tenants.models import Tenant
 
@@ -48,7 +49,7 @@ class SignupPlanChoiceMixin:
         super().__init__(*args, **kwargs)
         prices = PlanPrice.objects.select_related('plan').filter(
             is_active=True, plan__is_active=True, plan__is_current_version=True,
-        ).order_by('plan__name', 'id')
+        ).prefetch_related('plan__features__feature').order_by('plan__name', 'id')
         selected = {}
         for price in prices:
             current = selected.get(price.plan_id)
@@ -61,16 +62,27 @@ class SignupPlanChoiceMixin:
             (price.pk, price.plan.name) for price in selected.values()
         ])
 
-    @property
+    @cached_property
     def plan_quotes(self):
         from .pricing import calculate_checkout_pricing, money_display
         result = {}
         for key, price in self.signup_prices.items():
+            features = []
+            for item in sorted(price.plan.features.all(), key=lambda item: (item.feature.display_order, item.feature.name)):
+                feature = item.feature
+                if not (item.is_enabled and feature.is_active and feature.is_public):
+                    continue
+                label = feature.name
+                if item.limit_value is not None:
+                    unit = '/ month' if feature.code == 'news_articles' else feature.default_unit
+                    label += f': {item.limit_value}' + (f' {unit}' if unit else '')
+                features.append(label)
             durations = {}
             for months in ALLOWED_BILLING_MONTHS:
                 quote = calculate_checkout_pricing(price, months)
                 durations[str(months)] = {
                     'name': price.plan.name,
+                    'features': features,
                     'duration': quote.billing_label,
                     'list': money_display(quote.list_amount, quote.currency),
                     'discount': money_display(quote.discount_amount, quote.currency),
