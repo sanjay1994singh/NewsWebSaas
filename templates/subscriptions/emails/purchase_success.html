@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+<body style="margin:0;padding:0;background:#f4faf7;font-family:Arial,Helvetica,sans-serif;color:#10231d;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4faf7;padding:24px 0;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="640" cellspacing="0" cellpadding="0" style="max-width:640px;width:100%;background:#ffffff;border:1px solid #d7e4de;border-radius:10px;overflow:hidden;">
+          <tr>
+            <td style="padding:22px 28px;background:#0b3d33;color:#ffffff;">
+              <h1 style="margin:0;font-size:24px;line-height:1.25;">Press Nexa</h1>
+              <p style="margin:6px 0 0;font-size:14px;color:#cfe8df;">Your news website plan is activated</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px;">
+              <p style="margin:0 0 14px;font-size:16px;">Hello {{ tenant.publication_name }},</p>
+              <p style="margin:0 0 18px;font-size:15px;line-height:1.6;">Thank you for purchasing your Press Nexa plan. Your payment has been verified and your publication workspace is now being prepared.</p>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin:18px 0;border:1px solid #d7e4de;">
+                <tr><td style="padding:10px 12px;background:#eef7f2;font-weight:bold;">Account Details</td><td style="padding:10px 12px;background:#eef7f2;"></td></tr>
+                <tr><td style="padding:10px 12px;border-top:1px solid #d7e4de;">Username</td><td style="padding:10px 12px;border-top:1px solid #d7e4de;font-weight:bold;">{{ user.username }}</td></tr>
+                <tr><td style="padding:10px 12px;border-top:1px solid #d7e4de;">Email</td><td style="padding:10px 12px;border-top:1px solid #d7e4de;">{{ tenant.email|default:"-" }}</td></tr>
+                <tr><td style="padding:10px 12px;border-top:1px solid #d7e4de;">Mobile</td><td style="padding:10px 12px;border-top:1px solid #d7e4de;">{{ tenant.mobile|default:"-" }}</td></tr>
+                {% if plain_password %}
+                  <tr><td style="padding:10px 12px;border-top:1px solid #d7e4de;">Password</td><td style="padding:10px 12px;border-top:1px solid #d7e4de;font-weight:bold;">{{ plain_password }}</td></tr>
+                {% endif %}
+              </table>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border-collapse:collapse;margin:18px 0;border:1px solid #d7e4de;">
+                <tr><td style="padding:10px 12px;background:#eef7f2;font-weight:bold;">Plan Details</td><td style="padding:10px 12px;background:#eef7f2;"></td></tr>
+                <tr><td style="padding:10px 12px;border-top:1px solid #d7e4de;">Plan</td><td style="padding:10px 12px;border-top:1px solid #d7e4de;font-weight:bold;">{{ plan_name }}</td></tr>
+                <tr><td style="padding:10px 12px;border-top:1px solid #d7e4de;">Paid Amount</td><td style="padding:10px 12px;border-top:1px solid #d7e4de;font-weight:bold;">{{ amount }}</td></tr>
+                <tr><td style="padding:10px 12px;border-top:1px solid #d7e4de;">Invoice</td><td style="padding:10px 12px;border-top:1px solid #d7e4de;">{{ invoice_number }}</td></tr>
+                <tr><td style="padding:10px 12px;border-top:1px solid #d7e4de;">Website</td><td style="padding:10px 12px;border-top:1px solid #d7e4de;"><a href="{{ site_url }}" style="color:#0b6f5d;">{{ site_url }}</a></td></tr>
+              </table>
+
+              <p style="margin:18px 0;font-size:15px;line-height:1.6;">Your invoice PDF and Plan Purchase Agreement are attached with this email. Website/domain/SSL setup may take up to 30 minutes after payment verification.</p>
+              <p style="margin:22px 0;">
+                <a href="{{ dashboard_url }}" style="display:inline-block;background:#0b6f5d;color:#ffffff;text-decoration:none;padding:12px 18px;border-radius:6px;font-weight:bold;">Open Dashboard</a>
+              </p>
+              <p style="margin:0;font-size:13px;line-height:1.6;color:#587069;">For support, reply to this email or contact WhatsApp: {{ company.whatsapp }}.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 28px;background:#f6fbf8;border-top:1px solid #d7e4de;font-size:12px;color:#587069;">
+              {{ company.legal_name }}<br>
+              {{ company.email }}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

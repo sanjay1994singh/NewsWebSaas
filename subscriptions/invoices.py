@@ -1,5 +1,6 @@
 from django.conf import settings
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMessage, EmailMultiAlternatives
+from django.template.loader import render_to_string
 from django.template.defaultfilters import date as date_filter
 from django.utils import timezone
 
@@ -85,6 +86,76 @@ def email_invoice(record):
         to=[record.tenant.email],
     )
     message.attach(invoice_filename(record), pdf, 'application/pdf')
+    message.send(fail_silently=True)
+    return True
+
+
+def agreement_filename(acceptance):
+    return f"Plan-Purchase-Agreement-{acceptance.acquisition.uuid}.txt"
+
+
+def build_agreement_text(acceptance):
+    return (
+        f"{acceptance.agreement_title}\n"
+        f"{'=' * len(acceptance.agreement_title)}\n\n"
+        f"Accepted by: {acceptance.user.get_username()}\n"
+        f"Plan: {acceptance.plan_name or '-'}\n"
+        f"Billing duration: {acceptance.billing_months} month{'s' if acceptance.billing_months != 1 else ''}\n"
+        f"Accepted at: {date_filter(timezone.localtime(acceptance.accepted_at), 'd M Y, h:i A')}\n"
+        f"IP address: {acceptance.ip_address or '-'}\n\n"
+        f"Checkbox text:\n{acceptance.checkbox_label}\n\n"
+        f"Agreement content:\n{acceptance.agreement_content}\n"
+    )
+
+
+def email_purchase_success(record, *, plain_password=''):
+    tenant = record.tenant
+    if not tenant.email:
+        return False
+    company = invoice_company()
+    subscription = record.subscription
+    user = tenant.owner
+    plan_name = subscription.plan.name if subscription else 'Press Nexa subscription'
+    acceptance = (
+        user.purchase_agreement_acceptances
+        .filter(acquisition__tenant=tenant)
+        .select_related('acquisition')
+        .order_by('-accepted_at', '-created_at')
+        .first()
+    )
+    primary_domain = tenant.domains.filter(is_primary=True).first()
+    context = {
+        'company': company,
+        'tenant': tenant,
+        'user': user,
+        'record': record,
+        'subscription': subscription,
+        'plan_name': plan_name,
+        'invoice_number': invoice_number(record),
+        'amount': money_display(record.amount, record.currency),
+        'list_amount': money_display(record.list_amount or record.amount, record.currency),
+        'discount_amount': money_display(record.discount_amount or 0, record.currency),
+        'period_start': record.period_start,
+        'period_end': record.period_end,
+        'dashboard_url': f"{settings.SITE_BASE_URL}/dashboard/",
+        'profile_url': f"{settings.SITE_BASE_URL}/account/profile/",
+        'site_url': f"https://{primary_domain.domain}/" if primary_domain else settings.SITE_BASE_URL,
+        'plain_password': plain_password,
+        'acceptance': acceptance,
+    }
+    subject = f"Press Nexa plan activated - {tenant.publication_name}"
+    text_body = render_to_string('subscriptions/emails/purchase_success.txt', context)
+    html_body = render_to_string('subscriptions/emails/purchase_success.html', context)
+    message = EmailMultiAlternatives(
+        subject=subject,
+        body=text_body,
+        from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', company['email']),
+        to=[tenant.email],
+    )
+    message.attach_alternative(html_body, 'text/html')
+    message.attach(invoice_filename(record), build_invoice_pdf(record), 'application/pdf')
+    if acceptance:
+        message.attach(agreement_filename(acceptance), build_agreement_text(acceptance), 'text/plain')
     message.send(fail_silently=True)
     return True
 

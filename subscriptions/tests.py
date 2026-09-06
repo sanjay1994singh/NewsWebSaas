@@ -5,6 +5,7 @@ from hashlib import sha256
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.core.exceptions import ValidationError
+from django.core import mail
 from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -18,6 +19,7 @@ from themes.models import TenantBranding, ThemeActivation
 
 from .entitlements import get_feature_limit, tenant_has_feature, tenant_feature_limit
 from .forms import CustomerSignupForm
+from .invoices import email_purchase_success
 from .models import (
     AddOn,
     BillingRecord,
@@ -123,6 +125,72 @@ class SubscriptionTests(TestCase):
         self.assertEqual(subscription.entitlement_snapshot['news_articles']['limit_value'], 100)
         self.assertEqual(invoice.entitlement_snapshot['news_articles']['limit_value'], 100)
         self.assertEqual(tenant_feature_limit(self.tenant, 'news_articles'), 100)
+
+    @override_settings(EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend', DEFAULT_FROM_EMAIL='Press Nexa <support@example.com>')
+    def test_purchase_success_email_includes_invoice_agreement_and_login_details(self):
+        subscription = TenantSubscription.objects.create(
+            tenant=self.tenant,
+            plan=self.plan,
+            billing_cycle=PlanPrice.BillingCycle.MONTHLY,
+            billing_months=1,
+            status=TenantSubscription.Status.ACTIVE,
+            current_period_start=timezone.now(),
+            current_period_end=timezone.now() + timezone.timedelta(days=30),
+        )
+        acquisition = CustomerAcquisition.objects.create(
+            user=self.user,
+            plan_price=self.price,
+            tenant=self.tenant,
+            business_name=self.tenant.business_name,
+            publication_name=self.tenant.publication_name,
+            publication_slug=self.tenant.slug,
+            email=self.tenant.email,
+            mobile='8279408396',
+            status=CustomerAcquisition.Status.TENANT_CREATED,
+            payable_amount=39900,
+        )
+        agreement = PlatformPurchaseAgreement.objects.create(
+            title='Plan Purchase Agreement',
+            content='The user accepts Press Nexa plan purchase terms.',
+            checkbox_label='I accept the purchase agreement.',
+            is_active=True,
+        )
+        PurchaseAgreementAcceptance.objects.create(
+            user=self.user,
+            acquisition=acquisition,
+            agreement=agreement,
+            agreement_title=agreement.title,
+            agreement_content=agreement.content,
+            checkbox_label=agreement.checkbox_label,
+            plan_name=self.plan.name,
+            billing_months=1,
+            accepted_at=timezone.now(),
+        )
+        record = BillingRecord.objects.create(
+            tenant=self.tenant,
+            subscription=subscription,
+            razorpay_payment_id='pay_email_test',
+            amount=39900,
+            list_amount=79800,
+            discount_percent=50,
+            discount_amount=39900,
+            billing_months=1,
+            period_start=subscription.current_period_start,
+            period_end=subscription.current_period_end,
+            currency='INR',
+            status='paid',
+        )
+
+        self.assertTrue(email_purchase_success(record, plain_password='customerPass123'))
+
+        self.assertEqual(len(mail.outbox), 1)
+        message = mail.outbox[0]
+        self.assertEqual(message.to, [self.tenant.email])
+        self.assertIn('customerPass123', message.body)
+        self.assertIn(self.user.username, message.body)
+        self.assertEqual(len(message.attachments), 2)
+        self.assertTrue(message.attachments[0][0].endswith('.pdf'))
+        self.assertTrue(message.attachments[1][0].startswith('Plan-Purchase-Agreement-'))
 
     def test_signature_verification_rejects_invalid_signature(self):
         body = b'{"id":"evt_1","event":"order.paid"}'

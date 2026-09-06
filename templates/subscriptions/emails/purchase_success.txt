@@ -1,0 +1,25 @@
+Press Nexa
+
+Hello {{ tenant.publication_name }},
+
+Thank you for purchasing your Press Nexa plan. Your payment has been verified and your publication workspace is now being prepared.
+
+Account Details
+Username: {{ user.username }}
+Email: {{ tenant.email|default:"-" }}
+Mobile: {{ tenant.mobile|default:"-" }}
+{% if plain_password %}Password: {{ plain_password }}
+{% endif %}
+
+Plan Details
+Plan: {{ plan_name }}
+Paid Amount: {{ amount }}
+Invoice: {{ invoice_number }}
+Website: {{ site_url }}
+Dashboard: {{ dashboard_url }}
+
+Your invoice PDF and Plan Purchase Agreement are attached with this email.
+Website/domain/SSL setup may take up to 30 minutes after payment verification.
+
+Support: {{ company.email }}
+WhatsApp: {{ company.whatsapp }}

@@ -21,7 +21,7 @@ from tenants.views import _render_public_tenant_site
 
 from .entitlements import get_effective_entitlement, get_effective_entitlements
 from .forms import CheckoutDurationForm, CustomerSignupForm, CustomerWorkspaceForm, OnboardingForm, ReviewActionForm
-from .invoices import build_invoice_pdf, email_invoice, invoice_filename
+from .invoices import build_invoice_pdf, email_purchase_success, invoice_filename
 from .models import (
     AddOn,
     BillingRecord,
@@ -401,6 +401,7 @@ def signup(request):
             )
             login(request, acquisition.user)
             request.session['pending_checkout'] = checkout
+            request.session[f'acquisition_plain_password:{acquisition.uuid}'] = form.cleaned_data['password']
             record_purchase_agreement_acceptance(
                 user=acquisition.user,
                 acquisition=acquisition,
@@ -539,7 +540,8 @@ def verify_subscription(request, acquisition_id):
     billing_record = BillingRecord.objects.filter(tenant=tenant, status='paid').order_by('-created_at').first()
     invoice_document_url = ''
     if billing_record:
-        email_invoice(billing_record)
+        plain_password = request.session.pop(f'acquisition_plain_password:{acquisition.uuid}', '')
+        email_purchase_success(billing_record, plain_password=plain_password)
         token = signing.dumps({'record_id': billing_record.id}, salt=WHATSAPP_INVOICE_SIGNER_SALT)
         invoice_document_url = request.build_absolute_uri(
             reverse('subscriptions:whatsapp_invoice_pdf', kwargs={'token': token})
@@ -853,6 +855,13 @@ def upgrade_plan(request):
                     payment_reference=f'credit_{plan_change.uuid.hex[:24]}',
                     provider_payload={'source': 'credit_only_upgrade'},
                 )
+                billing_record = BillingRecord.objects.filter(
+                    tenant=tenant,
+                    razorpay_payment_id=f'credit_{plan_change.uuid.hex[:24]}',
+                    status='paid',
+                ).order_by('-created_at').first()
+                if billing_record:
+                    email_purchase_success(billing_record)
                 messages.success(request, 'Plan updated using your remaining balance credit.')
                 return redirect('subscriptions:upgrade_plan')
         except ValidationError as exc:
@@ -997,6 +1006,13 @@ def verify_plan_upgrade(request, plan_change_id):
             'source': 'upgrade_verify',
         },
     )
+    billing_record = BillingRecord.objects.filter(
+        tenant=tenant,
+        razorpay_payment_id=payment_id,
+        status='paid',
+    ).order_by('-created_at').first()
+    if billing_record:
+        email_purchase_success(billing_record)
     messages.success(request, 'Plan upgraded successfully. Billing history and invoice record are saved.')
     return redirect('subscriptions:upgrade_plan')
 
