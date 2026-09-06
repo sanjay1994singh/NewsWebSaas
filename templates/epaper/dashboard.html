@@ -14,11 +14,14 @@
 <body>
   <main>
     <h1>E-Paper</h1>
+    {% for message in messages %}<p role="status">{{ message }}</p>{% endfor %}
     {% if can_upload %}<a class="btn" href="{% url 'epaper:create_edition' %}">Add Edition</a>{% endif %}
     {% for edition in editions %}
       <article class="card">
         <h2>{{ edition.title }}</h2>
         <p>{{ edition.publication_date }} / {{ edition.city }} / {{ edition.get_status_display }}</p>
+        {% if edition.status == "processing" %}<p>Preparing fast reader pages. Refresh shortly to check progress.</p>{% endif %}
+        {% if edition.status == "failed" %}<p>Page preparation failed. Check the PDF and upload a valid, unlocked file.</p>{% endif %}
         {% if edition.status == "ready" %}
           <form method="post" action="{% url 'epaper:publish_edition' edition.uuid %}">
             {% csrf_token %}

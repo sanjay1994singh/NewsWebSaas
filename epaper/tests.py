@@ -109,6 +109,8 @@ class EditionUploadRegressionTests(SimpleTestCase):
         from uuid import uuid4
         tenant = owned.return_value
         edition = get_edition.return_value
+        edition.status = 'ready'
+        edition.pages.exists.return_value = True
         identifier = uuid4()
         request = RequestFactory().post('/dashboard/epaper/publish/')
         request.user = Mock(is_authenticated=True)
@@ -147,8 +149,9 @@ class PublicReaderAccessTests(SimpleTestCase):
         from django.contrib.auth.models import AnonymousUser
         request.user = AnonymousUser()
         request.tenant = SimpleNamespace(pk=1, slug='paper', publication_name='Paper', business_name='Paper')
-        query.return_value = []
-        response = public_epaper_home(request)
+        query.return_value.first.return_value = None
+        with patch('epaper.views._reader_context', return_value=SimpleNamespace(status_code=200)):
+            response = public_epaper_home(request)
         self.assertEqual(response.status_code, 200)
         query.assert_called_once_with(tenant=request.tenant, status=EPaperEdition.Status.PUBLISHED)
 
@@ -178,6 +181,7 @@ class PublicReaderAccessTests(SimpleTestCase):
         request.user = AnonymousUser()
         request.tenant = SimpleNamespace(slug='paper', business_name='Paper')
         lookup.return_value = EPaperEdition(title='Latest', slug='latest', pdf_file='epaper/pdfs/latest.pdf')
-        response = epaper_reader(request, slug='latest')
+        with patch('epaper.views._reader_context', return_value=SimpleNamespace(status_code=200)):
+            response = epaper_reader(request, slug='latest')
         self.assertEqual(response.status_code, 200)
         lookup.assert_called_once_with(EPaperEdition, tenant=request.tenant, slug='latest', status=EPaperEdition.Status.PUBLISHED)

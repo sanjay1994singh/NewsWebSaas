@@ -1,33 +1,51 @@
+{% load static %}
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ edition.title }}</title>
-  <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #111; color: #fff; }
-    .toolbar { position: sticky; top: 0; z-index: 2; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 12px; background: #13201b; }
-    button, a { border: 1px solid #45655a; border-radius: 6px; background: #20382f; color: #fff; padding: 9px 12px; text-decoration: none; cursor: pointer; }
-    iframe { width: 100%; height: calc(100vh - 64px); border: 0; background: #fff; transform-origin: top center; }
-  </style>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% if edition %}{{ edition.title }} · {% endif %}{{ tenant.publication_name }} E-Paper</title>
+  <meta name="description" content="Read {{ tenant.publication_name }} E-Paper online. Browse editions, zoom in and read every page.">
+  <link rel="canonical" href="{{ share_url }}">
+  <meta property="og:title" content="{{ tenant.publication_name }} E-Paper"><meta property="og:url" content="{{ share_url }}">
+  {% if initial_page %}<meta property="og:image" content="{{ initial_page.image }}">{% endif %}
+  <link rel="stylesheet" href="{% static 'epaper/reader.css' %}">
 </head>
 <body>
-  <div class="toolbar">
-    <a href="{% if domain_reader %}{% url 'epaper:domain_home' %}{% else %}{% url 'epaper:public_home' tenant.slug %}{% endif %}">E-Paper editions</a>
-    <strong>{{ edition.title }}</strong>
-    <button type="button" onclick="zoom(0.1)">Zoom In</button>
-    <button type="button" onclick="zoom(-0.1)">Zoom Out</button>
-    <button type="button" onclick="document.documentElement.requestFullscreen()">Fullscreen</button>
-    {% if edition.allow_download %}<a href="{% if domain_reader %}{% url 'epaper:domain_download' edition.slug %}{% else %}{% url 'epaper:download' tenant.slug edition.slug %}{% endif %}">Download</a>{% endif %}
-  </div>
-  <iframe id="reader" src="{{ edition.pdf_file.url }}"></iframe>
-  <script>
-    let scale = 1;
-    function zoom(delta) {
-      scale = Math.max(0.7, Math.min(1.8, scale + delta));
-      document.getElementById('reader').style.transform = `scale(${scale})`;
-      document.getElementById('reader').style.width = `${100 / scale}%`;
-    }
-  </script>
+  <header class="brandbar"><a class="brand" href="{{ site_home_url }}"><span class="brand-mark">{{ tenant.publication_name|first }}</span><span>{{ tenant.publication_name }}<small>THE DAILY E-PAPER</small></span></a><nav aria-label="Publication"><a href="{{ site_home_url }}">Home</a><a class="active" href="{{ reader_home_url }}" aria-current="page">E-Paper</a></nav></header>
+  <main id="reader" data-edition-url="{{ edition_url }}" data-index="{{ initial_index }}" data-bookmark-key="{{ bookmark_key }}">
+    <div class="toolbar">
+      <form class="filters" action="{{ reader_home_url }}" method="get">
+        <label>City<select name="city"><option value="">All cities</option>{% for city in cities %}<option {% if city == selected_city %}selected{% endif %}>{{ city }}</option>{% endfor %}</select></label>
+        <label>Edition<select name="edition"><option value="">All editions</option>{% for name in edition_names %}<option {% if name == selected_name %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
+        <label>Date<input type="date" name="date" value="{{ selected_date }}"></label><button type="submit" class="apply">Show</button>
+      </form>
+      {% if pages %}<div class="tools" aria-label="Reader tools">
+        <button type="button" data-action="zoom-out" aria-label="Zoom out">−</button><button type="button" data-action="fit" id="zoomLabel" title="Fit page">100%</button><button type="button" data-action="zoom-in" aria-label="Zoom in">+</button>
+        <button type="button" data-action="fullscreen">Fullscreen</button><button type="button" data-action="bookmark" id="bookmark" aria-pressed="false">☆ Save page</button>
+        {% if edition.allow_download %}<button type="button" data-action="clip" id="clipToggle" aria-pressed="false">✂ Clip</button>{% endif %}
+        <button type="button" data-action="share">Share</button>
+        <a id="whatsapp" class="whatsapp" href="https://wa.me/?text={{ share_url|urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
+        {% if edition.allow_download %}<a href="{% if domain_reader %}{% url 'epaper:domain_download' edition.slug %}{% else %}{% url 'epaper:download' tenant.slug edition.slug %}{% endif %}">PDF ↓</a>{% endif %}
+      </div>{% endif %}
+    </div>
+    {% if pages %}
+      <div class="edition-line"><span>{{ edition.title }}{% if edition.city %} · {{ edition.city }}{% endif %}</span><span>{{ edition.publication_date|date:"d M Y" }} · {{ pages|length }} pages</span></div>
+      <div class="stage" id="stage">
+        <div class="paper" id="paper"><img id="pageImage" src="{{ initial_page.image }}" srcset="{{ initial_page.mobile }} 1000w, {{ initial_page.image }} 1800w" sizes="(max-width: 700px) 100vw, 1200px" width="{{ initial_page.width }}" height="{{ initial_page.height }}" alt="{{ edition.title }} — page {{ initial_page.number }}" fetchpriority="high" decoding="async" crossorigin="anonymous"><div id="selection" hidden></div></div>
+      </div>
+      <div class="load-status" id="loadStatus" role="status" aria-live="polite"></div>
+      <button type="button" class="side previous" data-action="previous" aria-label="Previous page">❮</button><button type="button" class="side next" data-action="next" aria-label="Next page">❯</button>
+      <nav class="pager" aria-label="Page navigation"><button type="button" data-action="pages">▦ <span>All pages</span></button><button type="button" data-action="first" aria-label="First page">|‹</button><button type="button" data-action="previous" aria-label="Previous page">‹</button><label>Page <select id="pageSelect" aria-label="Select page">{% for page in pages %}<option value="{{ forloop.counter0 }}" {% if forloop.counter0 == initial_index %}selected{% endif %}>{{ page.number }}</option>{% endfor %}</select> / {{ pages|length }}</label><button type="button" data-action="next" aria-label="Next page">›</button><button type="button" data-action="last" aria-label="Last page">›|</button></nav>
+      <dialog id="pagesDialog"><div class="dialog-head"><h2>All pages</h2><button type="button" data-close aria-label="Close all pages">×</button></div><p>Select any page to start reading.</p><div class="thumbnails" id="thumbnails"></div><h3>Saved pages</h3><div id="savedPages"></div></dialog>
+      <dialog id="clipDialog"><div class="dialog-head"><h2>Your newspaper clipping</h2><button type="button" data-close aria-label="Close clipping">×</button></div><img id="clipPreview" alt="Selected newspaper clipping"><a id="clipDownload" class="download" download="newspaper-clip.png">Download clipping</a></dialog>
+      <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    {% elif edition %}
+      <section class="empty"><span class="eyebrow">{{ edition.publication_date|date:"d M Y" }}</span><h1>{{ edition.title }}</h1><p>The page reader is being prepared for this edition.</p>{% if edition.allow_download %}<a href="{% if domain_reader %}{% url 'epaper:domain_download' edition.slug %}{% else %}{% url 'epaper:download' tenant.slug edition.slug %}{% endif %}">Download PDF</a>{% endif %}<a href="{{ reader_home_url }}">Check latest edition</a></section>
+    {% else %}
+      <section class="empty"><span class="eyebrow">{{ tenant.publication_name }}</span><h1>No edition available</h1><p>{{ filter_error|default:"No published E-Paper matches this selection. Try another date or edition." }}</p><a href="{{ reader_home_url }}">View latest edition</a></section>
+    {% endif %}
+    {{ pages|json_script:"readerPages" }}
+  </main>
+  <script src="{% static 'epaper/reader.js' %}" defer></script>
 </body>
 </html>

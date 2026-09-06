@@ -9,3 +9,5 @@ bleach>=6.2
 Pillow>=11.0
 dnspython>=2.7
 razorpay>=1.4
+
+PyMuPDF>=1.28.2,<1.29

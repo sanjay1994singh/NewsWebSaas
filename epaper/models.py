@@ -41,3 +41,18 @@ class EPaperEdition(UUIDModel, TimeStampedModel):
 
     def __str__(self):
         return f"{self.tenant} - {self.title}"
+
+
+class EPaperPage(models.Model):
+    edition = models.ForeignKey(EPaperEdition, related_name='pages', on_delete=models.CASCADE)
+    number = models.PositiveIntegerField()
+    image = models.ImageField(upload_to='epaper/pages/')
+    mobile_image = models.ImageField(upload_to='epaper/pages/')
+    zoom_image = models.ImageField(upload_to='epaper/pages/')
+    thumbnail = models.ImageField(upload_to='epaper/pages/')
+    width = models.PositiveIntegerField()
+    height = models.PositiveIntegerField()
+
+    class Meta:
+        ordering = ['number']
+        constraints = [models.UniqueConstraint(fields=['edition', 'number'], name='unique_epaper_page_number')]

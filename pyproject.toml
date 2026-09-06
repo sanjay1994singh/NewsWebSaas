@@ -12,6 +12,7 @@ dependencies = [
     "python-dotenv>=1.0",
     "bleach>=6.2",
     "Pillow>=11.0",
+    "PyMuPDF>=1.28.2,<1.29",
     "dnspython>=2.7",
     "razorpay>=1.4",
 ]
