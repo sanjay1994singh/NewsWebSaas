@@ -37,6 +37,11 @@ class Tenant(UUIDModel, TimeStampedModel):
             models.Index(fields=['owner', 'status']),
         ]
 
+    @property
+    def public_name(self):
+        """Channel identity for readers; never fall back to the publisher's name."""
+        return (self.business_name or '').strip() or 'News'
+
     def __str__(self):
         return self.publication_name
 

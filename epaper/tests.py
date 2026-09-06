@@ -148,7 +148,7 @@ class PublicReaderAccessTests(SimpleTestCase):
         request = RequestFactory().get('/epaper/')
         from django.contrib.auth.models import AnonymousUser
         request.user = AnonymousUser()
-        request.tenant = SimpleNamespace(pk=1, slug='paper', publication_name='Paper', business_name='Paper')
+        request.tenant = SimpleNamespace(pk=1, slug='paper', publication_name='Paper', business_name='Paper', public_name='Paper')
         query.return_value.first.return_value = None
         with patch('epaper.views._reader_context', return_value=SimpleNamespace(status_code=200)):
             response = public_epaper_home(request)
@@ -163,7 +163,7 @@ class PublicReaderAccessTests(SimpleTestCase):
         request = RequestFactory().get('/epaper/')
         from django.contrib.auth.models import AnonymousUser
         request.user = AnonymousUser()
-        request.tenant = SimpleNamespace(slug='paper', business_name='Paper')
+        request.tenant = SimpleNamespace(slug='paper', business_name='Paper', public_name='Paper')
         with self.assertRaises(Http404):
             _public_tenant(request)
         enabled.return_value = True
@@ -179,7 +179,7 @@ class PublicReaderAccessTests(SimpleTestCase):
         request = RequestFactory().get('/epaper/latest/')
         from django.contrib.auth.models import AnonymousUser
         request.user = AnonymousUser()
-        request.tenant = SimpleNamespace(slug='paper', business_name='Paper')
+        request.tenant = SimpleNamespace(slug='paper', business_name='Paper', public_name='Paper')
         lookup.return_value = EPaperEdition(title='Latest', slug='latest', pdf_file='epaper/pdfs/latest.pdf')
         with patch('epaper.views._reader_context', return_value=SimpleNamespace(status_code=200)):
             response = epaper_reader(request, slug='latest')

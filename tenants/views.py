@@ -169,6 +169,11 @@ def tenant_dashboard(request):
         for code, label, url in feature_menu
         if entitlements.get(code, {}).get('is_enabled')
     ]
+    youtube_items = [item for item in visible_menu if item['code'] in {'youtube_videos', 'youtube_shorts'}]
+    if youtube_items:
+        first_youtube = youtube_items[0]
+        first_youtube['label'] = 'YouTube Setup'
+        visible_menu = [item for item in visible_menu if item not in youtube_items or item is first_youtube]
     return render(
         request,
         'tenants/tenant_dashboard.html',
@@ -441,7 +446,7 @@ def public_article_detail(request, uuid):
     if article.featured_image:
         meta['og_image'] = request.build_absolute_uri(article.featured_image.url)
     share_url = request.build_absolute_uri(article_public_path(article))
-    share_text = f"{article.title} - {tenant.business_name or tenant.publication_name}"
+    share_text = f"{article.title} - {tenant.public_name}"
     footer_pages = list(
         Page.objects
         .filter(tenant=tenant, is_published=True, menu_items__menu__location=Menu.Location.FOOTER, menu_items__is_enabled=True)

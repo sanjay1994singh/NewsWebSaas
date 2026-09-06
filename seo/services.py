@@ -56,7 +56,7 @@ def article_json_ld(article):
         'author': {'@type': 'Person', 'name': article.author.display_name},
         'publisher': {
             '@type': 'NewsMediaOrganization',
-            'name': article.tenant.publication_name,
+            'name': article.tenant.public_name,
         },
         'mainEntityOfPage': article_meta(article)['canonical'],
     }

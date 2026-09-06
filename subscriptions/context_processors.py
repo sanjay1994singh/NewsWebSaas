@@ -33,7 +33,7 @@ def _customer_tenant_context(user):
 def customer_navigation(request):
     user = request.user
     tenant_domain_tenant = getattr(request, 'tenant', None)
-    site_brand_name = tenant_domain_tenant.business_name if tenant_domain_tenant else 'Press Nexa'
+    site_brand_name = tenant_domain_tenant.public_name if tenant_domain_tenant else 'Press Nexa'
     is_tenant_domain = tenant_domain_tenant is not None
     fallback_links = [
         {'label': 'Pricing', 'url': reverse('public_saas_landing')},

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ tenant.publication_name }} E-Paper</title>
+  <title>{{ tenant.public_name }} E-Paper</title>
   <style>
     body { margin: 0; font-family: Arial, sans-serif; color: #13201b; background: #fff; }
     main { width: min(1080px, calc(100% - 32px)); margin: 32px auto; }
@@ -15,7 +15,7 @@
 <body>
   <main>
     <a href="{% if domain_reader %}/{% else %}/site/{{ tenant.slug }}/{% endif %}">Home</a>
-    <h1>{{ tenant.publication_name }} E-Paper</h1>
+    <h1>{{ tenant.public_name }} E-Paper</h1>
     <div class="grid">
       {% for edition in editions %}
         <article class="card">

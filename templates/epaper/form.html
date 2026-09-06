@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Add E-Paper · {{ tenant.publication_name }}</title>
+  <title>Add E-Paper · {{ tenant.public_name }}</title>
   <style>
     :root { --brand:#15614f; --ink:#13201b; --muted:#61736b; --line:#d9e5df; }
     * { box-sizing:border-box; }
@@ -46,7 +46,7 @@
 <body>
   <main>
     <a class="back" href="{% url 'epaper:dashboard' %}">&larr; Back to E-Paper</a>
-    <header><div><p class="eyebrow">Publication workspace</p><h1>Add E-Paper Edition</h1><p>Prepare your latest edition for readers, all in one place.</p></div><span class="badge">{{ tenant.publication_name }}</span></header>
+    <header><div><p class="eyebrow">Publication workspace</p><h1>Add E-Paper Edition</h1><p>Prepare your latest edition for readers, all in one place.</p></div><span class="badge">{{ tenant.public_name }}</span></header>
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
       {% if form.errors %}<div class="errors" role="alert">Please check the fields below.{{ form.non_field_errors }}</div>{% endif %}

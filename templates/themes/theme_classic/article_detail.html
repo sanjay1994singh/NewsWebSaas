@@ -8,7 +8,7 @@
   {% if meta.robots %}<meta name="robots" content="{{ meta.robots }}">{% endif %}
   {% if meta.canonical %}<link rel="canonical" href="{{ meta.canonical }}">{% endif %}
   <meta property="og:type" content="{{ meta.og_type|default:'article' }}">
-  <meta property="og:site_name" content="{{ tenant.business_name|default:tenant.publication_name }}">
+  <meta property="og:site_name" content="{{ tenant.public_name }}">
   <meta property="og:title" content="{{ meta.og_title|default:article.title }}">
   {% if meta.og_description %}<meta property="og:description" content="{{ meta.og_description }}">{% endif %}
   <meta property="og:url" content="{{ share_url }}">
@@ -93,14 +93,14 @@
 <body>
   <div class="topbar">
     <div class="wrap">
-      <span>{{ tenant.business_name|default:tenant.publication_name }} News Network</span>
+      <span>{{ tenant.public_name }} News Network</span>
       <span>Trusted digital updates</span>
     </div>
   </div>
 
   <header class="wrap masthead">
     <a class="brand" href="/">
-      {% with site_name=tenant.business_name|default:tenant.publication_name %}
+      {% with site_name=tenant.public_name %}
         <span class="brand-mark">{{ site_name|first }}</span>
         <span class="brand-copy">
           <span class="site-title">{{ site_name }}</span>
@@ -185,7 +185,7 @@
   <footer>
     <div class="wrap footer-row">
       <div>
-        <strong>{{ tenant.business_name|default:tenant.publication_name }}</strong>
+        <strong>{{ tenant.public_name }}</strong>
         <p>For updates, keep visiting this website.</p>
       </div>
       {% if footer_pages %}

@@ -3,15 +3,15 @@
 <html lang="en">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{% if edition %}{{ edition.title }} · {% endif %}{{ tenant.publication_name }} E-Paper</title>
-  <meta name="description" content="Read {{ tenant.publication_name }} E-Paper online. Browse editions, zoom in and read every page.">
+  <title>{% if edition %}{{ edition.title }} · {% endif %}{{ tenant.public_name }} E-Paper</title>
+  <meta name="description" content="Read {{ tenant.public_name }} E-Paper online. Browse editions, zoom in and read every page.">
   <link rel="canonical" href="{{ share_url }}">
-  <meta property="og:title" content="{{ tenant.publication_name }} E-Paper"><meta property="og:url" content="{{ share_url }}">
+  <meta property="og:title" content="{{ tenant.public_name }} E-Paper"><meta property="og:url" content="{{ share_url }}">
   {% if initial_page %}<meta property="og:image" content="{{ initial_page.image }}">{% endif %}
   <link rel="stylesheet" href="{% static 'epaper/reader.css' %}">
 </head>
 <body>
-  <header class="brandbar"><a class="brand" href="{{ site_home_url }}"><span class="brand-mark">{{ tenant.publication_name|first }}</span><span>{{ tenant.publication_name }}<small>THE DAILY E-PAPER</small></span></a><nav aria-label="Publication"><a href="{{ site_home_url }}">Home</a><a class="active" href="{{ reader_home_url }}" aria-current="page">E-Paper</a></nav></header>
+  <header class="brandbar"><a class="brand" href="{{ site_home_url }}"><span class="brand-mark">{{ tenant.public_name|first }}</span><span>{{ tenant.public_name }}<small>THE DAILY E-PAPER</small></span></a><nav aria-label="Publication"><a href="{{ site_home_url }}">Home</a><a class="active" href="{{ reader_home_url }}" aria-current="page">E-Paper</a></nav></header>
   <main id="reader" data-edition-url="{{ edition_url }}" data-index="{{ initial_index }}" data-bookmark-key="{{ bookmark_key }}">
     <div class="toolbar">
       <form class="filters" action="{{ reader_home_url }}" method="get">
@@ -42,7 +42,7 @@
     {% elif edition %}
       <section class="empty"><span class="eyebrow">{{ edition.publication_date|date:"d M Y" }}</span><h1>{{ edition.title }}</h1><p>The page reader is being prepared for this edition.</p>{% if edition.allow_download %}<a href="{% if domain_reader %}{% url 'epaper:domain_download' edition.slug %}{% else %}{% url 'epaper:download' tenant.slug edition.slug %}{% endif %}">Download PDF</a>{% endif %}<a href="{{ reader_home_url }}">Check latest edition</a></section>
     {% else %}
-      <section class="empty"><span class="eyebrow">{{ tenant.publication_name }}</span><h1>No edition available</h1><p>{{ filter_error|default:"No published E-Paper matches this selection. Try another date or edition." }}</p><a href="{{ reader_home_url }}">View latest edition</a></section>
+      <section class="empty"><span class="eyebrow">{{ tenant.public_name }}</span><h1>No edition available</h1><p>{{ filter_error|default:"No published E-Paper matches this selection. Try another date or edition." }}</p><a href="{{ reader_home_url }}">View latest edition</a></section>
     {% endif %}
     {{ pages|json_script:"readerPages" }}
   </main>

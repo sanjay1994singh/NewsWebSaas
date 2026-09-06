@@ -1,45 +1,27 @@
 <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>E-Paper Dashboard</title>
-  <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #f7faf8; color: #13201b; }
-    main { width: min(1040px, calc(100% - 32px)); margin: 32px auto; }
-    .card { background: #fff; border: 1px solid #d8e1dc; border-radius: 8px; padding: 18px; margin: 12px 0; }
-    .btn { display: inline-block; border: 0; border-radius: 6px; background: #16614f; color: #fff; padding: 10px 14px; text-decoration: none; font-weight: 700; cursor: pointer; }
-    .progress { display:flex; align-items:center; gap:18px; margin:18px 0; }
-    .ring { --progress:0; width:76px; height:76px; flex-shrink:0; border-radius:50%; background:conic-gradient(#189b58 calc(var(--progress)*1%),#e4ece6 0); display:grid; place-items:center; }
-    .ring span { display:grid; place-items:center; width:60px; height:60px; border-radius:50%; background:white; color:#16614f; font-weight:bold; }
-    .btn-danger { background:#fff; color:#b42318; border:1px solid #eab9b5; margin-top:12px; }
-  </style>
-</head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>E-Paper workspace · {{ tenant.public_name }}</title><style>
+:root{--brand:#16614f;--ink:#173c32;--muted:#6d8077;--line:#dce7e0}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f2f6f3;color:var(--ink);line-height:1.5}a{color:inherit}.top{background:#fff;border-bottom:1px solid var(--line);padding:16px max(24px,calc((100vw - 1160px)/2));display:flex;justify-content:space-between;align-items:center;gap:20px}.brand{font-size:19px;font-weight:800;display:flex;gap:12px;align-items:center}.mark{background:var(--brand);color:#fff;border-radius:10px;width:40px;height:40px;display:grid;place-items:center}.back{font-size:13px;text-decoration:none;color:var(--muted)}main{width:min(1160px,calc(100% - 40px));margin:32px auto 60px}.hero{display:flex;align-items:center;justify-content:space-between;gap:20px;background:linear-gradient(110deg,#e5f0e9,#fff);border:1px solid var(--line);padding:28px 30px;border-radius:18px}.eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:var(--brand);margin:0 0 8px}h1{font-size:34px;letter-spacing:-1px;margin:0 0 8px}.muted{color:var(--muted);font-size:14px;margin:0}.btn{display:inline-flex;justify-content:center;align-items:center;padding:10px 16px;min-height:42px;border:1px solid var(--brand);border-radius:8px;background:var(--brand);color:white;font:inherit;font-size:13px;font-weight:700;text-decoration:none;cursor:pointer;white-space:nowrap}.secondary{background:white;color:var(--brand);border-color:var(--line)}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:22px 0 30px}.stat{padding:18px 20px;border-radius:12px;border:1px solid var(--line);background:#fff}.stat strong{display:block;font-size:26px}.stat span{font-size:12px;color:var(--muted)}.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.section-head h2{font-size:19px;margin:0}.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px;margin-bottom:14px;display:grid;grid-template-columns:108px minmax(0,1fr) auto;gap:24px;align-items:center;box-shadow:0 5px 20px #143c2a04}.preview{height:142px;border:1px solid var(--line);border-radius:7px;background:#f1f6f2;display:grid;place-items:center;overflow:hidden}.preview img{height:100%;width:100%;object-fit:contain}.placeholder{text-align:center;color:#82988b;font-size:12px}.placeholder b{display:block;font-size:36px;line-height:1.3}.card h3{font-size:20px;margin:8px 0;overflow-wrap:anywhere}.badge{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;background:#eef2ef;color:#68796f;padding:5px 9px;border-radius:20px;display:inline-block}.badge.published{background:#e4f5e9;color:#247944}.badge.ready{background:#e5f0fc;color:#2d638b}.badge.processing{background:#fff4d9;color:#916b16}.badge.failed{background:#fff0eb;color:#ac4338}.meta{display:flex;gap:8px 16px;flex-wrap:wrap;font-size:12px;color:var(--muted)}.actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end;max-width:240px}.actions form{margin:0}.btn-danger{background:#fff;color:#ad493c;border-color:#efd7d2}.progress{display:flex;align-items:center;gap:12px;margin-top:14px}.ring{--progress:0;width:54px;height:54px;flex-shrink:0;border-radius:50%;background:conic-gradient(#189b58 calc(var(--progress)*1%),#e4ece6 0);display:grid;place-items:center}.ring span{display:grid;place-items:center;width:42px;height:42px;border-radius:50%;background:#fff;color:var(--brand);font-size:12px;font-weight:700}.progress-message{font-size:12px;color:var(--muted);margin:0}.notice{background:#fff;border:1px solid var(--line);padding:12px 18px;border-radius:8px;font-size:13px}.empty{text-align:center;padding:55px 20px;background:white;border:1px dashed #bfd2c5;border-radius:16px}.empty h3{font-size:22px;margin:0 0 10px}.empty .btn{margin-top:20px}button:focus-visible,a:focus-visible{outline:3px solid #e6b447;outline-offset:3px}@media(max-width:700px){.top{padding:14px 16px}.brand{font-size:16px}main{width:calc(100% - 24px);margin-top:18px}.hero{padding:22px;align-items:flex-start;flex-direction:column}h1{font-size:29px}.stats{grid-template-columns:repeat(2,1fr);gap:10px;margin:16px 0 24px}.stat{padding:12px 16px}.card{grid-template-columns:76px minmax(0,1fr);gap:14px;padding:16px}.preview{height:108px}.card h3{font-size:17px}.actions{grid-column:1/-1;justify-content:flex-start;max-width:none;border-top:1px solid var(--line);padding-top:14px}.section-head .muted{font-size:11px}}
+</style></head>
 <body>
-  <main>
-    <h1>E-Paper</h1>
-    {% for message in messages %}<p role="status">{{ message }}</p>{% endfor %}
-    {% if can_upload %}<a class="btn" href="{% url 'epaper:create_edition' %}">Add Edition</a>{% endif %}
-    {% for edition in editions %}
-      <article class="card">
-        <h2>{{ edition.title }}</h2>
-        <p>{{ edition.publication_date }} / {{ edition.city }} / {{ edition.get_status_display }}</p>
-        {% if edition.status == "processing" %}<div class="progress" data-progress-id="{{ edition.uuid }}"><div class="ring" role="progressbar" aria-label="Page preparation" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ edition.progress.percent|default:0 }}" style="--progress:{{ edition.progress.percent|default:0 }}"><span>{{ edition.progress.percent|default:0 }}%</span></div><p class="progress-message" role="status">{{ edition.progress.message|default:"Waiting for the processing worker." }}</p></div>{% endif %}
-        {% if edition.status == "failed" %}<p>Page preparation failed. Check the PDF and upload a valid, unlocked file.</p>{% endif %}
-        {% if edition.status == "ready" %}
-          <form method="post" action="{% url 'epaper:publish_edition' edition.uuid %}">
-            {% csrf_token %}
-            <button class="btn" type="submit">Publish</button>
-          </form>
-        {% endif %}
-        <form method="post" action="{% url 'epaper:delete_edition' edition.uuid %}" onsubmit="return confirm('Delete this E-Paper permanently? Its PDF and all page images will also be removed. This cannot be undone.');">
-          {% csrf_token %}<button class="btn btn-danger" type="submit">Delete E-Paper</button>
-        </form>
-      </article>
-    {% empty %}
-      <p>No ePaper editions yet.</p>
-    {% endfor %}
-  </main>
+<header class="top"><div class="brand"><span class="mark">{{ tenant.public_name|first }}</span>{{ tenant.public_name }}</div><a class="back" href="{% url 'tenants:tenant_dashboard' %}">&larr; Dashboard</a></header>
+<main>
+<section class="hero"><div><p class="eyebrow">Publication workspace</p><h1>Your E-Paper desk</h1><p class="muted">Upload, prepare and publish your daily editions in one place.</p></div>{% if can_upload %}<a class="btn" href="{% url 'epaper:create_edition' %}">+ Add edition</a>{% endif %}</section>
+{% for message in messages %}<p class="notice" role="status">{{ message }}</p>{% endfor %}
+<section class="stats" aria-label="Edition summary"><div class="stat"><strong>{{ editions|length }}</strong><span>Total editions</span></div><div class="stat"><strong>{{ published_count|default:0 }}</strong><span>Published</span></div><div class="stat"><strong>{{ ready_count|default:0 }}</strong><span>Ready to publish</span></div><div class="stat"><strong>{{ processing_count|default:0 }}</strong><span>Processing</span></div></section>
+<div class="section-head"><h2>Edition library</h2><span class="muted">Latest editions first</span></div>
+{% for edition in editions %}
+<article class="card">
+<div class="preview">{% if edition.preview_pages %}<img src="{{ edition.preview_pages.0.thumbnail.url }}" alt="First page of {{ edition.title }}" loading="lazy">{% else %}<div class="placeholder"><b>▤</b>E-PAPER</div>{% endif %}</div>
+<div><span class="badge {{ edition.status }}">{{ edition.get_status_display }}</span><h3>{{ edition.title }}</h3><div class="meta"><span>{{ edition.publication_date|date:"d M Y" }}</span>{% if edition.city %}<span>{{ edition.city }}</span>{% endif %}{% if edition.edition_name %}<span>{{ edition.edition_name }}</span>{% endif %}{% if edition.page_count %}<span>{{ edition.page_count }} pages</span>{% endif %}</div>
+{% if edition.status == "processing" %}<div class="progress" data-progress-id="{{ edition.uuid }}"><div class="ring" role="progressbar" aria-label="Page preparation" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ edition.progress.percent|default:0 }}" style="--progress:{{ edition.progress.percent|default:0 }}"><span>{{ edition.progress.percent|default:0 }}%</span></div><p class="progress-message" role="status">{{ edition.progress.message|default:"Waiting for the processing worker." }}</p></div>{% endif %}
+{% if edition.status == "failed" %}<p class="progress-message">Page preparation failed. Check the PDF and upload a valid, unlocked file.</p>{% endif %}
+</div><div class="actions">
+{% if edition.status == "published" %}<a class="btn secondary" href="{% url 'epaper:reader' tenant.slug edition.slug %}" target="_blank" rel="noopener">Read edition ↗</a>{% endif %}
+{% if edition.status == "ready" %}<form method="post" action="{% url 'epaper:publish_edition' edition.uuid %}">{% csrf_token %}<button class="btn" type="submit">Publish edition</button></form>{% endif %}
+<form method="post" action="{% url 'epaper:delete_edition' edition.uuid %}" onsubmit="return confirm('Delete this E-Paper permanently? Its PDF and all page images will also be removed. This cannot be undone.');">{% csrf_token %}<button class="btn btn-danger" type="submit">Delete E-Paper</button></form>
+</div></article>
+{% empty %}<section class="empty"><p class="eyebrow">Your next edition starts here</p><h3>Bring your newspaper online</h3><p class="muted">Add a PDF to create a fast, page-by-page reading experience.</p>{% if can_upload %}<a class="btn" href="{% url 'epaper:create_edition' %}">Upload your first edition</a>{% endif %}</section>{% endfor %}
+</main>
 <script>
 (() => {
   const cards = Array.from(document.querySelectorAll('[data-progress-id]'));
@@ -66,7 +48,7 @@
       });
       if (active) setTimeout(poll, 3000);
     } catch (_) {
-      cards.forEach(card => card.querySelector('.progress-message').textContent = 'Unable to refresh progress. Reconnectingâ€¦');
+      cards.forEach(card => card.querySelector('.progress-message').textContent = 'Unable to refresh progress. ReconnectingÃ¢â‚¬Â¦');
       setTimeout(poll, 8000);
     }
   }

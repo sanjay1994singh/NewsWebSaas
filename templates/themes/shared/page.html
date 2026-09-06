@@ -3,10 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ title|default:tenant.publication_name }}</title>
+  <title>{{ title|default:tenant.public_name }}</title>
 </head>
 <body>
-  <header><h1>{{ tenant.publication_name }}</h1></header>
+  <header><h1>{{ tenant.public_name }}</h1></header>
   <main>{% block content %}{% endblock %}</main>
 </body>
 </html>

@@ -186,13 +186,17 @@ def dashboard(request):
 
         return JsonResponse({'detail': 'No tenant workspace found.'}, status=404)
 
-    editions = list(EPaperEdition.objects.filter(tenant=tenant))
+    from django.db.models import Prefetch
+    from .models import EPaperPage
+    editions = list(EPaperEdition.objects.filter(tenant=tenant).prefetch_related(
+        Prefetch('pages', queryset=EPaperPage.objects.filter(number=1), to_attr='preview_pages')
+    ))
 
     for edition in editions:
 
         edition.progress = processing_progress(edition)
 
-    return render(request, 'epaper/dashboard.html', {'tenant': tenant, 'editions': editions, 'can_upload': can_upload_epaper(tenant)})
+    return render(request, 'epaper/dashboard.html', {'tenant': tenant, 'editions': editions, 'can_upload': can_upload_epaper(tenant), 'published_count': sum(e.status == 'published' for e in editions), 'processing_count': sum(e.status == 'processing' for e in editions), 'ready_count': sum(e.status == 'ready' for e in editions)})
 
 
 

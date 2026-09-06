@@ -41,7 +41,7 @@ def news_sitemap_xml(request):
     for article in articles:
         rows.append(
             f"<url><loc>{escape(absolute_url(tenant, article_public_path(article)))}</loc>"
-            f"<news:news><news:publication><news:name>{escape(tenant.publication_name)}</news:name><news:language>{escape(tenant.default_language)}</news:language></news:publication>"
+            f"<news:news><news:publication><news:name>{escape(tenant.public_name)}</news:name><news:language>{escape(tenant.default_language)}</news:language></news:publication>"
             f"<news:publication_date>{article.published_at.date().isoformat() if article.published_at else article.created_at.date().isoformat()}</news:publication_date>"
             f"<news:title>{escape(article.title)}</news:title></news:news></url>"
         )

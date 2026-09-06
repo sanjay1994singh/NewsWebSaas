@@ -57,7 +57,7 @@ class SEOTests(TestCase):
         self.assertEqual(data['@type'], 'NewsArticle')
         self.assertEqual(data['headline'], 'Real Headline')
         self.assertEqual(data['author']['name'], 'Jane Reporter')
-        self.assertEqual(data['publisher']['name'], 'SEO News')
+        self.assertEqual(data['publisher']['name'], 'SEO Media')
 
     def test_seo_audit_reports_recommendations_not_guarantees(self):
         checks = seo_audit_article(self.article)
@@ -76,5 +76,5 @@ class SEOTests(TestCase):
 
     def test_news_sitemap_includes_publication_data(self):
         response = self.client.get(reverse('news_sitemap_xml'), HTTP_HOST='primary.example.com')
-        self.assertContains(response, '<news:name>SEO News</news:name>')
+        self.assertContains(response, '<news:name>SEO Media</news:name>')
         self.assertContains(response, '<news:title>Real Headline</news:title>')
