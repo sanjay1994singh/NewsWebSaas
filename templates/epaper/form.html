@@ -53,15 +53,15 @@
       <fieldset aria-labelledby="edition-heading">
         <h2 id="edition-heading">Edition details</h2><p class="section-help">Add the name, publication date and location of your edition.</p>
         <div class="grid">
-          {% for field in form %}{% if field.name != 'pdf_file' and field.name != 'cover_image' and field.name != 'allow_download' and field.name != 'is_featured' %}
+          {% for field in form %}{% if field.name != 'pdf_file' and field.name != 'allow_download' and field.name != 'is_featured' %}
             <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>{{ field }}{% if field.help_text %}<p class="help" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</p>{% endif %}{{ field.errors }}</div>
           {% endif %}{% endfor %}
         </div>
       </fieldset>
       <fieldset aria-labelledby="files-heading">
-        <h2 id="files-heading">Edition files</h2><p class="section-help">Upload the newspaper PDF and an optional cover image.</p>
+        <h2 id="files-heading">Edition PDF</h2><p class="section-help">Upload the newspaper PDF for this edition.</p>
         <div class="grid">
-          {% for field in form %}{% if field.name == 'pdf_file' or field.name == 'cover_image' %}
+          {% for field in form %}{% if field.name == 'pdf_file' %}
             <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>{{ field }}<p class="help" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</p>{{ field.errors }}</div>
           {% endif %}{% endfor %}
         </div>
@@ -77,5 +77,27 @@
       <footer class="actions"><p>You can publish the edition after processing.</p><div class="buttons"><a class="btn secondary" href="{% url 'epaper:dashboard' %}">Cancel</a><button class="btn" type="submit">Upload edition</button></div></footer>
     </form>
   </main>
+  <script>
+    document.querySelectorAll('[data-date-mask]').forEach(function (input) {
+      input.addEventListener('keydown', function (event) {
+        const start = input.selectionStart;
+        if (event.key === 'Backspace' && start === input.selectionEnd && start > 0 && input.value[start - 1] === '-') {
+          input.setSelectionRange(start - 1, start);
+        }
+      });
+      input.addEventListener('input', function () {
+        const caret = input.selectionStart;
+        const digitsBefore = input.value.slice(0, caret).replace(/[^0-9]/g, '').length;
+        const digits = input.value.replace(/[^0-9]/g, '').slice(0, 8);
+        input.value = digits.slice(0, 2) + (digits.length > 2 ? '-' + digits.slice(2, 4) : '') + (digits.length > 4 ? '-' + digits.slice(4) : '');
+        let position = 0, seen = 0;
+        while (position < input.value.length && seen < digitsBefore) {
+          if (input.value[position] !== '-') seen++;
+          position++;
+        }
+        input.setSelectionRange(position, position);
+      });
+    });
+  </script>
 </body>
 </html>

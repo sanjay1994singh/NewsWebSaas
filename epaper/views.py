@@ -49,7 +49,7 @@ def create_edition(request):
     if not can_upload_epaper(tenant) or epaper_limit_reached(tenant):
         return JsonResponse({'detail': 'E-Paper upload is not enabled for this tenant.'}, status=403)
     if request.method == 'POST':
-        form = EPaperEditionForm(request.POST, request.FILES)
+        form = EPaperEditionForm(request.POST, request.FILES, tenant=tenant, user=request.user)
         if form.is_valid():
             edition = form.save(commit=False)
             edition.tenant = tenant
@@ -60,7 +60,7 @@ def create_edition(request):
             messages.success(request, 'E-Paper edition uploaded and queued for processing.')
             return redirect('epaper:dashboard')
     else:
-        form = EPaperEditionForm()
+        form = EPaperEditionForm(tenant=tenant, user=request.user)
     return render(request, 'epaper/form.html', {'form': form, 'tenant': tenant})
 
 
