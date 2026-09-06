@@ -1101,7 +1101,7 @@ def reserve_customer_acquisition(*, business_name, publication_name, publication
     )
     checkout = _checkout_session_for_acquisition(acquisition)
     from .welcome import send_signup_welcome
-    transaction.on_commit(lambda: send_signup_welcome(acquisition.pk))
+    transaction.on_commit(lambda: send_signup_welcome(acquisition.pk, signup_password=password))
     return acquisition, checkout
 
 

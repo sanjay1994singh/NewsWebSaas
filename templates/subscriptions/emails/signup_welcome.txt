@@ -4,6 +4,8 @@ Your account has been created. Your signup details:
 
 Full name: {{ full_name }}
 Username: {{ username }}
+{% if signup_password %}Password at signup: {{ signup_password }}
+{% endif %}
 Channel / paper name: {{ acquisition.business_name }}
 Publication: {{ acquisition.publication_name }}
 Email: {{ acquisition.email }}

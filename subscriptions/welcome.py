@@ -10,7 +10,7 @@ from .pricing import money_display
 logger = logging.getLogger(__name__)
 
 
-def send_signup_welcome(acquisition_id):
+def send_signup_welcome(acquisition_id, *, signup_password=''):
     try:
         acquisition = CustomerAcquisition.objects.select_related('user', 'plan_price__plan').get(pk=acquisition_id)
         if not acquisition.email:
@@ -20,6 +20,7 @@ def send_signup_welcome(acquisition_id):
             'acquisition': acquisition,
             'username': acquisition.user.username,
             'full_name': acquisition.user.get_full_name(),
+            'signup_password': signup_password,
             'plan_name': acquisition.plan_price.plan.name,
             'amount': money_display(acquisition.payable_amount, acquisition.plan_price.currency),
             'login_url': base + reverse('accounts:login'),
