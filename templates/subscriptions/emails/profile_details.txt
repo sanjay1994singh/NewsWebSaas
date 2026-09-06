@@ -1,0 +1,19 @@
+Welcome to Press Nexa!
+Your email has been added to your profile.
+
+Name: {{ account_name }}
+Username: {{ username }}
+Email: {{ email }}
+{% for rows in workspaces %}
+Your workspace
+{% for label,value in rows %}{{ label }}: {{ value }}
+{% endfor %}{% endfor %}{% for item in pending %}
+Publication reservation
+{% for label,value in item.rows %}{{ label }}: {{ value }}
+{% endfor %}{% if item.checkout_url %}Continue payment: {{ item.checkout_url }}
+{% endif %}{% endfor %}
+Login: {{ login_url }}
+Profile: {{ profile_url }}
+Use the password you chose at signup. This email is an account summary, not a payment receipt.
+
+Press Nexa | SHRI INFOWAVE PRIVATE LIMITED

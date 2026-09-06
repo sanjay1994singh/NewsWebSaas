@@ -5,6 +5,8 @@ from django.contrib.auth.forms import PasswordChangeForm
 from django.contrib.auth.views import LoginView, LogoutView
 from django.shortcuts import redirect, render
 from django.urls import reverse
+from django.db import transaction
+from django.contrib.auth import get_user_model
 
 from core.models import user_can_access_tenant
 from subscriptions.entitlements import get_effective_entitlements
@@ -49,12 +51,22 @@ def profile(request):
                 messages.success(request, 'Password updated.')
                 return redirect('accounts:profile')
         else:
-            form = ProfileForm(request.POST, instance=request.user)
-            password_form = PasswordChangeForm(request.user)
-            if form.is_valid():
-                form.save()
-                messages.success(request, 'Profile updated.')
-                return redirect('accounts:profile')
+            with transaction.atomic():
+                profile_user = get_user_model().objects.select_for_update().get(pk=request.user.pk)
+                previous_email = profile_user.email.strip()
+                form = ProfileForm(request.POST, instance=profile_user)
+                password_form = PasswordChangeForm(request.user)
+                if form.is_valid():
+                    user = form.save()
+                    if not previous_email and user.email.strip():
+                        from subscriptions.models import CustomerAcquisition
+                        from tenants.models import Tenant
+                        from subscriptions.welcome import send_profile_details
+                        CustomerAcquisition.objects.filter(user=user, email='').update(email=user.email)
+                        Tenant.objects.filter(owner=user, email='').update(email=user.email)
+                        transaction.on_commit(lambda: send_profile_details(user.pk))
+                    messages.success(request, 'Profile updated.')
+                    return redirect('accounts:profile')
     else:
         form = ProfileForm(instance=request.user)
         password_form = PasswordChangeForm(request.user)

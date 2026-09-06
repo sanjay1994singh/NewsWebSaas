@@ -1,0 +1,11 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Your Press Nexa account</title></head>
+<body style="background:#f6faf8;color:#13201b;font-family:Arial,sans-serif;padding:20px">
+<div style="max-width:600px;margin:auto;background:white;padding:24px;border:1px solid #d9e4de">
+<h1 style="color:#0f332c">Welcome to Press Nexa!</h1><p>Your email has been added to your profile.</p>
+<p>Name: {{ account_name }}<br>Username: {{ username }}<br>Email: {{ email }}</p>
+{% for rows in workspaces %}<h2>Your workspace</h2><table cellpadding="8" style="width:100%;text-align:left">{% for label,value in rows %}<tr><th>{{ label }}</th><td>{{ value }}</td></tr>{% endfor %}</table>{% endfor %}
+{% for item in pending %}<h2>Publication reservation</h2><table cellpadding="8" style="width:100%;text-align:left">{% for label,value in item.rows %}<tr><th>{{ label }}</th><td>{{ value }}</td></tr>{% endfor %}</table>
+{% if item.checkout_url %}<p><a href="{{ item.checkout_url }}">Continue payment</a></p>{% endif %}{% endfor %}
+<p><a href="{{ login_url }}">Log in</a> | <a href="{{ profile_url }}">View profile</a></p>
+<p>Use the password you chose at signup. This email is an account summary, not a payment receipt.</p>
+<p style="color:#66766e;font-size:12px">SHRI INFOWAVE PRIVATE LIMITED</p></div></body></html>
