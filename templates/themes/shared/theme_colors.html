@@ -1,4 +1,9 @@
 {% load theme_colors %}
 {% if tenant.commercial_onboarding.primary_color or tenant.commercial_onboarding.secondary_color %}
-<style>:root{--brand:{% readable_color tenant.commercial_onboarding.primary_color %};--accent:{% readable_color tenant.commercial_onboarding.secondary_color '#d71920' %};}</style>
+<style>:root{--brand:{% readable_color tenant.commercial_onboarding.primary_color %};--accent:{% readable_color tenant.commercial_onboarding.secondary_color '#d71920' %};}
+/* Keep public navigation consistent with the colour-picker preview. */
+.nav-shell{background:var(--brand);border-color:var(--brand)}
+.nav-shell .nav a{color:#fff}
+.nav-shell .nav a:hover,.nav-shell .nav a:focus-visible{text-decoration:underline;text-underline-offset:5px}
+</style>
 {% endif %}
