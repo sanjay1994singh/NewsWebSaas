@@ -1,0 +1,28 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/color-picker.css' %}">
+<section class="theme-picker" data-theme-picker>
+  <h2>Apni website ka rang chunein</h2>
+  <p>Pasand ka design chunein. Neeche dekhein aapki website kaisi lagegi.</p>
+  <div class="theme-options" data-theme-options role="group" aria-label="Website colour designs"></div>
+  <div class="theme-preview" data-theme-preview aria-label="Website colour preview">
+    <div class="preview-channel"><b>{{ tenant.public_name }}</b><small>Aapki khabar, aapke saath</small></div>
+    <div class="preview-nav">Home &nbsp; E-Paper &nbsp; Videos</div>
+    <div class="preview-content"><span class="preview-breaking">BREAKING NEWS</span><h3>Aapke shehar ki taaza khabrein</h3><p>Saaf design, aasaani se padhi jaane wali khabrein.</p><span class="preview-button">Poori khabar padhein</span></div>
+  </div>
+  <p data-theme-status role="status" aria-live="polite"></p>
+  <button type="button" class="theme-reset" data-theme-reset>Purane rang wapas laayein</button>
+  <details class="theme-custom"><summary>Apna rang chunein</summary>
+    <div class="theme-custom-grid">
+      <label>Website ka rang <input type="color" data-color="primary_color" aria-label="Website ka rang"></label>
+      <label>Khaas khabron ka rang <input type="color" data-color="secondary_color" aria-label="Khaas khabron ka rang"></label>
+    </div>
+    <p>Halke rang ko readable banane ke liye preview mein thoda gehra kiya jaata hai.</p>
+    <details><summary>Advanced: colour code</summary>
+      <label for="{{ form.primary_color.id_for_label }}">Website colour code</label>{{ form.primary_color }}
+      <label for="{{ form.secondary_color.id_for_label }}">Highlight colour code</label>{{ form.secondary_color }}
+    </details>
+  </details>
+  {{ form.primary_color.errors }}{{ form.secondary_color.errors }}
+  <p><strong>Rang lagane ke liye neeche Save button dabayein.</strong></p>
+</section>
+<script src="{% static 'js/color-picker.js' %}" defer></script>

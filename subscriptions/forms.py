@@ -316,6 +316,19 @@ class OnboardingForm(forms.ModelForm):
             'meta_description': forms.Textarea(attrs={'rows': 3}),
         }
 
+    def clean_primary_color(self):
+        return self._clean_theme_color('primary_color')
+
+    def clean_secondary_color(self):
+        return self._clean_theme_color('secondary_color')
+
+    def _clean_theme_color(self, name):
+        import re
+        value = (self.cleaned_data.get(name) or '').strip()
+        if value and not re.fullmatch(r'#[0-9a-fA-F]{6}', value):
+            raise forms.ValidationError('Please choose a colour using the colour picker.')
+        return value.lower()
+
     def clean_site_title(self):
         site_title = (self.cleaned_data.get('site_title') or '').strip()
         tenant = getattr(self.instance, 'tenant', None)

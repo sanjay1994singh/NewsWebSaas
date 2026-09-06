@@ -1,0 +1,11 @@
+(() => {
+ const root=document.querySelector('[data-theme-picker]');if(!root)return;
+ const fields=['primary_color','secondary_color'].map(n=>root.querySelector(`[name="${n}"]`));
+ const original=fields.map(f=>f.value), defaults=['#0b6b57','#d71920'];
+ const choices=[['Hara',...defaults],['Neela','#1d4ed8','#b91c1c'],['Laal','#b91c1c','#334155'],['Kesariya','#9a3412','#1e40af'],['Purple','#6d28d9','#0f766e'],['Black & White','#202020','#525252']];
+ const valid=v=>/^#[0-9a-f]{6}$/i.test(v);
+ function readable(hex){let rgb=hex.slice(1).match(/../g).map(x=>parseInt(x,16));const light=()=>rgb.map(v=>v/255).map(v=>v<=.04045?v/12.92:((v+.055)/1.055)**2.4).reduce((s,v,i)=>s+v*[.2126,.7152,.0722][i],0);while(light()>.183)rgb=rgb.map(v=>Math.floor(v*.94));return '#'+rgb.map(v=>v.toString(16).padStart(2,'0')).join('');}
+ const buttons=choices.map(([name,primary,accent])=>{const b=document.createElement('button');b.type='button';b.className='theme-option';b.style.setProperty('--choice',primary);b.style.setProperty('--highlight',accent);b.innerHTML='<span class="theme-mini" aria-hidden="true"><i></i><em></em><span></span></span>';const label=document.createElement('strong');label.textContent=name;b.append(label);b.addEventListener('click',()=>{fields[0].value=primary;fields[1].value=accent;update();});root.querySelector('[data-theme-options]').append(b);return b;});
+ function update(){const values=fields.map((f,i)=>valid(f.value)?f.value.toLowerCase():defaults[i]);root.style.setProperty('--preview-main',readable(values[0]));root.style.setProperty('--preview-accent',readable(values[1]));let selected='Apna rang';buttons.forEach((b,i)=>{const active=choices[i][1]===values[0]&&choices[i][2]===values[1];b.setAttribute('aria-pressed',String(active));if(active)selected=choices[i][0];});root.querySelectorAll('[data-color]').forEach((p,i)=>p.value=values[i]);root.querySelector('[data-theme-status]').textContent=selected+' design ka preview. Save karne par website par lagega.';}
+ root.querySelectorAll('[data-color]').forEach((p,i)=>p.addEventListener('input',()=>{fields[i].value=p.value;update();}));fields.forEach(f=>f.addEventListener('input',update));root.querySelector('[data-theme-reset]').addEventListener('click',()=>{fields.forEach((f,i)=>f.value=original[i]);update();});update();
+})();

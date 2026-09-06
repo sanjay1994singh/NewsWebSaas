@@ -80,7 +80,7 @@
       <section class="form-section">
         <h2 class="section-title">Branding</h2>
         {% for field in form %}
-          {% if field.name == 'logo' or field.name == 'primary_color' or field.name == 'secondary_color' %}
+          {% if field.name == 'logo' %}
             <div class="form-field {% if field.errors %}has-error{% endif %}">
               <label for="{{ field.id_for_label }}">{{ field.label }}</label>
               {{ field }}
@@ -90,6 +90,7 @@
           {% endif %}
         {% endfor %}
       </section>
+      {% include 'subscriptions/color_picker.html' %}
       <section class="form-section">
         <h2 class="section-title" id="youtube-channel">YouTube videos &amp; shorts</h2>
         {% for field in form %}

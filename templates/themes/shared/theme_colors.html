@@ -1,0 +1,4 @@
+{% load theme_colors %}
+{% if tenant.commercial_onboarding.primary_color or tenant.commercial_onboarding.secondary_color %}
+<style>:root{--brand:{% readable_color tenant.commercial_onboarding.primary_color %};--accent:{% readable_color tenant.commercial_onboarding.secondary_color '#d71920' %};}</style>
+{% endif %}
