@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>Welcome to Press Nexa</title></head>
+<body style="margin:0;background:#f6faf8;font-family:Arial,sans-serif;color:#13201b">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:100%;max-width:600px;background:white;border:1px solid #d9e4de">
+<tr><td style="padding:24px;background:#0f332c;color:white;font-size:26px;font-weight:bold">Press Nexa</td></tr>
+<tr><td style="padding:24px"><h1 style="font-size:24px">Welcome to Press Nexa!</h1>
+<p>Your account has been created. Here are your signup details.</p>
+<table cellpadding="8" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:14px;overflow-wrap:anywhere">
+<tr><th align="left">Username</th><td>{{ username }}</td></tr>
+<tr><th align="left">Channel / paper name</th><td>{{ acquisition.business_name }}</td></tr>
+<tr><th align="left">Publication</th><td>{{ acquisition.publication_name }}</td></tr>
+<tr><th align="left">Email</th><td>{{ acquisition.email }}</td></tr>
+<tr><th align="left">Mobile</th><td>{{ acquisition.mobile }}</td></tr>
+<tr><th align="left">Selected plan</th><td>{{ plan_name }}</td></tr>
+<tr><th align="left">Duration</th><td>{{ acquisition.billing_months }} month(s)</td></tr>
+<tr><th align="left">Offer payable amount</th><td>{{ amount }}</td></tr>
+<tr><th align="left">Status at signup</th><td>Payment pending</td></tr>
+</table>
+<p style="margin:28px 0"><a href="{{ checkout_url }}" style="background:#15614f;color:white;padding:14px 20px;text-decoration:none;border-radius:6px;display:inline-block">Continue to payment</a></p>
+<p><a href="{{ login_url }}">Log in to your account</a> using the password you chose during signup.</p>
+<p style="color:#66766e;font-size:14px">This confirms account creation, not payment. Your workspace is created after successful payment verification. An activation/invoice email follows payment.</p>
+<p style="color:#66766e;font-size:12px">SHRI INFOWAVE PRIVATE LIMITED</p>
+</td></tr></table></td></tr></table></body></html>

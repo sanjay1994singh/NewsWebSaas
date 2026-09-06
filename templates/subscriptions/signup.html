@@ -59,12 +59,15 @@
           {% endif %}
         </p>
       </div>
-      {% if form.price_id.value %}
-        <div class="plan-chip">
-          <span>Selected plan</span>
-          <strong>Continue with your chosen plan</strong>
+      <div class="plan-chip" aria-live="polite">
+        <span>Selected plan</span>
+        <strong data-plan-name>{{ form.selected_quote.name|default:"Choose a plan below" }}</strong>
+        <div data-plan-summary {% if not form.selected_quote %}hidden{% endif %}>
+          <p><b data-plan-payable>{{ form.selected_quote.payable }}</b> for <span data-plan-duration>{{ form.selected_quote.duration }}</span></p>
+          <small>Plan amount: <span data-plan-list>{{ form.selected_quote.list }}</span><br>
+          <span data-plan-percent>{{ form.selected_quote.percent }}</span>% offer discount: <span data-plan-discount>{{ form.selected_quote.discount }}</span></small>
         </div>
-      {% endif %}
+      </div>
     </div>
     <form class="signup-form" method="post">
       {% csrf_token %}
@@ -93,7 +96,7 @@
               {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
             </div>
           {% else %}
-            <div class="form-field {% if field.name == 'billing_months' %}duration-field{% endif %} {% if field.errors %}has-error{% endif %}">
+            <div class="form-field {% if field.name == 'billing_months' or field.name == 'price_id' %}duration-field{% endif %} {% if field.errors %}has-error{% endif %}">
               <label for="{{ field.id_for_label }}">{{ field.label }}</label>
               {% if field.name == 'password' or field.name == 'confirm_password' %}
                 <div class="password-wrap">
@@ -118,7 +121,28 @@
     </form>
   </section>
 </main>
+{{ form.plan_quotes|json_script:"signup-plan-quotes" }}
 <script>
+  (function () {
+    const prices = JSON.parse(document.getElementById('signup-plan-quotes').textContent);
+    const plan = document.getElementById('id_price_id');
+    const duration = document.getElementById('id_billing_months');
+    const summary = document.querySelector('[data-plan-summary]');
+    function updatePlan() {
+      const quote = (prices[plan.value] || {})[duration.value || '1'];
+      document.querySelector('[data-plan-name]').textContent = quote ? quote.name : 'Choose a plan below';
+      summary.hidden = !quote;
+      if (!quote) return;
+      ['payable', 'duration', 'list', 'percent', 'discount'].forEach(function (key) {
+        document.querySelector('[data-plan-' + key + ']').textContent = quote[key];
+      });
+    }
+    if (plan && duration) {
+      plan.addEventListener('change', updatePlan);
+      duration.addEventListener('change', updatePlan);
+      updatePlan();
+    }
+  })();
   document.querySelectorAll('[data-password-toggle]').forEach(function (button) {
     button.addEventListener('click', function () {
       const targetIds = (button.dataset.passwordTargets || button.getAttribute('aria-controls') || '').split(',');

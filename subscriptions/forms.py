@@ -42,7 +42,51 @@ class CheckoutDurationForm(forms.Form):
         return normalize_billing_months(self.cleaned_data.get('billing_months'))
 
 
-class CustomerSignupForm(forms.Form):
+class SignupPlanChoiceMixin:
+    """Use the same active monthly-first prices as the public pricing cards."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        prices = PlanPrice.objects.select_related('plan').filter(
+            is_active=True, plan__is_active=True, plan__is_current_version=True,
+        ).order_by('plan__name', 'id')
+        selected = {}
+        for price in prices:
+            current = selected.get(price.plan_id)
+            if current is None or (price.billing_cycle == PlanPrice.BillingCycle.MONTHLY
+                                   and current.billing_cycle != PlanPrice.BillingCycle.MONTHLY):
+                selected[price.plan_id] = price
+        self.signup_prices = {str(price.pk): price for price in selected.values()}
+        self.fields['price_id'].label = 'Choose your plan'
+        self.fields['price_id'].widget = forms.Select(choices=[('', 'Select a plan')] + [
+            (price.pk, price.plan.name) for price in selected.values()
+        ])
+
+    @property
+    def plan_quotes(self):
+        from .pricing import calculate_checkout_pricing, money_display
+        result = {}
+        for key, price in self.signup_prices.items():
+            durations = {}
+            for months in ALLOWED_BILLING_MONTHS:
+                quote = calculate_checkout_pricing(price, months)
+                durations[str(months)] = {
+                    'name': price.plan.name,
+                    'duration': quote.billing_label,
+                    'list': money_display(quote.list_amount, quote.currency),
+                    'discount': money_display(quote.discount_amount, quote.currency),
+                    'percent': quote.discount_percent,
+                    'payable': money_display(quote.payable_amount, quote.currency),
+                }
+            result[key] = durations
+        return result
+
+    @property
+    def selected_quote(self):
+        return self.plan_quotes.get(str(self['price_id'].value()), {}).get(
+            str(normalize_billing_months(self['billing_months'].value())))
+
+
+class CustomerSignupForm(SignupPlanChoiceMixin, forms.Form):
     business_name = forms.CharField(max_length=255, label='Channel name / Paper name')
     publication_name = forms.CharField(max_length=255)
     email = forms.EmailField(required=False)
@@ -90,10 +134,10 @@ class CustomerSignupForm(forms.Form):
 
     def clean_price_id(self):
         price_id = self.cleaned_data['price_id']
-        try:
-            return PlanPrice.objects.select_related('plan').get(pk=price_id, is_active=True, plan__is_active=True)
-        except PlanPrice.DoesNotExist as exc:
-            raise forms.ValidationError('Selected plan price is not available.') from exc
+        price = self.signup_prices.get(str(price_id))
+        if price is None:
+            raise forms.ValidationError('Selected plan price is not available.')
+        return price
 
     def clean_billing_months(self):
         return normalize_billing_months(self.cleaned_data.get('billing_months'))
@@ -113,7 +157,7 @@ class CustomerSignupForm(forms.Form):
         return cleaned_data
 
 
-class CustomerWorkspaceForm(forms.Form):
+class CustomerWorkspaceForm(SignupPlanChoiceMixin, forms.Form):
     business_name = forms.CharField(max_length=255, label='Channel name / Paper name')
     publication_name = forms.CharField(max_length=255)
     email = forms.EmailField(required=False)
@@ -153,10 +197,10 @@ class CustomerWorkspaceForm(forms.Form):
 
     def clean_price_id(self):
         price_id = self.cleaned_data['price_id']
-        try:
-            return PlanPrice.objects.select_related('plan').get(pk=price_id, is_active=True, plan__is_active=True)
-        except PlanPrice.DoesNotExist as exc:
-            raise forms.ValidationError('Selected plan price is not available.') from exc
+        price = self.signup_prices.get(str(price_id))
+        if price is None:
+            raise forms.ValidationError('Selected plan price is not available.')
+        return price
 
     def clean_billing_months(self):
         return normalize_billing_months(self.cleaned_data.get('billing_months'))

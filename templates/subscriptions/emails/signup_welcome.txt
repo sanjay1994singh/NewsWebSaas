@@ -1,0 +1,22 @@
+Welcome to Press Nexa!
+
+Your account has been created. Your signup details:
+
+Username: {{ username }}
+Channel / paper name: {{ acquisition.business_name }}
+Publication: {{ acquisition.publication_name }}
+Email: {{ acquisition.email }}
+Mobile: {{ acquisition.mobile }}
+Selected plan: {{ plan_name }}
+Duration: {{ acquisition.billing_months }} month(s)
+Offer payable amount: {{ amount }}
+Status at signup: Payment pending
+
+Continue payment: {{ checkout_url }}
+Login: {{ login_url }}
+Use the password you chose during signup.
+
+This email confirms account creation, not payment. Your workspace is created after successful payment verification. A separate activation/invoice email follows payment.
+
+Press Nexa
+SHRI INFOWAVE PRIVATE LIMITED

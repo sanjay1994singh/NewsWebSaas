@@ -1081,6 +1081,7 @@ def _pricing_defaults(plan_price, billing_months):
     }
 
 
+@transaction.atomic
 def reserve_customer_acquisition(*, business_name, publication_name, publication_slug, email, mobile, password, plan_price, billing_months=1):
     User = get_user_model()
     username = generate_customer_username(publication_name=publication_name, mobile=mobile)
@@ -1097,7 +1098,10 @@ def reserve_customer_acquisition(*, business_name, publication_name, publication
         status=CustomerAcquisition.Status.PAYMENT_PENDING,
         **pricing_defaults,
     )
-    return acquisition, _checkout_session_for_acquisition(acquisition)
+    checkout = _checkout_session_for_acquisition(acquisition)
+    from .welcome import send_signup_welcome
+    transaction.on_commit(lambda: send_signup_welcome(acquisition.pk))
+    return acquisition, checkout
 
 
 @transaction.atomic
