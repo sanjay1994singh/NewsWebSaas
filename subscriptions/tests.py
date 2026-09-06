@@ -799,8 +799,11 @@ class SubscriptionTests(TestCase):
         self.client.login(username='owner', password='testpass123')
         response = self.client.get(reverse('subscriptions:view_invoice', kwargs={'record_id': invoice.id}))
 
-        self.assertContains(response, 'shriinfowaveprivatelimited@gmail.com')
-        self.assertContains(response, '918279408396')
+        import pymupdf
+        with pymupdf.open(stream=response.content, filetype='pdf') as pdf:
+            invoice_text = ''.join(page.get_text() for page in pdf)
+        self.assertIn('shriinfowaveprivatelimited@gmail.com', invoice_text)
+        self.assertIn('918279408396', invoice_text)
 
     def test_invoice_pdf_view_opens_inline_for_tenant_owner(self):
         subscription = TenantSubscription.objects.create(

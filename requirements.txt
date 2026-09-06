@@ -11,3 +11,5 @@ dnspython>=2.7
 razorpay>=1.4
 
 PyMuPDF>=1.28.2,<1.29
+
+reportlab>=4.4,<5

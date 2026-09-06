@@ -161,111 +161,85 @@ def email_purchase_success(record, *, plain_password=''):
 
 
 def _invoice_pdf(data):
+    """Render every billing record with the same print-friendly A4 layout."""
+    from io import BytesIO
+    from xml.sax.saxutils import escape
+    from reportlab.lib import colors
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer, HRFlowable
+
     company = invoice_company()
-    ops = [
-        '1 1 1 rg',
-        '0 0 595 842 re f',
-        '0.063 0.184 0.161 rg',
-        '44 806 507 3 re f',
-        '0 0 0 rg',
-        _text(44, 776, 18, 'Press Nexa', bold=True),
-        '0.388 0.463 0.431 rg',
-        _text(44, 756, 9, company['legal_name']),
-        _text(44, 741, 8, f"CIN: {company['cin']}  |  PAN: {company['pan']}"),
-        '0 0 0 rg',
-        _text(421, 776, 20, 'INVOICE', bold=True),
-        '0.388 0.463 0.431 rg',
-        _text(405, 752, 9, f"No. {data['number']}"),
-        _text(405, 736, 9, f"Date: {data['date']}"),
-        '0.851 0.894 0.871 RG',
-        '44 710 m 551 710 l S',
-        '0.965 0.985 0.973 rg',
-        '455 676 78 24 re f',
-        '0.851 0.894 0.871 RG',
-        '455 676 78 24 re S',
-        '0.063 0.184 0.161 rg',
-        _text(477, 685, 9, data['status'].upper(), bold=True),
-        '0.851 0.894 0.871 RG',
-        '44 512 236 132 re S',
-        '315 512 225 132 re S',
-        '44 314 496 142 re S',
-        '0.063 0.184 0.161 rg',
-        _text(60, 620, 9, 'BILL TO', bold=True),
-        _text(331, 620, 9, 'PAYMENT DETAILS', bold=True),
-        '0 0 0 rg',
-        _text(60, 596, 13, _short(data['publication'], 34), bold=True),
-        _compact_label_value(60, 575, 'Channel', _short(data['business_name'], 24), value_x=152),
-        _compact_label_value(60, 557, 'Email', _short(data['email'], 26), value_x=152),
-        _compact_label_value(60, 539, 'Mobile', _short(data['mobile'], 20), value_x=152),
-        _compact_label_value(331, 596, 'Payment ref', _short(data['payment_reference'], 28), value_x=424),
-        _compact_label_value(331, 574, 'Billing cycle', data['cycle'], value_x=424),
-        _compact_label_value(331, 552, 'Plan starts', data['period_start'], value_x=424),
-        _compact_label_value(331, 530, 'Plan ends', data['period_end'], value_x=424),
-        '0.965 0.973 0.969 rg',
-        '44 426 496 30 re f',
-        '0.851 0.894 0.871 RG',
-        '44 426 496 30 re S',
-        '0 0 0 rg',
-        _text(60, 437, 8, 'DESCRIPTION', bold=True),
-        _text(322, 437, 8, 'CYCLE', bold=True),
-        _text(440, 437, 8, 'AMOUNT', bold=True),
-        '0 0 0 rg',
-        _text(60, 399, 10, _short(data['plan'], 46), bold=True),
-        _text(322, 399, 9, data['cycle']),
-        _text(440, 399, 10, data['list_amount'], bold=True),
-        '0.851 0.894 0.871 RG',
-        '60 378 m 524 378 l S',
-        _text(60, 360, 9, 'Offer discount'),
-        _text(322, 360, 9, data['discount_percent']),
-        _text(440, 360, 9, f"-{data['discount_amount']}"),
-        '60 342 m 524 342 l S',
-        '0.965 0.973 0.969 rg',
-        '340 314 184 34 re f',
-        '0.851 0.894 0.871 RG',
-        '340 314 184 34 re S',
-        '0.063 0.184 0.161 rg',
-        _text(358, 326, 10, 'Final Paid', bold=True),
-        _text(440, 326, 10, data['amount'], bold=True),
-        '0.388 0.463 0.431 rg',
-        _text(44, 286, 8, 'This invoice is generated electronically for the verified Press Nexa subscription payment.'),
-        _text(44, 272, 8, 'For corrections, contact support with your invoice number and payment reference.'),
-        '0.851 0.894 0.871 RG',
-        '44 106 m 551 106 l S',
-        '0.082 0.376 0.310 rg',
-        _text(44, 82, 10, company['brand'], bold=True),
-        '0.388 0.463 0.431 rg',
-        _text(44, 66, 7, company['address']),
-        _text(44, 52, 7, f"Support: {company['email']} | WhatsApp: {company['whatsapp']}"),
-    ]
-    content = '\n'.join(ops).encode('latin-1', errors='replace')
-    objects = [
-        b'<< /Type /Catalog /Pages 2 0 R >>',
-        b'<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
-        b'<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>',
-        b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
-        b'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>',
-        b'<< /Length ' + str(len(content)).encode('ascii') + b' >>\nstream\n' + content + b'\nendstream',
-    ]
-    pdf = bytearray(b'%PDF-1.4\n')
-    offsets = [0]
-    for index, obj in enumerate(objects, start=1):
-        offsets.append(len(pdf))
-        pdf.extend(f'{index} 0 obj\n'.encode('ascii'))
-        pdf.extend(obj)
-        pdf.extend(b'\nendobj\n')
-    xref_at = len(pdf)
-    pdf.extend(f'xref\n0 {len(objects) + 1}\n'.encode('ascii'))
-    pdf.extend(b'0000000000 65535 f \n')
-    for offset in offsets[1:]:
-        pdf.extend(f'{offset:010d} 00000 n \n'.encode('ascii'))
-    pdf.extend(
-        f'trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_at}\n%%EOF\n'.encode('ascii')
-    )
-    return bytes(pdf)
+    output = BytesIO()
+    doc = SimpleDocTemplate(output, pagesize=(595, 842), rightMargin=50,
+                            leftMargin=50, topMargin=55, bottomMargin=55,
+                            title=f"Invoice {data['number']}", author=company['brand'],
+                            pageCompression=0)
+    styles = {
+        'body': ParagraphStyle('body', fontName='Helvetica', fontSize=9, leading=14, textColor=colors.HexColor('#555555')),
+        'bold': ParagraphStyle('bold', fontName='Helvetica-Bold', fontSize=10, leading=15),
+        'brand': ParagraphStyle('brand', fontName='Helvetica-Bold', fontSize=19, leading=25),
+        'title': ParagraphStyle('title', fontName='Helvetica-Bold', fontSize=25, leading=31, alignment=2),
+        'right': ParagraphStyle('right', fontName='Helvetica', fontSize=9, leading=15, alignment=2),
+        'label': ParagraphStyle('label', fontName='Helvetica-Bold', fontSize=8, leading=13),
+    }
 
+    def text(value, style='body'):
+        return Paragraph(escape(str(value or '-')), styles[style])
 
-def _pdf_text(value):
-    return str(value).replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+    def table(rows, widths, extra=()):
+        result = Table(rows, colWidths=widths, hAlign='LEFT')
+        result.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            *extra,
+        ]))
+        return result
+
+    seller = [text(company['brand'], 'brand'), text(company['legal_name']),
+              text(company['address']), text(f"CIN: {company['cin']}"),
+              text(f"PAN: {company['pan']}"), text(company['email']),
+              text(f"WhatsApp: {company['whatsapp']}")]
+    metadata = [text('INVOICE', 'title'), Spacer(1, 10),
+                text(f"INVOICE NO:  {data['number']}", 'right'),
+                text(f"ISSUE DATE:  {data['date']}", 'right'),
+                text(f"STATUS:  {data['status'].upper()}", 'right')]
+    story = [table([[seller, metadata]], [285, 210]), Spacer(1, 22),
+             HRFlowable(width='100%', thickness=1, color=colors.black), Spacer(1, 14),
+             text('BILLED TO', 'label'), text(data['publication'], 'bold'),
+             text(f"Channel: {data['business_name']}"), text(data['email']),
+             text(f"Mobile: {data['mobile']}"), Spacer(1, 24)]
+    description = [text(data['plan'], 'bold'),
+                   text(f"Subscription - {data['cycle']}"),
+                   text(f"Period: {data['period_start']} to {data['period_end']}")]
+    story.append(table([
+        [text('#', 'label'), text('DESCRIPTION', 'label'), text('QTY', 'label'), text('RATE', 'label'), text('AMOUNT', 'label')],
+        [text('01'), description, text('1'), text(data['list_amount'], 'right'), text(data['list_amount'], 'right')],
+    ], [24, 251, 30, 90, 100], [
+        ('LINEABOVE', (0, 0), (-1, 0), 1, colors.black),
+        ('LINEBELOW', (0, 0), (-1, 0), 1, colors.black),
+        ('LINEBELOW', (0, 1), (-1, 1), .5, colors.HexColor('#dddddd')),
+        ('TOPPADDING', (0, 1), (-1, 1), 12),
+        ('BOTTOMPADDING', (0, 1), (-1, 1), 14),
+    ]))
+    story.append(Spacer(1, 22))
+    payment = [text('PAYMENT DETAILS', 'label'), text('Reference'), text(data['payment_reference']),
+               Spacer(1, 14), text('SUPPORT', 'label'),
+               text('For billing corrections, contact support with your invoice number and payment reference.')]
+    totals = table([
+        [text('Subtotal'), text(data['list_amount'], 'right')],
+        [text('Discount / credit'), text(data['discount_amount'], 'right')],
+        [text('Total', 'bold'), text(data['amount'], 'right')],
+        [text('Payment status'), text(data['status'].upper(), 'right')],
+    ], [105, 120], [('LINEABOVE', (0, 2), (-1, 2), 1, colors.black),
+                   ('LINEBELOW', (0, 2), (-1, 2), 1, colors.black)])
+    story.append(table([[payment, totals]], [270, 225]))
+    story.extend([Spacer(1, 38), HRFlowable(width='100%', thickness=.5, color=colors.HexColor('#dddddd')),
+                  Spacer(1, 10), text('Thank you for choosing Press Nexa. This invoice is generated electronically.')])
+    doc.build(story)
+    return output.getvalue()
 
 
 def _pdf_money_display(amount, currency='INR'):
@@ -274,36 +248,3 @@ def _pdf_money_display(amount, currency='INR'):
         value_text = f"{value:,.0f}" if value.is_integer() else f"{value:,.2f}"
         return f"Rs {value_text}"
     return money_display(amount, currency)
-
-
-def _short(value, limit):
-    value = str(value or '-')
-    return value if len(value) <= limit else f"{value[:limit - 3]}..."
-
-
-def _text(x, y, size, value, *, bold=False):
-    font = 'F2' if bold else 'F1'
-    return f"BT /{font} {size} Tf {x} {y} Td ({_pdf_text(value)}) Tj ET"
-
-
-def _label_value(x, y, label, value):
-    return '\n'.join(
-        [
-            '0.388 0.463 0.431 rg',
-            _text(x, y, 8, label.upper(), bold=True),
-            '0 0 0 rg',
-            _text(x, y - 18, 11, value),
-        ]
-    )
-
-
-def _compact_label_value(x, y, label, value, *, value_x=None):
-    value_x = value_x if value_x is not None else x + 58
-    return '\n'.join(
-        [
-            '0.388 0.463 0.431 rg',
-            _text(x, y, 7, label.upper(), bold=True),
-            '0 0 0 rg',
-            _text(value_x, y, 8, value),
-        ]
-    )
