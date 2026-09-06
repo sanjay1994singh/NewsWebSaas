@@ -68,6 +68,7 @@ MIDDLEWARE = [
     'domains.middleware.TenantResolutionMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'analytics.tracking.PlatformVisitorMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -86,6 +87,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'subscriptions.context_processors.customer_navigation',
+                'analytics.context_processors.google_analytics',
             ],
         },
     },
@@ -231,3 +233,10 @@ REST_FRAMEWORK = {
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# First-party tracking of Press Nexa public pages (tenant traffic is separate).
+PLATFORM_VISITOR_TRACKING_ENABLED = env_bool('PLATFORM_VISITOR_TRACKING_ENABLED', True)
+
+# GA4 property provided for Press Nexa. Empty ID or ENABLED=False disables the tag.
+GOOGLE_ANALYTICS_MEASUREMENT_ID = os.getenv('GOOGLE_ANALYTICS_MEASUREMENT_ID', 'G-7839WK8E1T').strip()
+GOOGLE_ANALYTICS_ENABLED = env_bool('GOOGLE_ANALYTICS_ENABLED', True)

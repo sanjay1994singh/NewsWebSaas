@@ -2,6 +2,7 @@
 <!doctype html>
 <html lang="en">
 <head>
+  {% include "analytics/includes/google_tag.html" %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ site_brand_name|default:"Press Nexa" }}{% endblock %}</title>
@@ -85,6 +86,9 @@
           <div class="account-panel">
             {% if user.is_authenticated %}
               <div class="small">{{ user.email|default:user.username }}</div>
+              {% if not is_tenant_domain %}{% if user.is_superuser or user.is_super_admin or user.is_support_admin %}
+                <a href="{% url 'analytics:visitor_report' %}">Visitors &amp; enquiries</a>
+              {% endif %}{% endif %}
               {% for link in customer_nav_links %}
                 <a href="{{ link.url }}">{{ link.label }}</a>
               {% endfor %}

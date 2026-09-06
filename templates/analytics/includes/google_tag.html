@@ -1,0 +1,24 @@
+{% if google_analytics_id %}
+<!-- Google tag (gtag.js): Press Nexa public website -->
+<script>
+(function () {
+  if (window.pressNexaGoogleTagLoaded || navigator.doNotTrack === '1' || navigator.globalPrivacyControl === true) return;
+  window.pressNexaGoogleTagLoaded = true;
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
+  window.gtag('js', new Date());
+  var referrer = '';
+  try { referrer = document.referrer ? new URL(document.referrer).origin + '/' : ''; } catch (error) {}
+  window.gtag('config', '{{ google_analytics_id|escapejs }}', {
+    page_location: window.location.origin + window.location.pathname,
+    page_referrer: referrer,
+    allow_google_signals: false,
+    allow_ad_personalization_signals: false
+  });
+  var tag = document.createElement('script');
+  tag.async = true;
+  tag.src = 'https://www.googletagmanager.com/gtag/js?id={{ google_analytics_id|escapejs }}';
+  document.head.appendChild(tag);
+})();
+</script>
+{% endif %}

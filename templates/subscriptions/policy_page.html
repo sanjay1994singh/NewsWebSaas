@@ -40,6 +40,14 @@
   </section>
   <article class="policy-body">
     {{ policy.content|safe }}
+    {% if policy.policy_type == 'privacy' %}
+    <h2>Google Analytics</h2>
+    <p>Press Nexa uses Google Analytics on its public platform pages to measure website usage. When enabled, the Google tag can use cookies and send browser, device and page-view information to Google. Our integration excludes admin, payment and tenant-site pages, removes query strings from the configured page address, and disables Google signals and advertising personalization. You can block analytics through Do Not Track or Global Privacy Control browser settings.</p>
+    <h2>Visitor analytics and enquiries</h2>
+    <p>On Press Nexa public pages, we use a first-party browser identifier lasting up to one year and a visit cookie lasting 30 minutes after activity. We record page paths, visit times, referring domains, and basic browser and device categories. These identifiers estimate repeat visits; they do not identify a person. Successful login or signup activity can be linked to your account.</p>
+    <p>Our platform visitor analytics does not store raw IP addresses, full browser identifiers, URL query strings or precise locations. We respect Do Not Track and Global Privacy Control signals for this tracking. Browser settings can clear or block cookies.</p>
+    <p>When you send an enquiry, we store your submitted name, email, optional phone number and message, along with the time you agreed to be contacted. Authorized platform administrators use these details to respond and manage the enquiry.</p>
+    {% endif %}
   </article>
 </main>
 {% endblock %}

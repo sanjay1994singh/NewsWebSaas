@@ -13,6 +13,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
+from analytics.views import platform_contact
 from django.contrib import admin
 from django.urls import include, path
 from subscriptions import views as subscription_views
@@ -23,7 +24,7 @@ urlpatterns = [
     path('saas/', subscription_views.landing_page, name='public_saas_landing'),
     path('saas/signup/', subscription_views.signup, name='public_saas_signup'),
     path('about-us/', subscription_views.about_us, name='about_us'),
-    path('contact-us/', subscription_views.policy_page, {'policy_type': 'contact'}, name='contact_us'),
+    path('contact-us/', platform_contact, name='contact_us'),
     path('privacy-policy/', subscription_views.policy_page, {'policy_type': 'privacy'}, name='privacy_policy'),
     path('terms-and-conditions/', subscription_views.policy_page, {'policy_type': 'terms'}, name='terms_and_conditions'),
     path('refund-policy/', subscription_views.policy_page, {'policy_type': 'refund'}, name='refund_policy'),

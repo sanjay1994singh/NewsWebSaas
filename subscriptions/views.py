@@ -1073,6 +1073,7 @@ def razorpay_webhook(request):
         event = process_webhook(
             body=request.body,
             signature=request.headers.get('X-Razorpay-Signature'),
+            event_id=request.headers.get('X-Razorpay-Event-Id'),
             environment=settings.RAZORPAY_ENVIRONMENT,
         )
     except ValidationError:

@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Visitors & enquiries - Press Nexa{% endblock %}
+{% block styles %}
+.stats {display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:20px 0}.stats strong{display:block;font-size:28px}.report-table{overflow-x:auto}table{border-collapse:collapse;width:100%;font-size:14px}th,td{padding:12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}.filters{display:flex;flex-wrap:wrap;gap:16px;align-items:end}.filters p{margin:0}.report-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:20px 0}.pagination{display:flex;gap:16px;margin:16px 0}.enquiry{margin:16px 0}.message-text{white-space:pre-wrap;overflow-wrap:anywhere}
+{% endblock %}
+{% block content %}
+<main class="page">
+<h1>Visitors & enquiries</h1>
+<p class="muted">Press Nexa platform traffic. Tenant news-site traffic is reported separately. Visitor IDs identify browsers, not people. Sessions expire after 30 minutes of inactivity.</p>
+<form class="card filters" method="get">{{ filter_form.as_p }}<button class="btn" type="submit">Apply dates</button><a href="{% url 'analytics:visitor_report' %}">Reset</a></form>
+{% if selected_visitor %}<p>History for browser: <strong>{{ selected_visitor }}</strong></p>{% endif %}
+<div class="stats">
+<div class="card">Visitors<strong>{{ metrics.visitors }}</strong></div><div class="card">Page views<strong>{{ metrics.page_views }}</strong></div><div class="card">Sessions<strong>{{ metrics.sessions }}</strong></div><div class="card">Returning sessions<strong>{{ metrics.returning_sessions }}</strong></div><div class="card">Signups<strong>{{ metrics.signups }}</strong></div><div class="card">Enquiries<strong>{{ metrics.enquiries }}</strong></div>
+</div>
+<div class="report-grid">
+<section class="card"><h2>Popular pages</h2>{% for row in top_pages %}<p>{{ row.path }} — {{ row.total }}</p>{% empty %}<p>No page views yet.</p>{% endfor %}</section>
+<section class="card"><h2>Sources</h2>{% for row in sources %}<p>{{ row.referrer_domain|default:"Direct / unknown" }} — {{ row.total }}</p>{% empty %}<p>No sources yet.</p>{% endfor %}</section>
+<section class="card"><h2>Daily visitors and views</h2><p class="muted">Latest 31 active days in this range.</p>{% for row in daily %}<p>{{ row.day|date:"d M Y" }} — {{ row.visitors }} visitors / {{ row.total }} views</p>{% empty %}<p>No visits yet.</p>{% endfor %}</section>
+</div>
+<section class="card"><h2>Visit history</h2><div class="report-table"><table>
+<thead><tr><th>Time</th><th>Visitor</th><th>Activity / page</th><th>Device / browser</th><th>Source</th><th>Account</th></tr></thead>
+<tbody>{% for visit in visits %}<tr><td>{{ visit.occurred_at|date:"d M Y H:i" }}</td><td><a href="{% querystring visitor=visit.visitor_id page=None enquiry_page=None %}">{{ visit.visitor_id|stringformat:"s"|truncatechars:13 }}</a><br>{% if visit.is_returning %}Returning{% else %}First session{% endif %}</td><td>{{ visit.get_kind_display }}<br>{{ visit.path }}</td><td>{{ visit.device_type }} / {{ visit.browser }}</td><td>{{ visit.referrer_domain|default:"Direct / unknown" }}</td><td>{% if visit.user %}{{ visit.user.username }}<br>{{ visit.user.email }}{% else %}Anonymous{% endif %}</td></tr>{% empty %}<tr><td colspan="6">No visits in this date range.</td></tr>{% endfor %}</tbody></table></div>
+<div class="pagination">{% if visits.has_previous %}<a href="{% querystring page=visits.previous_page_number %}">Previous</a>{% endif %}<span>Page {{ visits.number }} of {{ visits.paginator.num_pages }}</span>{% if visits.has_next %}<a href="{% querystring page=visits.next_page_number %}">Next</a>{% endif %}</div>
+</section>
+<section><h2>Enquiries</h2>
+{% for enquiry in enquiries %}<article class="card enquiry"><h3>{{ enquiry.name }} · {{ enquiry.get_status_display }}</h3>
+<p>{{ enquiry.created_at|date:"d M Y H:i" }} · {{ enquiry.email }}{% if enquiry.phone %} · {{ enquiry.phone }}{% endif %}</p>
+{% if enquiry.visitor_id %}<p><a href="{% querystring visitor=enquiry.visitor_id page=None enquiry_page=None %}">View browser history</a></p>{% endif %}
+<p class="message-text">{{ enquiry.message }}</p>
+<form method="post" action="{% url 'analytics:update_enquiry' enquiry.pk %}">{% csrf_token %}
+<label for="status-{{ enquiry.pk }}">Status</label><select id="status-{{ enquiry.pk }}" name="status">{% for value,label in statuses %}<option value="{{ value }}" {% if enquiry.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select>
+<label for="notes-{{ enquiry.pk }}">Internal notes</label><textarea id="notes-{{ enquiry.pk }}" name="notes" maxlength="5000" rows="2">{{ enquiry.notes }}</textarea><p><button type="submit" class="btn">Save update</button></p>
+</form></article>{% empty %}<p class="card">No enquiries in this date range.</p>{% endfor %}
+<div class="pagination">{% if enquiries.has_previous %}<a href="{% querystring enquiry_page=enquiries.previous_page_number %}">Previous enquiries</a>{% endif %}<span>Page {{ enquiries.number }} of {{ enquiries.paginator.num_pages }}</span>{% if enquiries.has_next %}<a href="{% querystring enquiry_page=enquiries.next_page_number %}">Next enquiries</a>{% endif %}</div>
+</section>
+</main>
+{% endblock %}

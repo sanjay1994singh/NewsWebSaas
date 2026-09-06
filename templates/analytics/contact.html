@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Contact Us - Press Nexa{% endblock %}
+{% block styles %}input[type="checkbox"] { width:auto; } .errorlist { color:var(--danger); }{% endblock %}
+{% block content %}
+<main class="page" style="max-width:820px">
+<h1>Contact Press Nexa</h1>
+<p class="muted">Tell us about your publication or ask about plans and support.</p>
+<section class="card">
+{% if policy %}{{ policy.content|safe }}{% else %}<p>{{ company.legal_name }}</p><p>{{ company.support_email }}</p>{% endif %}
+<h2>Send an enquiry</h2>
+<form method="post" action="{% url 'contact_us' %}">
+{% csrf_token %}{{ form.as_p }}
+<p class="muted">We save the details you submit so our team can respond. <a href="{% url 'privacy_policy' %}">Read our Privacy Policy</a>.</p>
+<button class="btn" type="submit">Send enquiry</button>
+</form>
+</section>
+</main>
+{% endblock %}

@@ -1447,11 +1447,11 @@ def activate_tenant_add_on(*, tenant_add_on, provider_payment_reference=''):
 
 
 @transaction.atomic
-def process_webhook(*, body, signature, environment=None):
+def process_webhook(*, body, signature, environment=None, event_id=None):
     environment = environment or settings.RAZORPAY_ENVIRONMENT
     verify_razorpay_signature(body=body, signature=signature, secret=settings.RAZORPAY_WEBHOOK_SECRET)
     payload = json.loads(body.decode('utf-8'))
-    event_id = payload.get('id')
+    event_id = event_id or payload.get('id')
     event_type = payload.get('event')
     if not event_id or not event_type:
         raise ValidationError("Webhook payload missing id or event.")
