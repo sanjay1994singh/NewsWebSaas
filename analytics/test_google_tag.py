@@ -61,3 +61,11 @@ class GoogleTagTests(SimpleTestCase):
         self.assertIn('window.location.origin + window.location.pathname', html)
         html = render_to_string('base.html', {'request': request, 'user': request.user})
         self.assertNotIn('googletagmanager.com', html)
+
+    def test_standalone_landing_page_includes_tag_once(self):
+        request = self.request('/')
+        html = render_to_string('subscriptions/landing.html', {
+            'request': request, 'user': request.user, **google_analytics(request),
+        })
+        self.assertEqual(html.count('https://www.googletagmanager.com/gtag/js?id='), 1)
+        self.assertLess(html.index('Google tag (gtag.js)'), html.index('</head>'))
