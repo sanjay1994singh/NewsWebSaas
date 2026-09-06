@@ -158,7 +158,7 @@ def mark_epaper_ready(edition):
 
                     path = f'epaper/pages/{current.tenant_id}/{current.uuid}/{generation}/{number}-{field}.webp'
 
-                    fields[field] = default_storage.save(path, ContentFile(output.getvalue()))
+                    fields[field] = default_storage.save(path, ContentFile(output.getvalue()), max_length=EPaperPage._meta.get_field(field).max_length)
 
                     written.append(fields[field])
 

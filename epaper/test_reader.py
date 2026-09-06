@@ -52,6 +52,10 @@ class OptimizedReaderTests(TestCase):
                 img = Image.open(stream)
                 self.assertEqual(img.format, 'WEBP')
                 self.assertLessEqual(img.width,limit)
+        for name in ('image', 'mobile_image', 'zoom_image', 'thumbnail'):
+            field = first._meta.get_field(name)
+            self.assertEqual(field.max_length, 500)
+            self.assertLessEqual(len(getattr(first, name).name), field.max_length)
         original_name = first.image.name
         mark_epaper_ready(edition)
         self.assertEqual(edition.pages.count(),2)

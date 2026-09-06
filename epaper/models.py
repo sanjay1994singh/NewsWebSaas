@@ -51,10 +51,10 @@ class EPaperEdition(UUIDModel, TimeStampedModel):
 class EPaperPage(models.Model):
     edition = models.ForeignKey(EPaperEdition, related_name='pages', on_delete=models.CASCADE)
     number = models.PositiveIntegerField()
-    image = models.ImageField(upload_to='epaper/pages/')
-    mobile_image = models.ImageField(upload_to='epaper/pages/')
-    zoom_image = models.ImageField(upload_to='epaper/pages/')
-    thumbnail = models.ImageField(upload_to='epaper/pages/')
+    image = models.ImageField(upload_to='epaper/pages/', max_length=500)
+    mobile_image = models.ImageField(upload_to='epaper/pages/', max_length=500)
+    zoom_image = models.ImageField(upload_to='epaper/pages/', max_length=500)
+    thumbnail = models.ImageField(upload_to='epaper/pages/', max_length=500)
     width = models.PositiveIntegerField()
     height = models.PositiveIntegerField()
 
