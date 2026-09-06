@@ -108,7 +108,7 @@ class SignupPlanChoiceMixin:
 
 class CustomerSignupForm(SignupPlanChoiceMixin, forms.Form):
     business_name = forms.CharField(max_length=255, label='Channel name / Paper name')
-    publication_name = forms.CharField(max_length=255)
+    publication_name = forms.CharField(max_length=150, label='Publication name / Full name')
     email = forms.EmailField(required=False)
     mobile = forms.CharField(max_length=32)
     password = forms.CharField(
@@ -179,7 +179,7 @@ class CustomerSignupForm(SignupPlanChoiceMixin, forms.Form):
 
 class CustomerWorkspaceForm(SignupPlanChoiceMixin, forms.Form):
     business_name = forms.CharField(max_length=255, label='Channel name / Paper name')
-    publication_name = forms.CharField(max_length=255)
+    publication_name = forms.CharField(max_length=150, label='Publication name / Full name')
     email = forms.EmailField(required=False)
     mobile = forms.CharField(max_length=32)
     price_id = forms.IntegerField(widget=forms.HiddenInput)

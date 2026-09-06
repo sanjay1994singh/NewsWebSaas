@@ -1085,7 +1085,8 @@ def _pricing_defaults(plan_price, billing_months):
 def reserve_customer_acquisition(*, business_name, publication_name, publication_slug, email, mobile, password, plan_price, billing_months=1):
     User = get_user_model()
     username = generate_customer_username(publication_name=publication_name, mobile=mobile)
-    user = User.objects.create_user(username=username, email=email, password=password)
+    user = User.objects.create_user(username=username, email=email, password=password,
+                                    first_name=publication_name.strip(), last_name='')
     pricing_defaults = _pricing_defaults(plan_price, billing_months)
     acquisition = CustomerAcquisition.objects.create(
         user=user,
@@ -1106,6 +1107,9 @@ def reserve_customer_acquisition(*, business_name, publication_name, publication
 
 @transaction.atomic
 def reserve_customer_acquisition_for_user(*, user, business_name, publication_name, publication_slug, email, mobile, plan_price, billing_months=1):
+    user.first_name = publication_name.strip()
+    user.last_name = ''
+    user.save(update_fields=['first_name', 'last_name'])
     pricing_defaults = _pricing_defaults(plan_price, billing_months)
     acquisition = CustomerAcquisition.objects.create(
         user=user,
@@ -1129,6 +1133,9 @@ def update_pending_customer_acquisition(*, acquisition, business_name, publicati
     acquisition.plan_price = plan_price
     acquisition.business_name = business_name
     acquisition.publication_name = publication_name
+    acquisition.user.first_name = publication_name.strip()
+    acquisition.user.last_name = ''
+    acquisition.user.save(update_fields=['first_name', 'last_name'])
     acquisition.publication_slug = publication_slug
     acquisition.email = email or acquisition.user.email
     acquisition.mobile = mobile

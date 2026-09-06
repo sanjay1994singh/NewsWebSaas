@@ -24,6 +24,7 @@ class SignupWelcomeTests(TestCase):
         with self.captureOnCommitCallbacks(execute=True) as callbacks:
             acquisition, checkout = self.signup()
             self.assertEqual(len(mail.outbox), 0)
+        self.assertEqual(acquisition.user.get_full_name(), acquisition.publication_name)
         self.assertEqual(len(callbacks), 1)
         self.assertEqual(len(mail.outbox), 1)
         message = mail.outbox[0]

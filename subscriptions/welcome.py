@@ -19,6 +19,7 @@ def send_signup_welcome(acquisition_id):
         context = {
             'acquisition': acquisition,
             'username': acquisition.user.username,
+            'full_name': acquisition.user.get_full_name(),
             'plan_name': acquisition.plan_price.plan.name,
             'amount': money_display(acquisition.payable_amount, acquisition.plan_price.currency),
             'login_url': base + reverse('accounts:login'),
