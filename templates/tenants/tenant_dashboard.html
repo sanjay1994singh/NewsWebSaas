@@ -144,8 +144,14 @@
       <div class="sidebar-top">
         <button class="sidebar-close" type="button" data-sidebar-close aria-label="Close menu">&times;</button>
       </div>
-      <div class="side-brand" style="background:#f7fbf9;padding:14px;border-radius:8px;display:block">
-        {% include 'themes/shared/channel_brand.html' %}
+      <div class="side-brand">
+        <div class="logo">
+          {% if onboarding and onboarding.logo %}<img src="{{ onboarding.logo.url }}" alt="{{ tenant.public_name }}">{% else %}{{ tenant.public_name|first }}{% endif %}
+        </div>
+        <div>
+          <h1>{{ tenant.public_name }}</h1>
+          <p>{{ onboarding.tagline|default:"Digital publication workspace" }}</p>
+        </div>
       </div>
       <nav class="nav-group">
         <p class="nav-label">Workspace</p>
