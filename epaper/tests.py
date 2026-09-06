@@ -117,3 +117,67 @@ class EditionUploadRegressionTests(SimpleTestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(edition.status, EPaperEdition.Status.PUBLISHED)
         edition.save.assert_called_once()
+
+class PublicReaderAccessTests(SimpleTestCase):
+    @patch('epaper.templatetags.epaper_navigation.can_upload_epaper')
+    def test_menu_after_home_and_hidden_without_access(self, enabled):
+        from django.template import Context, Template
+        from pathlib import Path
+        source = Path('templates/themes/theme_classic/homepage.html').read_text()
+        nav = source[source.index('<nav class="wrap nav"'):]
+        nav = nav[:nav.index('</nav>') + 6]
+        tenant = SimpleNamespace(pk=1, slug='paper')
+        request = SimpleNamespace(tenant=tenant, tenant_domain=SimpleNamespace(tenant_id=1))
+        template = Template('{% load epaper_navigation %}' + nav)
+        enabled.return_value = True
+        html = template.render(Context({'tenant': tenant, 'request': request, 'has_videos': True}))
+        self.assertLess(html.index('>Home</a>'), html.index('>E-Paper</a>'))
+        self.assertLess(html.index('>E-Paper</a>'), html.index('>Videos</a>'))
+        self.assertIn('href="/epaper/"', html)
+        enabled.return_value = False
+        self.assertNotIn('>E-Paper</a>', template.render(Context({'tenant': tenant, 'request': request})))
+
+    @patch('epaper.views.can_upload_epaper', return_value=True)
+    @patch('epaper.views.EPaperEdition.objects.filter')
+    def test_anonymous_domain_home_only_queries_published_tenant_editions(self, query, enabled):
+        from django.test import RequestFactory
+        from .views import public_epaper_home
+        from .models import EPaperEdition
+        request = RequestFactory().get('/epaper/')
+        from django.contrib.auth.models import AnonymousUser
+        request.user = AnonymousUser()
+        request.tenant = SimpleNamespace(pk=1, slug='paper', publication_name='Paper', business_name='Paper')
+        query.return_value = []
+        response = public_epaper_home(request)
+        self.assertEqual(response.status_code, 200)
+        query.assert_called_once_with(tenant=request.tenant, status=EPaperEdition.Status.PUBLISHED)
+
+    @patch('epaper.views.can_upload_epaper', return_value=False)
+    def test_disabled_feature_and_cross_tenant_slug_rejected(self, enabled):
+        from django.http import Http404
+        from django.test import RequestFactory
+        from .views import _public_tenant
+        request = RequestFactory().get('/epaper/')
+        from django.contrib.auth.models import AnonymousUser
+        request.user = AnonymousUser()
+        request.tenant = SimpleNamespace(slug='paper', business_name='Paper')
+        with self.assertRaises(Http404):
+            _public_tenant(request)
+        enabled.return_value = True
+        with self.assertRaises(Http404):
+            _public_tenant(request, 'another-publication')
+
+    @patch('epaper.views.can_upload_epaper', return_value=True)
+    @patch('epaper.views.get_object_or_404')
+    def test_reader_is_public_and_scopes_edition_lookup(self, lookup, enabled):
+        from django.test import RequestFactory
+        from .models import EPaperEdition
+        from .views import epaper_reader
+        request = RequestFactory().get('/epaper/latest/')
+        from django.contrib.auth.models import AnonymousUser
+        request.user = AnonymousUser()
+        request.tenant = SimpleNamespace(slug='paper', business_name='Paper')
+        lookup.return_value = EPaperEdition(title='Latest', slug='latest', pdf_file='epaper/pdfs/latest.pdf')
+        response = epaper_reader(request, slug='latest')
+        self.assertEqual(response.status_code, 200)
+        lookup.assert_called_once_with(EPaperEdition, tenant=request.tenant, slug='latest', status=EPaperEdition.Status.PUBLISHED)

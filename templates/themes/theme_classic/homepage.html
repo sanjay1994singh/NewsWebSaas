@@ -1,3 +1,4 @@
+{% load epaper_navigation %}
 <!doctype html>
 <html lang="en">
 <head>
@@ -835,14 +836,17 @@
 
   <div class="nav-shell">
     <nav class="wrap nav" aria-label="Primary navigation">
+      {% public_epaper_url as epaper_menu_url %}
       {% if request.tenant %}
         <a href="/">Home</a>
+        {% if epaper_menu_url %}<a href="{{ epaper_menu_url }}">E-Paper</a>{% endif %}
         {% if has_videos %}<a href="/videos/">Videos</a>{% endif %}
         {% for category in nav_categories %}
           <a href="/category/{{ category.slug }}/">{{ category.name }}</a>
         {% endfor %}
       {% else %}
         <a href="/site/{{ public_site_slug }}/">Home</a>
+        {% if epaper_menu_url %}<a href="{{ epaper_menu_url }}">E-Paper</a>{% endif %}
         {% if has_videos %}<a href="/site/{{ public_site_slug }}/videos/">Videos</a>{% endif %}
         {% for category in nav_categories %}
           <a href="/site/{{ public_site_slug }}/category/{{ category.slug }}/">{{ category.name }}</a>

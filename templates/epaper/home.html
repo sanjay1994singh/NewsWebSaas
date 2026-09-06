@@ -14,13 +14,14 @@
 </head>
 <body>
   <main>
+    <a href="{% if domain_reader %}/{% else %}/site/{{ tenant.slug }}/{% endif %}">Home</a>
     <h1>{{ tenant.publication_name }} E-Paper</h1>
     <div class="grid">
       {% for edition in editions %}
         <article class="card">
           <h2>{{ edition.title }}</h2>
           <p>{{ edition.publication_date }} / {{ edition.city }} {{ edition.region }}</p>
-          <a class="btn" href="{% url 'epaper:reader' tenant.slug edition.slug %}">Read</a>
+          <a class="btn" href="{% if domain_reader %}{% url 'epaper:domain_reader' edition.slug %}{% else %}{% url 'epaper:reader' tenant.slug edition.slug %}{% endif %}">Read</a>
         </article>
       {% empty %}
         <p>No published editions.</p>

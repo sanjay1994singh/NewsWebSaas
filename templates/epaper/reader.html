@@ -13,11 +13,12 @@
 </head>
 <body>
   <div class="toolbar">
+    <a href="{% if domain_reader %}{% url 'epaper:domain_home' %}{% else %}{% url 'epaper:public_home' tenant.slug %}{% endif %}">E-Paper editions</a>
     <strong>{{ edition.title }}</strong>
     <button type="button" onclick="zoom(0.1)">Zoom In</button>
     <button type="button" onclick="zoom(-0.1)">Zoom Out</button>
     <button type="button" onclick="document.documentElement.requestFullscreen()">Fullscreen</button>
-    {% if edition.allow_download %}<a href="{% url 'epaper:download' tenant.slug edition.slug %}">Download</a>{% endif %}
+    {% if edition.allow_download %}<a href="{% if domain_reader %}{% url 'epaper:domain_download' edition.slug %}{% else %}{% url 'epaper:download' tenant.slug edition.slug %}{% endif %}">Download</a>{% endif %}
   </div>
   <iframe id="reader" src="{{ edition.pdf_file.url }}"></iframe>
   <script>

@@ -5,6 +5,9 @@ from . import views
 app_name = 'epaper'
 
 urlpatterns = [
+    path('epaper/', views.public_epaper_home, name='domain_home'),
+    path('epaper/<slug:slug>/', views.epaper_reader, name='domain_reader'),
+    path('epaper/<slug:slug>/download/', views.download_edition, name='domain_download'),
     path('dashboard/epaper/', views.dashboard, name='dashboard'),
     path('dashboard/epaper/new/', views.create_edition, name='create_edition'),
     path('dashboard/epaper/<uuid:edition_id>/publish/', views.publish_edition, name='publish_edition'),
