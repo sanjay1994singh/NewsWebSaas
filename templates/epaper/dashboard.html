@@ -20,7 +20,7 @@
         <h2>{{ edition.title }}</h2>
         <p>{{ edition.publication_date }} / {{ edition.city }} / {{ edition.get_status_display }}</p>
         {% if edition.status == "ready" %}
-          <form method="post" action="{% url 'epaper:publish_edition' edition.id %}">
+          <form method="post" action="{% url 'epaper:publish_edition' edition.uuid %}">
             {% csrf_token %}
             <button class="btn" type="submit">Publish</button>
           </form>

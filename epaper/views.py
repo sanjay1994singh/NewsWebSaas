@@ -68,7 +68,7 @@ def create_edition(request):
 @require_POST
 def publish_edition(request, edition_id):
     tenant = _owned_tenant(request.user)
-    edition = get_object_or_404(EPaperEdition, pk=edition_id, tenant=tenant)
+    edition = get_object_or_404(EPaperEdition, uuid=edition_id, tenant=tenant)
     if not can_upload_epaper(tenant):
         return JsonResponse({'detail': 'E-Paper publishing is not enabled for this tenant.'}, status=403)
     edition.status = EPaperEdition.Status.PUBLISHED

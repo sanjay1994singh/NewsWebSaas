@@ -51,7 +51,7 @@
       {% csrf_token %}
       {% if form.errors %}<div class="errors" role="alert">Please check the fields below.{{ form.non_field_errors }}</div>{% endif %}
       <fieldset aria-labelledby="edition-heading">
-        <h2 id="edition-heading">Edition details</h2><p class="section-help">Add the name, publication date and location of your edition.</p>
+        <h2 id="edition-heading">Edition details</h2><p class="section-help">Only publication date and PDF are required. All other fields are optional.</p>
         <div class="grid">
           {% for field in form %}{% if field.name != 'pdf_file' and field.name != 'allow_download' and field.name != 'is_featured' %}
             <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>{{ field }}{% if field.help_text %}<p class="help" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</p>{% endif %}{{ field.errors }}</div>

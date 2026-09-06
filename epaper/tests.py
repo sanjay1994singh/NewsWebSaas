@@ -70,3 +70,50 @@ class EditionFormTests(SimpleTestCase):
         self.assertEqual(form['city'].value(), 'New city')
         self.assertFalse(form['allow_download'].value())
         self.assertFalse(form['is_featured'].value())
+
+
+class EditionUploadRegressionTests(SimpleTestCase):
+    def test_only_date_and_pdf_required(self):
+        self.assertEqual(
+            {name for name, field in EPaperEditionForm().fields.items() if field.required},
+            {'publication_date', 'pdf_file'},
+        )
+        form = EPaperEditionForm(
+            {'publication_date': '06-09-2026'},
+            {'pdf_file': SimpleUploadedFile('edition.pdf', b'%PDF-1.4\n', content_type='application/pdf')},
+        )
+        self.assertTrue(form.is_valid(), form.errors)
+        edition = form.save(commit=False)
+        self.assertEqual(edition.title, 'E-Paper - 06-09-2026')
+        self.assertFalse(edition.allow_download)
+        self.assertFalse(edition.is_featured)
+
+    def test_ready_edition_dashboard_renders_uuid_publish_link(self):
+        from .models import EPaperEdition
+        from django.urls import reverse, resolve
+        edition = EPaperEdition(id=123, title='Test edition', status='ready')
+        url = reverse('epaper:publish_edition', args=[edition.uuid])
+        html = render_to_string('epaper/dashboard.html', {'editions': [edition]})
+        self.assertIn(url, html)
+        self.assertEqual(resolve(url).kwargs['edition_id'], edition.uuid)
+
+    @patch('epaper.views.messages.success')
+    @patch('epaper.views.can_upload_epaper', return_value=True)
+    @patch('epaper.views.get_object_or_404')
+    @patch('epaper.views._owned_tenant')
+    def test_publish_looks_up_uuid_with_tenant(self, owned, get_edition, allowed, message):
+        from unittest.mock import Mock
+        from django.test import RequestFactory
+        from .models import EPaperEdition
+        from .views import publish_edition
+        from uuid import uuid4
+        tenant = owned.return_value
+        edition = get_edition.return_value
+        identifier = uuid4()
+        request = RequestFactory().post('/dashboard/epaper/publish/')
+        request.user = Mock(is_authenticated=True)
+        response = publish_edition(request, identifier)
+        get_edition.assert_called_once_with(EPaperEdition, uuid=identifier, tenant=tenant)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(edition.status, EPaperEdition.Status.PUBLISHED)
+        edition.save.assert_called_once()
