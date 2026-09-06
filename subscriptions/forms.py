@@ -57,6 +57,14 @@ class SignupPlanChoiceMixin:
                                    and current.billing_cycle != PlanPrice.BillingCycle.MONTHLY):
                 selected[price.plan_id] = price
         self.signup_prices = {str(price.pk): price for price in selected.values()}
+        if not self.is_bound and not self.initial.get('price_id'):
+            starter = next((price for price in selected.values()
+                            if price.plan.code == 'news_starter'
+                            and price.billing_cycle == PlanPrice.BillingCycle.MONTHLY), None)
+            if starter is not None:
+                self.initial['price_id'] = starter.pk
+                self.initial['billing_months'] = '1'
+
         self.fields['price_id'].label = 'Choose your plan'
         self.fields['price_id'].widget = forms.Select(choices=[('', 'Select a plan')] + [
             (price.pk, price.plan.name) for price in selected.values()

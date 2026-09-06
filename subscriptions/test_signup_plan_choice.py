@@ -79,3 +79,33 @@ class SignupPlanChoiceTests(TestCase):
         self.assertContains(response, 'News Articles: 150 / month')
         self.assertNotContains(response, 'Private feature')
         self.assertContains(response, 'data-plan-details')
+
+    def test_direct_signup_defaults_to_starter_one_month_in_both_flows(self):
+        for authenticated in [False, True]:
+            if authenticated:
+                self.client.force_login(self.user)
+            response = self.client.get('/saas/signup/')
+            form = response.context['form']
+            self.assertEqual(str(form['price_id'].value()), str(self.price.pk))
+            self.assertEqual(str(form['billing_months'].value()), '1')
+            self.assertEqual(form.selected_quote['name'], 'News Starter')
+            self.assertContains(response, '₹ 399')
+
+    def test_explicit_link_selection_is_preserved(self):
+        response = self.client.get('/saas/signup/', {'price': self.pro_price.pk, 'months': 12})
+        form = response.context['form']
+        self.assertEqual(str(form['price_id'].value()), str(self.pro_price.pk))
+        self.assertEqual(str(form['billing_months'].value()), '12')
+
+    def test_missing_post_selection_is_not_silently_defaulted(self):
+        data = self.data(self.pro_price)
+        data.pop('price_id')
+        form = CustomerSignupForm(data)
+        self.assertFalse(form.is_valid())
+        self.assertIn('price_id', form.errors)
+
+    def test_unavailable_starter_does_not_select_another_plan(self):
+        self.price.is_active = False
+        self.price.save()
+        form = CustomerSignupForm(initial={'price_id': None})
+        self.assertIsNone(form['price_id'].value())
