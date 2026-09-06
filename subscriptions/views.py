@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import login
@@ -47,6 +49,7 @@ from .services import (
     calculate_plan_change_quote,
     create_plan_change_checkout,
     apply_verified_plan_change,
+    active_onboarding_policy,
     create_tenant_after_verified_subscription,
     create_razorpay_order_for_acquisition,
     process_webhook,
@@ -648,10 +651,28 @@ def review_status(request):
     if onboarding_record.status == TenantOnboarding.Status.PUBLISHED:
         _activate_published_tenant(tenant)
         return redirect('tenants:tenant_dashboard')
+    policy = active_onboarding_policy()
+    subscription = getattr(tenant, 'subscription', None)
+    countdown_starts_at = (
+        getattr(subscription, 'start_at', None)
+        or onboarding_record.submitted_at
+        or onboarding_record.created_at
+    )
+    auto_publish_at = None
+    if policy.mode == policy.Mode.INSTANT:
+        auto_publish_at = countdown_starts_at
+    elif policy.mode == policy.Mode.DELAYED:
+        auto_publish_at = countdown_starts_at + timedelta(minutes=policy.delay_minutes)
     return render(
         request,
         'subscriptions/review_status.html',
-        {'tenant': tenant, 'onboarding': onboarding_record, 'events': onboarding_record.review_events.order_by('-created_at')[:10]},
+        {
+            'tenant': tenant,
+            'onboarding': onboarding_record,
+            'events': onboarding_record.review_events.order_by('-created_at')[:10],
+            'auto_publish_at': auto_publish_at,
+            'auto_publish_delay_minutes': policy.delay_minutes,
+        },
     )
 
 
@@ -1098,3 +1119,5 @@ def feature_access_check(request, tenant_slug, feature_code):
             'source': entitlement['source'],
         }
     )
+
+

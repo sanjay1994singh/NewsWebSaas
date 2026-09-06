@@ -6,9 +6,19 @@
   .review-shell { display:grid; gap:16px; max-width:900px; }
   .review-hero { display:flex; justify-content:space-between; gap:18px; align-items:flex-start; }
   .status-pill { display:inline-flex; align-items:center; min-height:38px; padding:8px 12px; border:1px solid var(--line); border-radius:999px; background:#eef6f2; color:var(--brand); font-weight:800; }
+  .publish-timer { display:grid; gap:12px; }
+  .timer-head { display:flex; justify-content:space-between; gap:16px; align-items:center; }
+  .timer-value { font-size:clamp(2rem, 5vw, 3.4rem); line-height:1; font-weight:900; color:var(--brand); }
+  .timer-bar { height:10px; overflow:hidden; border-radius:999px; background:#dfe9e4; }
+  .timer-fill { width:0%; height:100%; border-radius:inherit; background:linear-gradient(90deg, #0d3d31, #1c8c6a); transition:width .35s ease; }
+  .publish-soon { display:none; align-items:center; gap:10px; color:var(--brand); font-weight:800; }
+  .publish-soon.is-active { display:flex; }
+  .live-dot { width:12px; height:12px; border-radius:50%; background:#1c8c6a; box-shadow:0 0 0 0 rgba(28, 140, 106, .45); animation:publishPulse 1.35s infinite; }
+  .status-pill.is-publishing { background:#eaf8f2; }
   .event-list { display:grid; gap:12px; }
   .event-card { padding:16px; }
-  @media (max-width:760px) { .review-hero { display:grid; } }
+  @keyframes publishPulse { 70% { box-shadow:0 0 0 12px rgba(28, 140, 106, 0); } 100% { box-shadow:0 0 0 0 rgba(28, 140, 106, 0); } }
+  @media (max-width:760px) { .review-hero, .timer-head { display:grid; } }
 {% endblock %}
 
 {% block content %}
@@ -17,10 +27,24 @@
       <div>
         <p class="muted">Publication review</p>
         <h1>{{ tenant.publication_name }} Review Status</h1>
-        <p class="muted">Your setup has been submitted. Please wait up to 30 minutes; your workspace will be activated and published automatically if no admin action is needed.</p>
+        <p class="muted">Your setup has been submitted. Auto-publish is scheduled after {{ auto_publish_delay_minutes }} minutes if no manual admin action is needed.</p>
       </div>
-      <span class="status-pill">{{ onboarding.get_status_display }}</span>
+      <span class="status-pill" data-status-pill>{{ onboarding.get_status_display }}</span>
     </section>
+
+    {% if auto_publish_at %}
+      <section class="card publish-timer" data-review-timer data-auto-publish-at="{{ auto_publish_at|date:'c' }}">
+        <div class="timer-head">
+          <div>
+            <strong data-timer-title>Auto publishing in</strong>
+            <p class="muted" data-timer-message>Your publication is in review. This page keeps the timer live while setup waits for approval.</p>
+          </div>
+          <div class="timer-value" data-countdown>--:--</div>
+        </div>
+        <div class="timer-bar" aria-hidden="true"><div class="timer-fill" data-timer-fill></div></div>
+        <div class="publish-soon" data-publish-soon><span class="live-dot"></span><span>Publishing soon. Approval and publishing are in progress.</span></div>
+      </section>
+    {% endif %}
 
     {% if onboarding.reviewer_notes %}
       <section class="card">
@@ -45,3 +69,45 @@
     </section>
   </main>
 {% endblock %}
+{% block scripts %}
+  <script>
+    (function () {
+      const timer = document.querySelector('[data-review-timer]');
+      if (!timer) return;
+      const target = new Date(timer.dataset.autoPublishAt).getTime();
+      if (!Number.isFinite(target)) return;
+      const countdown = timer.querySelector('[data-countdown]');
+      const fill = timer.querySelector('[data-timer-fill]');
+      const title = timer.querySelector('[data-timer-title]');
+      const message = timer.querySelector('[data-timer-message]');
+      const soon = timer.querySelector('[data-publish-soon]');
+      const pill = document.querySelector('[data-status-pill]');
+      const firstSeen = Date.now();
+      const total = Math.max(target - firstSeen, 1000);
+      function two(value) { return String(value).padStart(2, '0'); }
+      function render() {
+        const now = Date.now();
+        const remaining = target - now;
+        if (remaining <= 0) {
+          countdown.textContent = 'Soon';
+          fill.style.width = '100%';
+          title.textContent = 'Publishing soon';
+          message.textContent = 'Auto-publish time has arrived. Your workspace is waiting for final approval and publish completion.';
+          soon.classList.add('is-active');
+          if (pill) {
+            pill.textContent = 'Publishing soon';
+            pill.classList.add('is-publishing');
+          }
+          return;
+        }
+        const seconds = Math.ceil(remaining / 1000);
+        const minutes = Math.floor(seconds / 60);
+        countdown.textContent = `${two(minutes)}:${two(seconds % 60)}`;
+        fill.style.width = `${Math.min(100, Math.max(0, ((total - remaining) / total) * 100))}%`;
+        window.setTimeout(render, 1000);
+      }
+      render();
+    })();
+  </script>
+{% endblock %}
+
