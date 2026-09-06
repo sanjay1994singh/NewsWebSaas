@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ tenant.publication_name }} Settings - Press Nexa{% endblock %}
+{% block title %}{{ tenant.public_name }} Settings - Press Nexa{% endblock %}
 
 {% block styles %}
   .settings-shell { display:grid; gap:20px; }
@@ -21,7 +21,7 @@
     <section class="card settings-hero">
       <div>
         <p class="muted">Workspace settings</p>
-        <h1>{{ tenant.publication_name }}</h1>
+        <h1>{{ tenant.public_name }}</h1>
         <p class="muted">Keep your publication identity and customer contact details updated.</p>
       </div>
       <a class="btn secondary" href="{% url 'tenants:tenant_dashboard' %}">Back to Dashboard</a>

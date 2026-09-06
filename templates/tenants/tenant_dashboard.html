@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ tenant.publication_name }} Dashboard</title>
+  <title>{{ tenant.public_name }} Dashboard</title>
   <style>
     :root { --ink:#13201b; --muted:#66766e; --line:#d9e4de; --paper:#f6faf8; --brand:#15614f; --deep:#102f29; --warn:#9a5549; --soft:#eef6f2; --gold:#d99b38; }
     * { box-sizing:border-box; }
@@ -144,14 +144,8 @@
       <div class="sidebar-top">
         <button class="sidebar-close" type="button" data-sidebar-close aria-label="Close menu">&times;</button>
       </div>
-      <div class="side-brand">
-        <div class="logo">
-          {% if onboarding and onboarding.logo %}<img src="{{ onboarding.logo.url }}" alt="{{ tenant.publication_name }}">{% else %}{{ tenant.publication_name|first }}{% endif %}
-        </div>
-        <div>
-          <h1>{{ tenant.publication_name }}</h1>
-          <p>{{ tenant.business_name }}</p>
-        </div>
+      <div class="side-brand" style="background:#f7fbf9;padding:14px;border-radius:8px;display:block">
+        {% include 'themes/shared/channel_brand.html' %}
       </div>
       <nav class="nav-group">
         <p class="nav-label">Workspace</p>
@@ -186,7 +180,7 @@
       <section class="topbar">
         <div>
           <p class="eyebrow">Customer dashboard</p>
-          <h2>{{ tenant.publication_name }}</h2>
+          <h2>{{ tenant.public_name }}</h2>
           <p class="muted">{{ tenant.business_name }}</p>
         </div>
         <div class="pills">

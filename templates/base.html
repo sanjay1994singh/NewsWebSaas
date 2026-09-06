@@ -19,10 +19,9 @@
     body { margin:0; font-family:Arial,sans-serif; color:var(--ink); background:var(--paper); line-height:1.5; }
     a { color:inherit; }
     .site-nav { position:sticky; top:0; z-index:20; background:rgba(255,255,255,.96); border-bottom:1px solid var(--line); backdrop-filter:blur(10px); }
-    .nav-wrap { width:min(1160px, calc(100% - 32px)); min-height:66px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:18px; }
+    .nav-wrap { width:min(1160px, calc(100% - 32px)); min-height:92px; padding:18px 0; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:18px; }
     .brand { min-width:0; display:inline-flex; align-items:center; gap:10px; font-weight:900; font-size:22px; text-decoration:none; color:var(--deep); overflow-wrap:anywhere; }
     .brand-logo { width:38px; height:38px; border-radius:8px; flex:0 0 38px; }
-    .tenant-brand-mark { display:inline-grid; place-items:center; width:38px; height:38px; flex:0 0 38px; border-radius:8px; background:var(--deep); color:#fff; font-size:17px; line-height:1; font-weight:900; text-transform:uppercase; }
     .nav-links { display:flex; gap:16px; align-items:center; justify-content:flex-end; min-width:0; font-size:14px; color:var(--muted); font-weight:700; }
     .nav-links a { text-decoration:none; }
     .account-menu { position:relative; }
@@ -62,21 +61,19 @@
     table { max-width:100%; }
     th, td { overflow-wrap:anywhere; }
     .muted { color:var(--muted); }
-    @media (max-width:760px) { .nav-links .hide-sm { display:none; } .nav-wrap { width:calc(100% - 20px); gap:10px; } .page { width:calc(100% - 20px); margin:22px auto; } .card { padding:16px; } .footer-wrap { width:calc(100% - 20px); grid-template-columns:1fr; } .footer-links { justify-content:flex-start; } .btn { width:100%; } .account-toggle { max-width:44vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } }
+    @media (max-width:760px) { .nav-links .hide-sm { display:none; } .nav-wrap { width:calc(100% - 20px); gap:14px; flex-wrap:wrap; } .page { width:calc(100% - 20px); margin:22px auto; } .card { padding:16px; } .footer-wrap { width:calc(100% - 20px); grid-template-columns:1fr; } .footer-links { justify-content:flex-start; } .btn { width:100%; } .account-toggle { max-width:44vw; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } }
     {% block styles %}{% endblock %}
   </style>
 </head>
 <body>
   <nav class="site-nav">
     <div class="nav-wrap">
-      <a class="brand" href="{% url 'home' %}">
-        {% if is_tenant_domain %}
-          <span class="tenant-brand-mark" aria-hidden="true">{{ site_brand_name|first }}</span>
-        {% else %}
-          <img class="brand-logo" src="{% static 'brand/press-nexa-mark.svg' %}" alt="" aria-hidden="true">
-        {% endif %}
-        <span>{{ site_brand_name|default:"Press Nexa" }}</span>
-      </a>
+      {% with header_tenant=tenant|default:request.tenant %}
+      {% if header_tenant %}
+        <a href="{% url 'home' %}" style="text-decoration:none;min-width:0">{% include 'themes/shared/channel_brand.html' with tenant=header_tenant %}</a>
+      {% else %}
+        <a class="brand" href="{% url 'home' %}"><img class="brand-logo" src="{% static 'brand/press-nexa-mark.svg' %}" alt="" aria-hidden="true"><span>{{ site_brand_name|default:"Press Nexa" }}</span></a>
+      {% endif %}
       <div class="nav-links">
         {% for link in customer_nav_links|slice:":3" %}
           <a class="hide-sm" href="{{ link.url }}">{{ link.label }}</a>
@@ -129,10 +126,10 @@
   <footer class="site-footer">
     <div class="footer-wrap">
       <div>
-        <div class="footer-brand">{{ site_brand_name|default:"Press Nexa" }}</div>
-        {% if is_tenant_domain %}
-          <div class="muted">Digital publication workspace</div>
+        {% if header_tenant %}
+          {% include 'themes/shared/channel_brand.html' with tenant=header_tenant %}
         {% else %}
+          <div class="footer-brand">{{ site_brand_name|default:"Press Nexa" }}</div>
           <div class="muted">Operated by SHRI INFOWAVE PRIVATE LIMITED</div>
           <div class="small">CIN: U62012UW2026PTC257361</div>
         {% endif %}
@@ -232,6 +229,6 @@
     })();
   </script>
 {% block scripts %}{% endblock %}
-</body>
+{% endwith %}</body>
 </html>
 

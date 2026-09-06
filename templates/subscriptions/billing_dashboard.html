@@ -49,7 +49,7 @@
     <section class="card billing-hero">
       <div>
         <p class="muted">Billing center</p>
-        <h1>{{ tenant.publication_name }}</h1>
+        <h1>{{ tenant.public_name }}</h1>
         <p class="muted">Review your current plan, payment details, and invoice history.</p>
       </div>
       <span class="status-pill">{% if subscription %}{{ subscription.get_status_display }}{% else %}No active subscription{% endif %}</span>

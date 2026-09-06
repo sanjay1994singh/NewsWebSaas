@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ title }} - {{ tenant.publication_name }}{% endblock %}
+{% block title %}{{ title }} - {{ tenant.public_name }}{% endblock %}
 
 {% block styles %}
   .editor-shell { display:grid; gap:18px; }
@@ -39,7 +39,7 @@
       <div>
         <p class="muted">Publishing desk</p>
         <h1>{{ title }}</h1>
-        <p class="muted">Write, save, review, and publish content for {{ tenant.business_name|default:tenant.publication_name }}.</p>
+        <p class="muted">Write, save, review, and publish content for {{ tenant.public_name }}.</p>
       </div>
       <a class="btn secondary" href="{% url 'news:article_dashboard' %}">Back to Articles</a>
     </section>

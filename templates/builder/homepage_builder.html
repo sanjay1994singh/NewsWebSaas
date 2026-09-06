@@ -12,7 +12,7 @@
     <header class="builder-header">
       <div>
         <h1>Homepage Builder</h1>
-        <p>{{ request.tenant.publication_name }}</p>
+        <p>{{ request.tenant.public_name }}</p>
       </div>
       <nav class="builder-actions">
         <a class="button" href="{% url 'pages:homepage_preview' %}" target="_blank">Preview Draft</a>

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}News Publishing - {{ tenant.publication_name }}{% endblock %}
+{% block title %}News Publishing - {{ tenant.public_name }}{% endblock %}
 
 {% block styles %}
   .cms-shell { display:grid; gap:18px; }
@@ -53,7 +53,7 @@
       <div>
         <p class="muted">Publishing desk</p>
         <h1>{% if is_blog %}Blog Publishing{% else %}News Publishing{% endif %}</h1>
-        <p class="muted">Manage {% if is_blog %}blog posts{% else %}news articles{% endif %} for {{ tenant.business_name|default:tenant.publication_name }} from one workspace.</p>
+        <p class="muted">Manage {% if is_blog %}blog posts{% else %}news articles{% endif %} for {{ tenant.public_name }} from one workspace.</p>
       </div>
       <div class="cms-actions">
         <a class="btn" href="{% url 'news:article_create' %}?type={{ content_type }}">{% if is_blog %}Add Blog{% else %}Add News{% endif %}</a>

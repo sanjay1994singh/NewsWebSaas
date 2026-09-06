@@ -90,7 +90,7 @@
     <section class="card panel">
       <h2>Current Subscription</h2>
       <div class="detail-list">
-        <div class="detail-row"><span>Workspace</span><strong>{{ tenant.publication_name }}</strong></div>
+        <div class="detail-row"><span>Workspace</span><strong>{{ tenant.public_name }}</strong></div>
         <div class="detail-row"><span>Current plan</span><strong>{{ subscription.plan.name }}</strong></div>
         <div class="detail-row"><span>Status</span><strong>{{ subscription.get_status_display }}</strong></div>
         <div class="detail-row"><span>Active period</span><strong>{% if subscription.current_period_start and subscription.current_period_end %}{{ subscription.current_period_start|date:"d M Y" }} - {{ subscription.current_period_end|date:"d M Y" }}{% else %}-{% endif %}</strong></div>
@@ -317,7 +317,7 @@
       name: "{{ checkout.name|escapejs }}",
       description: "{{ checkout.description|escapejs }}",
       prefill: {
-        name: "{{ tenant.publication_name|escapejs }}",
+        name: "{{ tenant.public_name|escapejs }}",
         email: "{{ request.user.email|default:''|escapejs }}",
         contact: "{{ tenant.mobile|default:''|escapejs }}"
       },

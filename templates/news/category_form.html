@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}{{ title }} - {{ tenant.business_name|default:tenant.publication_name }}{% endblock %}
+{% block title %}{{ title }} - {{ tenant.public_name }}{% endblock %}
 
 {% block styles %}
   .category-form-shell { display:grid; gap:18px; max-width:860px; }
@@ -21,7 +21,7 @@
     <section class="card">
       <p class="muted">Publishing desk</p>
       <h1>{{ title }}</h1>
-      <p class="muted">This category will be available only for {{ tenant.business_name|default:tenant.publication_name }}.</p>
+      <p class="muted">This category will be available only for {{ tenant.public_name }}.</p>
     </section>
 
     <form class="card" method="post" enctype="multipart/form-data">

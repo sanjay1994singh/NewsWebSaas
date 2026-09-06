@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Reporters - {{ tenant.publication_name }}{% endblock %}
+{% block title %}Reporters - {{ tenant.public_name }}{% endblock %}
 {% block styles %}
 .reporter-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; }
 .reporter-head h1 { margin:4px 0 0; font-size:34px; }
@@ -19,7 +19,7 @@
     <div>
       <p class="muted">Workspace team</p>
       <h1>Reporters</h1>
-      <p class="muted">Create reporter or editor accounts for {{ tenant.publication_name }} publishing.</p>
+      <p class="muted">Create reporter or editor accounts for {{ tenant.public_name }} publishing.</p>
     </div>
     <a class="btn" href="{% url 'tenants:reporter_create' %}">Add Reporter</a>
   </section>

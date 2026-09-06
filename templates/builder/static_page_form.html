@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Edit {{ page_obj.title }} - {{ tenant.business_name|default:tenant.publication_name }}{% endblock %}
+{% block title %}Edit {{ page_obj.title }} - {{ tenant.public_name }}{% endblock %}
 
 {% block styles %}
   .edit-shell { display:grid; gap:18px; }

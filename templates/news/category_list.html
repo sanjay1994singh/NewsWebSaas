@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Categories - {{ tenant.business_name|default:tenant.publication_name }}{% endblock %}
+{% block title %}Categories - {{ tenant.public_name }}{% endblock %}
 
 {% block styles %}
   .category-shell { display:grid; gap:18px; }
@@ -40,7 +40,7 @@
       <div>
         <p class="muted">Publishing desk</p>
         <h1>Categories</h1>
-        <p class="muted">Manage categories for {{ tenant.business_name|default:tenant.publication_name }} posts.</p>
+        <p class="muted">Manage categories for {{ tenant.public_name }} posts.</p>
       </div>
       <div class="category-actions">
         <a class="btn" href="{% url 'news:category_create' %}">Add Category</a>

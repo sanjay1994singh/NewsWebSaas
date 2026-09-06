@@ -43,7 +43,7 @@
     <div>
       <p class="status-kicker">Account status</p>
       {% if tenant %}
-        <h1>{{ tenant.publication_name }}</h1>
+        <h1>{{ tenant.public_name }}</h1>
         <p class="status-copy">Track your subscription, onboarding progress, and the next action needed to keep your publication workspace moving.</p>
       {% else %}
         <h1>No Workspace Yet</h1>
@@ -53,7 +53,7 @@
     <aside class="status-panel">
       {% if tenant %}
         <span class="status-badge">{{ tenant.get_status_display }}</span>
-        <h2>{{ tenant.publication_name }}</h2>
+        <h2>{{ tenant.public_name }}</h2>
       {% else %}
         <span class="status-badge">Action required</span>
         <h2>Reserve your workspace</h2>

@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Register - {{ tenant.business_name|default:tenant.publication_name }}{% endblock %}
+{% block title %}Register - {{ tenant.public_name }}{% endblock %}
 {% block styles %}
 .visitor-shell { min-height:calc(100vh - 120px); display:grid; align-items:start; }
 .visitor-card { max-width:560px; width:100%; margin:8px auto 0; padding:0; overflow:hidden; }
@@ -24,7 +24,7 @@
     <div class="visitor-head">
       <p class="visitor-kicker">Visitor account</p>
       <h1>Register</h1>
-      <p class="visitor-copy">Create a visitor account for {{ tenant.business_name|default:tenant.publication_name }} updates. This account does not include dashboard access.</p>
+      <p class="visitor-copy">Create a visitor account for {{ tenant.public_name }} updates. This account does not include dashboard access.</p>
     </div>
     <form class="visitor-form" method="post">
       {% csrf_token %}

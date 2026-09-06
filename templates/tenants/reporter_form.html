@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Add Reporter - {{ tenant.publication_name }}{% endblock %}
+{% block title %}Add Reporter - {{ tenant.public_name }}{% endblock %}
 {% block styles %}
 .reporter-form-card { max-width:680px; margin:0 auto; }
 .reporter-form-card h1 { margin:0 0 8px; font-size:34px; }
@@ -12,7 +12,7 @@
   <section class="card reporter-form-card">
     <p class="muted">Workspace team</p>
     <h1>Add Reporter</h1>
-    <p class="muted">This account will be registered only for {{ tenant.publication_name }} and can access publishing tools.</p>
+    <p class="muted">This account will be registered only for {{ tenant.public_name }} and can access publishing tools.</p>
     <form method="post">
       {% csrf_token %}
       {% if form.non_field_errors %}<div class="form-error-box">{{ form.non_field_errors }}</div>{% endif %}

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Site Pages - {{ tenant.business_name|default:tenant.publication_name }}{% endblock %}
+{% block title %}Site Pages - {{ tenant.public_name }}{% endblock %}
 
 {% block styles %}
   .page-shell { display:grid; gap:18px; }
@@ -21,7 +21,7 @@
       <div>
         <p class="muted">Website pages</p>
         <h1>Site Pages</h1>
-        <p class="muted">Edit only the required public pages for {{ tenant.business_name|default:tenant.publication_name }}.</p>
+        <p class="muted">Edit only the required public pages for {{ tenant.public_name }}.</p>
       </div>
       <a class="btn secondary" href="{% url 'tenants:tenant_dashboard' %}">Back to Dashboard</a>
     </section>
