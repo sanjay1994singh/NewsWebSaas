@@ -3,22 +3,78 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Add E-Paper</title>
+  <title>Add E-Paper · {{ tenant.publication_name }}</title>
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; background: #f7faf8; color: #13201b; }
-    main { width: min(780px, calc(100% - 32px)); margin: 32px auto; background: #fff; border: 1px solid #d8e1dc; border-radius: 8px; padding: 22px; }
-    label { display: block; font-weight: 700; margin: 14px 0 6px; }
-    input { width: 100%; padding: 10px; border: 1px solid #bccbc4; border-radius: 6px; }
-    .btn { border: 0; border-radius: 6px; background: #16614f; color: #fff; padding: 10px 14px; font-weight: 700; cursor: pointer; }
+    :root { --brand:#15614f; --ink:#13201b; --muted:#61736b; --line:#d9e5df; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:Arial,sans-serif; background:linear-gradient(135deg,#edf6f1,#f8faf9 65%); color:var(--ink); line-height:1.5; }
+    main { width:min(1060px,calc(100% - 40px)); margin:32px auto 48px; }
+    a { color:var(--brand); }
+    .back { display:inline-block; margin-bottom:22px; text-decoration:none; font-size:14px; font-weight:700; }
+    header { display:flex; justify-content:space-between; align-items:center; gap:20px; margin-bottom:24px; }
+    .eyebrow { margin:0 0 6px; color:var(--brand); text-transform:uppercase; letter-spacing:.12em; font-size:12px; font-weight:800; }
+    h1 { font-size:32px; line-height:1.2; margin:0 0 10px; }
+    header p { margin:0; color:var(--muted); }
+    .badge { padding:8px 14px; border:1px solid var(--line); background:#fff; border-radius:24px; font-size:13px; color:var(--brand); }
+    form { background:#fff; border:1px solid var(--line); border-radius:18px; box-shadow:0 16px 48px #153d2e0a; overflow:hidden; }
+    fieldset { border:0; padding:26px 30px; margin:0; min-width:0; }
+    fieldset + fieldset { border-top:1px solid var(--line); }
+    h2 { font-size:18px; margin:0 0 4px; }
+    .section-help { margin:0 0 22px; font-size:14px; color:var(--muted); }
+    .grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:20px 24px; }
+    .field { min-width:0; }
+    label { display:block; font-size:14px; font-weight:700; margin-bottom:7px; }
+    input:not([type=checkbox]) { width:100%; min-height:46px; padding:11px 13px; border:1px solid #bccfc4; border-radius:8px; background:#fff; color:var(--ink); font:inherit; }
+    input[type=file] { font-size:13px; background:#f7faf8; padding:10px; }
+    input::file-selector-button { border:0; border-radius:5px; background:#e3efe8; color:var(--brand); padding:7px 10px; margin-right:10px; cursor:pointer; }
+    input:focus-visible, a:focus-visible, button:focus-visible { outline:3px solid #78bda5; outline-offset:3px; }
+    .help { font-size:12px; color:var(--muted); margin:7px 0 0; }
+    .toggle { display:flex; gap:12px; padding:16px; background:#f6faf8; border:1px solid var(--line); border-radius:10px; align-items:flex-start; }
+    .toggle input { width:18px; height:18px; margin:3px 0 0; accent-color:var(--brand); flex-shrink:0; }
+    .toggle label { margin:0; cursor:pointer; }
+    .toggle .help { margin-top:3px; }
+    .errorlist { color:#a42626; padding-left:20px; font-size:13px; margin:8px 0; }
+    .errors { margin:24px 30px 0; padding:12px 16px; border-radius:8px; background:#fff1f0; color:#a42626; }
+    .actions { display:flex; align-items:center; justify-content:space-between; gap:18px; background:#f8fbf9; padding:22px 30px; border-top:1px solid var(--line); }
+    .actions p { margin:0; font-size:13px; color:var(--muted); }
+    .buttons { display:flex; gap:12px; align-items:center; }
+    .btn { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:10px 18px; border:1px solid var(--brand); border-radius:8px; background:var(--brand); color:#fff; font:inherit; font-size:14px; font-weight:700; text-decoration:none; cursor:pointer; white-space:nowrap; }
+    .secondary { background:#fff; color:var(--brand); border-color:var(--line); }
+    @media(max-width:640px) { main { width:calc(100% - 24px); margin-top:20px; } header { align-items:flex-start; flex-direction:column; gap:12px; } h1 { font-size:26px; } .grid { grid-template-columns:1fr; gap:18px; } fieldset { padding:22px 18px; } .actions { padding:20px 18px; align-items:stretch; flex-direction:column; } .buttons .btn { flex:1; } .errors { margin:18px; } }
   </style>
 </head>
 <body>
   <main>
-    <h1>Add E-Paper Edition</h1>
+    <a class="back" href="{% url 'epaper:dashboard' %}">&larr; Back to E-Paper</a>
+    <header><div><p class="eyebrow">Publication workspace</p><h1>Add E-Paper Edition</h1><p>Prepare your latest edition for readers, all in one place.</p></div><span class="badge">{{ tenant.publication_name }}</span></header>
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
-      {{ form.as_p }}
-      <button class="btn" type="submit">Upload</button>
+      {% if form.errors %}<div class="errors" role="alert">Please check the fields below.{{ form.non_field_errors }}</div>{% endif %}
+      <fieldset aria-labelledby="edition-heading">
+        <h2 id="edition-heading">Edition details</h2><p class="section-help">Add the name, publication date and location of your edition.</p>
+        <div class="grid">
+          {% for field in form %}{% if field.name != 'pdf_file' and field.name != 'cover_image' and field.name != 'allow_download' and field.name != 'is_featured' %}
+            <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>{{ field }}{% if field.help_text %}<p class="help" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</p>{% endif %}{{ field.errors }}</div>
+          {% endif %}{% endfor %}
+        </div>
+      </fieldset>
+      <fieldset aria-labelledby="files-heading">
+        <h2 id="files-heading">Edition files</h2><p class="section-help">Upload the newspaper PDF and an optional cover image.</p>
+        <div class="grid">
+          {% for field in form %}{% if field.name == 'pdf_file' or field.name == 'cover_image' %}
+            <div class="field"><label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>{{ field }}<p class="help" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</p>{{ field.errors }}</div>
+          {% endif %}{% endfor %}
+        </div>
+      </fieldset>
+      <fieldset aria-labelledby="options-heading">
+        <h2 id="options-heading">Reader preferences</h2><p class="section-help">Choose how readers can access this edition.</p>
+        <div class="grid">
+          {% for field in form %}{% if field.name == 'allow_download' or field.name == 'is_featured' %}
+            <div class="toggle">{{ field }}<div><label for="{{ field.id_for_label }}">{{ field.label }}</label><p class="help" id="{{ field.auto_id }}_helptext">{{ field.help_text }}</p>{{ field.errors }}</div></div>
+          {% endif %}{% endfor %}
+        </div>
+      </fieldset>
+      <footer class="actions"><p>You can publish the edition after processing.</p><div class="buttons"><a class="btn secondary" href="{% url 'epaper:dashboard' %}">Cancel</a><button class="btn" type="submit">Upload edition</button></div></footer>
     </form>
   </main>
 </body>

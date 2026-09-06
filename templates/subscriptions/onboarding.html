@@ -91,7 +91,7 @@
         {% endfor %}
       </section>
       <section class="form-section">
-        <h2 class="section-title">Video channel</h2>
+        <h2 class="section-title" id="youtube-channel">YouTube videos &amp; shorts</h2>
         {% for field in form %}
           {% if field.name == 'youtube_channel_url' %}
             <div class="form-field full {% if field.errors %}has-error{% endif %}">

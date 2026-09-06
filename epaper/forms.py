@@ -23,6 +23,19 @@ class EPaperEditionForm(forms.ModelForm):
             'is_featured',
         )
 
+        widgets = {
+            'publication_date': forms.DateInput(attrs={'type': 'date'}, format='%Y-%m-%d'),
+            'pdf_file': forms.ClearableFileInput(attrs={'accept': '.pdf,application/pdf'}),
+            'cover_image': forms.ClearableFileInput(attrs={'accept': 'image/*'}),
+        }
+        help_texts = {
+            'slug': 'A unique URL name, for example daily-edition-06-september.',
+            'pdf_file': 'Choose a PDF up to 50 MB.',
+            'cover_image': 'Optional. Add a cover to help readers identify this edition.',
+            'allow_download': 'Let readers download the edition PDF.',
+            'is_featured': 'Highlight this edition for your readers.',
+        }
+
     def clean_pdf_file(self):
         pdf_file = self.cleaned_data['pdf_file']
         name = pdf_file.name.lower()

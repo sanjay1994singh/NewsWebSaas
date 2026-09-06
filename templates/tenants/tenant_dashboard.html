@@ -296,6 +296,7 @@
             {% for item in visible_menu %}
               <a class="feature-card" href="{{ item.url }}">
                 <h4>{{ item.label }}</h4>
+                {% if item.code == "youtube_videos" or item.code == "youtube_shorts" %}<p>Shown automatically from your YouTube channel. Manage channel link.</p>{% endif %}
                 <p>{{ item.source_label }}{% if item.entitlement.limit_value %} / limit {{ item.entitlement.limit_value }}{% endif %}</p>
               </a>
             {% empty %}
