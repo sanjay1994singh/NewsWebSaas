@@ -12,6 +12,7 @@
     .progress { display:flex; align-items:center; gap:18px; margin:18px 0; }
     .ring { --progress:0; width:76px; height:76px; flex-shrink:0; border-radius:50%; background:conic-gradient(#189b58 calc(var(--progress)*1%),#e4ece6 0); display:grid; place-items:center; }
     .ring span { display:grid; place-items:center; width:60px; height:60px; border-radius:50%; background:white; color:#16614f; font-weight:bold; }
+    .btn-danger { background:#fff; color:#b42318; border:1px solid #eab9b5; margin-top:12px; }
   </style>
 </head>
 <body>
@@ -31,6 +32,9 @@
             <button class="btn" type="submit">Publish</button>
           </form>
         {% endif %}
+        <form method="post" action="{% url 'epaper:delete_edition' edition.uuid %}" onsubmit="return confirm('Delete this E-Paper permanently? Its PDF and all page images will also be removed. This cannot be undone.');">
+          {% csrf_token %}<button class="btn btn-danger" type="submit">Delete E-Paper</button>
+        </form>
       </article>
     {% empty %}
       <p>No ePaper editions yet.</p>
@@ -62,7 +66,7 @@
       });
       if (active) setTimeout(poll, 3000);
     } catch (_) {
-      cards.forEach(card => card.querySelector('.progress-message').textContent = 'Unable to refresh progress. Reconnecting…');
+      cards.forEach(card => card.querySelector('.progress-message').textContent = 'Unable to refresh progress. Reconnectingâ€¦');
       setTimeout(poll, 8000);
     }
   }

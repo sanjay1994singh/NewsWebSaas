@@ -120,3 +120,49 @@ class OptimizedReaderTests(TestCase):
         edition.refresh_from_db()
         self.assertEqual(edition.status, 'ready')
         self.assertEqual(edition.page_count, 2)
+
+    def test_delete_removes_pdf_and_all_page_files_after_commit(self):
+        from pathlib import Path
+        edition = self.edition()
+        mark_epaper_ready(edition)
+        pdf_path = edition.pdf_file.path
+        images = [getattr(page, name).path for page in edition.pages.all() for name in ('image','mobile_image','zoom_image','thumbnail')]
+        with self.captureOnCommitCallbacks(execute=True):
+            edition.delete()
+        self.assertFalse(Path(pdf_path).exists())
+        self.assertTrue(all(not Path(path).exists() for path in images))
+
+    def test_delete_endpoint_owner_scope_and_post_only(self):
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from django.http import Http404
+        from .views import delete_edition
+        edition = self.edition()
+        request = RequestFactory().get('/dashboard/epaper/delete/')
+        request.user = self.tenant.owner
+        self.assertEqual(delete_edition(request, edition.uuid).status_code, 405)
+        request = RequestFactory().post('/dashboard/epaper/delete/')
+        request.user = get_user_model().objects.create_user(username='other-owner')
+        with self.assertRaises(Http404):
+            delete_edition(request, edition.uuid)
+        self.assertTrue(EPaperEdition.objects.filter(pk=edition.pk).exists())
+        request.user = self.tenant.owner
+        request.session = {}
+        request._messages = FallbackStorage(request)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.assertEqual(delete_edition(request, edition.uuid).status_code, 302)
+        self.assertFalse(EPaperEdition.objects.filter(pk=edition.pk).exists())
+
+
+    def test_active_conversion_cannot_be_deleted(self):
+        from django.contrib.messages.storage.fallback import FallbackStorage
+        from .views import delete_edition
+        edition = self.edition(status='processing', processing_token='active-worker')
+        request = RequestFactory().post('/dashboard/epaper/delete/')
+        request.user = self.tenant.owner
+        request.session = {}
+        request._messages = FallbackStorage(request)
+        response = delete_edition(request, edition.uuid)
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(EPaperEdition.objects.filter(pk=edition.pk).exists())
+        from pathlib import Path
+        self.assertTrue(Path(edition.pdf_file.path).exists())

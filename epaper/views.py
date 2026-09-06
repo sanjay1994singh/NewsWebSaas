@@ -310,3 +310,20 @@ def processing_status(request):
     response['Cache-Control'] = 'no-store'
 
     return response
+
+
+@login_required
+@require_POST
+def delete_edition(request, edition_id):
+    from django.db import transaction
+    tenant = _owned_tenant(request.user)
+    if tenant is None:
+        raise Http404('Publication not found.')
+    with transaction.atomic():
+        edition = get_object_or_404(EPaperEdition.objects.select_for_update(), uuid=edition_id, tenant=tenant)
+        if edition.processing_token:
+            messages.error(request, 'This edition is being processed. Please delete it after processing finishes. If processing has stopped, contact support.')
+            return redirect('epaper:dashboard')
+        edition.delete()
+    messages.success(request, 'E-Paper deleted along with its PDF and page images.')
+    return redirect('epaper:dashboard')
