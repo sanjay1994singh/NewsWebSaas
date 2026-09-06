@@ -9,6 +9,9 @@
     main { width: min(1040px, calc(100% - 32px)); margin: 32px auto; }
     .card { background: #fff; border: 1px solid #d8e1dc; border-radius: 8px; padding: 18px; margin: 12px 0; }
     .btn { display: inline-block; border: 0; border-radius: 6px; background: #16614f; color: #fff; padding: 10px 14px; text-decoration: none; font-weight: 700; cursor: pointer; }
+    .progress { display:flex; align-items:center; gap:18px; margin:18px 0; }
+    .ring { --progress:0; width:76px; height:76px; flex-shrink:0; border-radius:50%; background:conic-gradient(#189b58 calc(var(--progress)*1%),#e4ece6 0); display:grid; place-items:center; }
+    .ring span { display:grid; place-items:center; width:60px; height:60px; border-radius:50%; background:white; color:#16614f; font-weight:bold; }
   </style>
 </head>
 <body>
@@ -20,7 +23,7 @@
       <article class="card">
         <h2>{{ edition.title }}</h2>
         <p>{{ edition.publication_date }} / {{ edition.city }} / {{ edition.get_status_display }}</p>
-        {% if edition.status == "processing" %}<p>Preparing fast reader pages. Refresh shortly to check progress.</p>{% endif %}
+        {% if edition.status == "processing" %}<div class="progress" data-progress-id="{{ edition.uuid }}"><div class="ring" role="progressbar" aria-label="Page preparation" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ edition.progress.percent|default:0 }}" style="--progress:{{ edition.progress.percent|default:0 }}"><span>{{ edition.progress.percent|default:0 }}%</span></div><p class="progress-message" role="status">{{ edition.progress.message|default:"Waiting for the processing worker." }}</p></div>{% endif %}
         {% if edition.status == "failed" %}<p>Page preparation failed. Check the PDF and upload a valid, unlocked file.</p>{% endif %}
         {% if edition.status == "ready" %}
           <form method="post" action="{% url 'epaper:publish_edition' edition.uuid %}">
@@ -33,5 +36,37 @@
       <p>No ePaper editions yet.</p>
     {% endfor %}
   </main>
-</body>
+<script>
+(() => {
+  const cards = Array.from(document.querySelectorAll('[data-progress-id]'));
+  if (!cards.length) return;
+  const url = new URL("{% url 'epaper:processing_status' %}", location.origin);
+  cards.forEach(card => url.searchParams.append('id', card.dataset.progressId));
+  async function poll() {
+    if (document.hidden) { setTimeout(poll, 4000); return; }
+    try {
+      const response = await fetch(url, {cache:'no-store', headers:{Accept:'application/json'}});
+      if (!response.ok) throw new Error('Progress unavailable');
+      const data = await response.json();
+      let active = false;
+      data.editions.forEach(item => {
+        const card = cards.find(card => card.dataset.progressId === item.id);
+        if (!card) return;
+        const ring = card.querySelector('.ring');
+        ring.style.setProperty('--progress', item.percent);
+        ring.setAttribute('aria-valuenow', item.percent);
+        ring.querySelector('span').textContent = item.percent + '%';
+        card.querySelector('.progress-message').textContent = item.message;
+        if (item.state === 'ready' || item.state === 'published') { setTimeout(() => location.reload(), 900); }
+        else if (item.state !== 'failed') active = true;
+      });
+      if (active) setTimeout(poll, 3000);
+    } catch (_) {
+      cards.forEach(card => card.querySelector('.progress-message').textContent = 'Unable to refresh progress. Reconnecting…');
+      setTimeout(poll, 8000);
+    }
+  }
+  poll();
+})();
+</script></body>
 </html>

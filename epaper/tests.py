@@ -185,3 +185,23 @@ class PublicReaderAccessTests(SimpleTestCase):
             response = epaper_reader(request, slug='latest')
         self.assertEqual(response.status_code, 200)
         lookup.assert_called_once_with(EPaperEdition, tenant=request.tenant, slug='latest', status=EPaperEdition.Status.PUBLISHED)
+
+class ProgressTests(SimpleTestCase):
+    def test_real_percentage_and_queue_states(self):
+        from .models import EPaperEdition
+        from .services import processing_progress
+        from datetime import timedelta
+        item = EPaperEdition(status='processing')
+        self.assertEqual(processing_progress(item)['state'], 'queued')
+        item.processing_token = 'worker'
+        item.processing_total = 8
+        item.processing_done = 2
+        item.processing_started_at = timezone.now() - timedelta(seconds=20)
+        item.processing_updated_at = timezone.now()
+        value = processing_progress(item)
+        self.assertEqual(value['percent'], 25)
+        self.assertIn('60 seconds', value['message'])
+        item.processing_updated_at = timezone.now() - timedelta(minutes=4)
+        self.assertEqual(processing_progress(item)['state'], 'stalled')
+        item.status = 'ready'
+        self.assertEqual(processing_progress(item)['percent'], 100)
