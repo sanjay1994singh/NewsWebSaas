@@ -15,7 +15,7 @@
 <body>
   <main>
     <a href="{% if domain_reader %}/{% else %}/site/{{ tenant.slug }}/{% endif %}">Home</a>
-    <h1>{{ tenant.public_name }} E-Paper</h1>
+    {% include 'themes/shared/channel_brand.html' %}<h1>E-Paper</h1>
     <div class="grid">
       {% for edition in editions %}
         <article class="card">

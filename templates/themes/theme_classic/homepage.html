@@ -790,15 +790,7 @@
   </div>
 
   <header class="wrap masthead">
-    <div class="brand-block">
-      {% with site_name=tenant.public_name %}
-        <div class="brand-mark">{{ site_name|first }}</div>
-      {% endwith %}
-      <div class="brand-copy">
-        <h1 class="site-title">{{ tenant.public_name }}</h1>
-        <p class="tagline">{{ onboarding.tagline|default:"Trusted news, updates, videos, and public-interest stories." }}</p>
-      </div>
-    </div>
+    {% include 'themes/shared/channel_brand.html' %}
     <div class="mast-actions">
       <div class="account-menu">
         <button class="account-toggle" type="button" aria-label="Open account menu">

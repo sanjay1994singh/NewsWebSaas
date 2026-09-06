@@ -46,7 +46,7 @@
 <body>
   <main>
     <a class="back" href="{% url 'epaper:dashboard' %}">&larr; Back to E-Paper</a>
-    <header><div><p class="eyebrow">Publication workspace</p><h1>Add E-Paper Edition</h1><p>Prepare your latest edition for readers, all in one place.</p></div><span class="badge">{{ tenant.public_name }}</span></header>
+    <header><div><p class="eyebrow">Publication workspace</p><h1>Add E-Paper Edition</h1><p>Prepare your latest edition for readers, all in one place.</p></div>{% include 'themes/shared/channel_brand.html' %}</header>
     <form method="post" enctype="multipart/form-data">
       {% csrf_token %}
       {% if form.errors %}<div class="errors" role="alert">Please check the fields below.{{ form.non_field_errors }}</div>{% endif %}

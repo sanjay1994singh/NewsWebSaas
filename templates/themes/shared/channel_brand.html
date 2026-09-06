@@ -1,0 +1,12 @@
+<style>
+.channel-identity{display:flex;align-items:flex-start;gap:12px;min-width:0;font-family:Arial,Helvetica,sans-serif;text-decoration:none;color:#10231d;flex-shrink:1}
+.channel-identity .channel-badge{box-sizing:border-box;display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border-radius:6px;background:#0b6b57;color:#fff;font:800 21px/1 Arial,Helvetica,sans-serif;text-transform:uppercase}
+.channel-identity .channel-copy{display:flex;flex-direction:column;min-width:0}
+.channel-identity .channel-name{margin:0;font:700 34px/42px Arial,Helvetica,sans-serif;letter-spacing:0;text-transform:capitalize;overflow-wrap:anywhere}
+.channel-identity .channel-tagline{display:block;margin:4px 0 0;color:#5c7069;font:400 15px/1.35 Arial,Helvetica,sans-serif;letter-spacing:0;text-transform:none}
+@media(max-width:760px){.channel-identity{gap:10px}.channel-identity .channel-badge{width:44px;height:44px;flex-basis:44px;font-size:22px}.channel-identity .channel-name{font-size:32px;line-height:44px}}
+</style>
+<div class="channel-identity" aria-label="{{ tenant.public_name }}">
+  <span class="channel-badge" aria-hidden="true">{{ tenant.public_name|first }}</span>
+  <div class="channel-copy"><span class="channel-name">{{ tenant.public_name }}</span><span class="channel-tagline">{{ tenant.commercial_onboarding.tagline|default:"Trusted news, updates, videos, and public-interest stories." }}</span></div>
+</div>

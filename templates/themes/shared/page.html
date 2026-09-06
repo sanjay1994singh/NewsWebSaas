@@ -6,7 +6,7 @@
   <title>{{ title|default:tenant.public_name }}</title>
 </head>
 <body>
-  <header><h1>{{ tenant.public_name }}</h1></header>
+  <header>{% include 'themes/shared/channel_brand.html' %}</header>
   <main>{% block content %}{% endblock %}</main>
 </body>
 </html>

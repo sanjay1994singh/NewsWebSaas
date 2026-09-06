@@ -99,15 +99,7 @@
   </div>
 
   <header class="wrap masthead">
-    <a class="brand" href="/">
-      {% with site_name=tenant.public_name %}
-        <span class="brand-mark">{{ site_name|first }}</span>
-        <span class="brand-copy">
-          <span class="site-title">{{ site_name }}</span>
-          <span class="tagline">Trusted news, updates, videos, and public-interest stories.</span>
-        </span>
-      {% endwith %}
-    </a>
+    {% include 'themes/shared/channel_brand.html' %}
     <div class="account-menu">
       <button class="account-toggle" type="button" aria-label="Open account menu">
         <svg class="account-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
