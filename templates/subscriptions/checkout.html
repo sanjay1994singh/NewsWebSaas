@@ -104,6 +104,14 @@
             <strong>{{ checkout.pricing.discount_percent }}% (-{{ checkout.pricing.discount_display }})</strong>
           </div>
           <div class="summary-row">
+            <span>Taxable value</span>
+            <strong>{{ checkout.pricing.taxable_display }}</strong>
+          </div>
+          <div class="summary-row">
+            <span>GST @ {{ checkout.pricing.tax_rate_percent }}%</span>
+            <strong>{{ checkout.pricing.tax_display }}</strong>
+          </div>
+          <div class="summary-row">
             <span>Final payable</span>
             <strong>{{ checkout.pricing.payable_display }}</strong>
           </div>

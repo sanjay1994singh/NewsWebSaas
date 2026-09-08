@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from .models import PlanPrice
+from gst.services import configuration, tax_amount as calculate_tax
 
 
 OFFER_DISCOUNT_PERCENT = 50
@@ -13,6 +14,9 @@ class CheckoutPricing:
     list_amount: int
     discount_percent: int
     discount_amount: int
+    taxable_amount: int
+    tax_rate_percent: int
+    tax_amount: int
     payable_amount: int
     currency: str
 
@@ -47,12 +51,18 @@ def calculate_checkout_pricing(plan_price, billing_months=1, discount_percent=OF
     else:
         list_amount = plan_price.amount * months
     discount_amount = round(list_amount * discount_percent / 100)
-    payable_amount = max(list_amount - discount_amount, 0)
+    taxable_amount = max(list_amount - discount_amount, 0)
+    rate = configuration().rate_percent
+    tax_amount = calculate_tax(taxable_amount, rate)
+    payable_amount = taxable_amount + tax_amount
     return CheckoutPricing(
         billing_months=months,
         list_amount=list_amount,
         discount_percent=discount_percent,
         discount_amount=discount_amount,
+        taxable_amount=taxable_amount,
+        tax_rate_percent=rate,
+        tax_amount=tax_amount,
         payable_amount=payable_amount,
         currency=plan_price.currency,
     )

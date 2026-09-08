@@ -217,6 +217,7 @@
                   <div class="plan-calc">
                     <div class="plan-row"><span>Plan amount</span><strong data-plan-amount>{{ card.offer.list_display }}</strong></div>
                     <div class="plan-row"><span>50% offer discount</span><strong data-plan-discount>-{{ card.offer.discount_display }}</strong></div>
+                    <div class="plan-row"><span>GST @ <span data-plan-tax-rate>{{ card.offer.tax_rate_percent }}</span>%</span><strong data-plan-tax>{{ card.offer.tax_display }}</strong></div>
                   </div>
                 {% elif card.yearly_price %}
                   <p class="muted">Yearly: {{ card.yearly_display }}</p>
@@ -344,6 +345,8 @@
           card.querySelector('[data-plan-label]').textContent = quote.billing_label + ' after offer';
           card.querySelector('[data-plan-amount]').textContent = quote.list_display;
           card.querySelector('[data-plan-discount]').textContent = '-' + quote.discount_display;
+          card.querySelector('[data-plan-tax]').textContent = quote.tax_display;
+          card.querySelector('[data-plan-tax-rate]').textContent = quote.tax_rate_percent;
           signupLink.href = quote.signup_url;
         })
         .finally(function () {

@@ -29,7 +29,7 @@ class SignupPlanChoiceTests(TestCase):
             self.assertEqual(form.cleaned_data['price_id'], self.pro_price)
             self.assertEqual(form.cleaned_data['billing_months'], 12)
             self.assertEqual(form.selected_quote['name'], 'News Pro')
-            self.assertEqual(form.selected_quote['payable'], '₹ 9,588')
+            self.assertEqual(form.selected_quote['payable'], '₹ 11,313.84')
 
     def test_inactive_and_old_plan_prices_rejected(self):
         self.pro.is_current_version = False
@@ -52,7 +52,7 @@ class SignupPlanChoiceTests(TestCase):
         response = self.client.get('/saas/signup/', {'price': self.price.pk, 'months': 1})
         self.assertContains(response, '<select name="price_id"')
         self.assertContains(response, 'News Starter')
-        self.assertContains(response, '₹ 399')
+        self.assertContains(response, '₹ 470.82')
         self.assertContains(response, 'signup-plan-quotes')
         data = self.data(self.pro_price)
         data['confirm_password'] = 'different'
@@ -89,7 +89,7 @@ class SignupPlanChoiceTests(TestCase):
             self.assertEqual(str(form['price_id'].value()), str(self.price.pk))
             self.assertEqual(str(form['billing_months'].value()), '1')
             self.assertEqual(form.selected_quote['name'], 'News Starter')
-            self.assertContains(response, '₹ 399')
+            self.assertContains(response, '₹ 470.82')
 
     def test_explicit_link_selection_is_preserved(self):
         response = self.client.get('/saas/signup/', {'price': self.pro_price.pk, 'months': 12})

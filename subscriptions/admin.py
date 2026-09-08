@@ -105,10 +105,18 @@ class TenantSubscriptionAdmin(admin.ModelAdmin):
 
 @admin.register(CustomerAcquisition)
 class CustomerAcquisitionAdmin(admin.ModelAdmin):
-    list_display = ('publication_name', 'user', 'plan_price', 'status', 'tenant', 'provider_order_id', 'provider_payment_id', 'created_at')
+    list_display = ('publication_name', 'user', 'plan_price', 'status', 'tax_amount_display', 'payable_amount_display', 'tenant', 'provider_order_id', 'provider_payment_id', 'created_at')
     list_filter = ('status', 'plan_price__billing_cycle')
     search_fields = ('publication_name', 'publication_slug', 'business_name', 'email', 'provider_order_id', 'provider_payment_id', 'provider_receipt')
     autocomplete_fields = ('user', 'plan_price', 'tenant')
+
+    @admin.display(description='GST')
+    def tax_amount_display(self, obj):
+        return money_display(obj.tax_amount, obj.plan_price.currency if obj.plan_price_id else 'INR')
+
+    @admin.display(description='Payable')
+    def payable_amount_display(self, obj):
+        return money_display(obj.payable_amount, obj.plan_price.currency if obj.plan_price_id else 'INR')
 
 
 class OnboardingReviewEventInline(admin.TabularInline):
@@ -144,15 +152,23 @@ class OnboardingAutomationPolicyAdmin(admin.ModelAdmin):
 
 @admin.register(PlanChangeRequest)
 class PlanChangeRequestAdmin(admin.ModelAdmin):
-    list_display = ('tenant', 'change_type', 'from_plan', 'to_plan', 'status', 'effective_at', 'created_at')
+    list_display = ('tenant', 'change_type', 'from_plan', 'to_plan', 'status', 'tax_amount_display', 'payable_amount_display', 'effective_at', 'created_at')
     list_filter = ('change_type', 'status')
     search_fields = ('tenant__publication_name', 'tenant__slug', 'provider_reference', 'notes')
     autocomplete_fields = ('tenant', 'from_plan', 'to_plan', 'requested_by')
 
+    @admin.display(description='GST')
+    def tax_amount_display(self, obj):
+        return money_display(obj.tax_amount, obj.currency)
+
+    @admin.display(description='Payable')
+    def payable_amount_display(self, obj):
+        return money_display(obj.payable_amount, obj.currency)
+
 
 @admin.register(BillingRecord)
 class BillingRecordAdmin(admin.ModelAdmin):
-    list_display = ('tenant', 'status', 'amount_display', 'currency', 'razorpay_order_id', 'razorpay_payment_id', 'razorpay_invoice_id', 'created_at')
+    list_display = ('tenant', 'status', 'amount_display', 'tax_amount_display', 'currency', 'razorpay_order_id', 'razorpay_payment_id', 'razorpay_invoice_id', 'created_at')
     list_filter = ('status', 'currency')
     search_fields = ('tenant__publication_name', 'tenant__slug', 'razorpay_order_id', 'razorpay_payment_id', 'razorpay_invoice_id')
     autocomplete_fields = ('tenant', 'subscription')
@@ -161,6 +177,10 @@ class BillingRecordAdmin(admin.ModelAdmin):
     @admin.display(description='Amount')
     def amount_display(self, obj):
         return money_display(obj.amount, obj.currency)
+
+    @admin.display(description='GST')
+    def tax_amount_display(self, obj):
+        return money_display(obj.tax_amount, obj.currency)
 
 
 @admin.register(WebhookEvent)

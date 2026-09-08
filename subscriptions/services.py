@@ -1,3 +1,4 @@
+from gst.services import invoice_snapshot, tax_amount as calculate_tax
 import hmac
 import json
 import re
@@ -196,6 +197,7 @@ def calculate_plan_change_quote(*, tenant, subscription, plan_price, billing_mon
     checkout_pricing = calculate_checkout_pricing(plan_price, billing_months)
     period_start = now
     credit_amount = 0
+    paid_amount = 0
     remaining_days = 0
     total_days = 0
     is_same_plan = subscription and subscription.plan_id == plan_price.plan_id
@@ -209,14 +211,16 @@ def calculate_plan_change_quote(*, tenant, subscription, plan_price, billing_mon
         and subscription.current_period_end > now
     ):
         paid_record = _paid_record_for_subscription_period(tenant, subscription, now)
-        paid_amount = paid_record.amount if paid_record else 0
+        paid_amount = (paid_record.amount - paid_record.tax_amount) if paid_record else 0
         total_seconds = max((subscription.current_period_end - subscription.current_period_start).total_seconds(), 1)
         remaining_seconds = max((subscription.current_period_end - now).total_seconds(), 0)
-        credit_amount = min(round(paid_amount * remaining_seconds / total_seconds), checkout_pricing.payable_amount)
+        credit_amount = min(round(paid_amount * remaining_seconds / total_seconds), checkout_pricing.taxable_amount)
         total_days = max((subscription.current_period_end.date() - subscription.current_period_start.date()).days, 1)
         remaining_days = max((subscription.current_period_end.date() - now.date()).days, 0)
     period_start, period_end, _ = subscription_period_for_cycle(period_start, plan_price.billing_cycle, checkout_pricing.billing_months)
-    payable_amount = max(checkout_pricing.payable_amount - credit_amount, 0)
+    taxable_amount = max(checkout_pricing.taxable_amount - credit_amount, 0)
+    tax_amount = calculate_tax(taxable_amount, checkout_pricing.tax_rate_percent)
+    payable_amount = taxable_amount + tax_amount
     return {
         'billing_months': checkout_pricing.billing_months,
         'billing_label': checkout_pricing.billing_label,
@@ -224,6 +228,9 @@ def calculate_plan_change_quote(*, tenant, subscription, plan_price, billing_mon
         'discount_percent': checkout_pricing.discount_percent,
         'discount_amount': checkout_pricing.discount_amount,
         'credit_amount': credit_amount,
+        'taxable_amount': taxable_amount,
+        'tax_rate_percent': checkout_pricing.tax_rate_percent,
+        'tax_amount': tax_amount,
         'payable_amount': payable_amount,
         'currency': checkout_pricing.currency,
         'period_start': period_start,
@@ -233,6 +240,9 @@ def calculate_plan_change_quote(*, tenant, subscription, plan_price, billing_mon
         'credit_source_amount': paid_amount if not is_same_plan else 0,
         'list_display': money_display(checkout_pricing.list_amount, checkout_pricing.currency),
         'discount_display': money_display(checkout_pricing.discount_amount, checkout_pricing.currency),
+        'taxable_display': money_display(taxable_amount, checkout_pricing.currency),
+        'tax_rate_percent': checkout_pricing.tax_rate_percent,
+        'tax_display': money_display(tax_amount, checkout_pricing.currency),
         'credit_display': money_display(credit_amount, checkout_pricing.currency),
         'credit_source_display': money_display(paid_amount if not is_same_plan else 0, checkout_pricing.currency),
         'payable_display': money_display(payable_amount, checkout_pricing.currency),
@@ -252,6 +262,9 @@ def record_successful_subscription_payment(
     list_amount=0,
     discount_percent=0,
     discount_amount=0,
+    taxable_amount=0,
+    tax_rate_percent=0,
+    tax_amount=0,
     period_start=None,
     provider_payload=None,
 ):
@@ -265,7 +278,7 @@ def record_successful_subscription_payment(
         billing_months,
     )
     entitlement_snapshot = snapshot_plan_entitlements(plan_price.plan)
-    record, created = BillingRecord.objects.update_or_create(
+    record, created = BillingRecord.objects.get_or_create(
         tenant=tenant,
         razorpay_payment_id=payment_id,
         defaults={
@@ -278,6 +291,9 @@ def record_successful_subscription_payment(
             'list_amount': list_amount,
             'discount_percent': discount_percent,
             'discount_amount': discount_amount,
+            'taxable_amount': taxable_amount,
+            'tax_rate_percent': tax_rate_percent,
+            'tax_amount': tax_amount,
             'period_start': period_start,
             'period_end': period_end,
             'currency': plan_price.currency,
@@ -294,10 +310,14 @@ def record_successful_subscription_payment(
                 'list_amount': list_amount,
                 'discount_percent': discount_percent,
                 'discount_amount': discount_amount,
+                'taxable_amount': taxable_amount,
+                'tax_rate_percent': tax_rate_percent,
+                'tax_amount': tax_amount,
                 'payable_amount': amount,
                 'period_start': period_start.isoformat() if period_start else '',
                 'period_end': period_end.isoformat() if period_end else '',
                 'entitlement_snapshot': entitlement_snapshot,
+                'gst': (provider_payload or {}).get('gst') or (invoice_snapshot() if tax_rate_percent else {}),
                 'checkout': provider_payload or {},
             },
         },
@@ -743,17 +763,23 @@ def create_razorpay_order_for_acquisition(acquisition):
                 'list_amount': str(checkout_pricing.list_amount),
                 'discount_percent': str(checkout_pricing.discount_percent),
                 'discount_amount': str(checkout_pricing.discount_amount),
+                'taxable_amount': str(checkout_pricing.taxable_amount),
+                'tax_rate_percent': str(checkout_pricing.tax_rate_percent),
+                'tax_amount': str(checkout_pricing.tax_amount),
                 'payable_amount': str(checkout_pricing.payable_amount),
             },
         }
     )
+    for field in ('billing_months', 'list_amount', 'discount_percent', 'discount_amount', 'taxable_amount', 'tax_rate_percent', 'tax_amount', 'payable_amount'):
+        setattr(acquisition, field, getattr(checkout_pricing, field))
     acquisition.provider_order_id = order['id']
     acquisition.provider_receipt = order.get('receipt', receipt)
     acquisition.provider_payload = {
         'order': order,
         'created_by': 'checkout',
+        'gst': invoice_snapshot(),
     }
-    acquisition.save(update_fields=['provider_order_id', 'provider_receipt', 'provider_payload', 'updated_at'])
+    acquisition.save(update_fields=['provider_order_id', 'provider_receipt', 'provider_payload', 'billing_months', 'list_amount', 'discount_percent', 'discount_amount', 'taxable_amount', 'tax_rate_percent', 'tax_amount', 'payable_amount', 'updated_at'])
     return {
         'key_id': settings.RAZORPAY_KEY_ID,
         'order_id': order['id'],
@@ -769,6 +795,11 @@ def create_razorpay_order_for_acquisition(acquisition):
             'discount_percent': checkout_pricing.discount_percent,
             'discount_amount': checkout_pricing.discount_amount,
             'discount_display': money_display(checkout_pricing.discount_amount, checkout_pricing.currency),
+            'taxable_amount': checkout_pricing.taxable_amount,
+            'taxable_display': money_display(checkout_pricing.taxable_amount, checkout_pricing.currency),
+            'tax_rate_percent': checkout_pricing.tax_rate_percent,
+            'tax_amount': checkout_pricing.tax_amount,
+            'tax_display': money_display(checkout_pricing.tax_amount, checkout_pricing.currency),
             'payable_amount': checkout_pricing.payable_amount,
             'payable_display': money_display(checkout_pricing.payable_amount, checkout_pricing.currency),
         },
@@ -809,6 +840,9 @@ def create_razorpay_order_for_plan_change(plan_change):
                 'discount_percent': str(plan_change.discount_percent),
                 'discount_amount': str(plan_change.discount_amount),
                 'credit_amount': str(plan_change.credit_amount),
+                'taxable_amount': str(plan_change.taxable_amount),
+                'tax_rate_percent': str(plan_change.tax_rate_percent),
+                'tax_amount': str(plan_change.tax_amount),
                 'payable_amount': str(plan_change.payable_amount),
             },
         }
@@ -839,6 +873,9 @@ def _plan_change_pricing_payload(plan_change):
         'discount_percent': plan_change.discount_percent,
         'discount_display': money_display(plan_change.discount_amount, plan_change.currency),
         'credit_display': money_display(plan_change.credit_amount, plan_change.currency),
+        'taxable_display': money_display(plan_change.taxable_amount, plan_change.currency),
+        'tax_rate_percent': plan_change.tax_rate_percent,
+        'tax_display': money_display(plan_change.tax_amount, plan_change.currency),
         'payable_display': money_display(plan_change.payable_amount, plan_change.currency),
     }
 
@@ -870,11 +907,15 @@ def create_plan_change_checkout(*, tenant, subscription, plan_price, billing_mon
         discount_percent=quote['discount_percent'],
         discount_amount=quote['discount_amount'],
         credit_amount=quote['credit_amount'],
+        taxable_amount=quote['taxable_amount'],
+        tax_rate_percent=quote['tax_rate_percent'],
+        tax_amount=quote['tax_amount'],
         payable_amount=quote['payable_amount'],
         currency=quote['currency'],
         period_start=quote['period_start'],
         period_end=quote['period_end'],
         provider_payload={
+            'gst': invoice_snapshot(),
             'quote': {
                 'remaining_days': quote['remaining_days'],
                 'total_days': quote['total_days'],
@@ -893,6 +934,8 @@ def apply_verified_plan_change_checkout(*, plan_change, provider_order_id='', pa
         .select_related('tenant', 'plan_price__plan', 'to_plan')
         .get(pk=plan_change.pk)
     )
+    if provider_order_id != plan_change.provider_order_id:
+        raise ValidationError('Payment order does not match the checkout.')
     if plan_change.status == PlanChangeRequest.Status.APPLIED:
         return plan_change
     subscription = TenantSubscription.objects.select_for_update().get(tenant=plan_change.tenant)
@@ -909,9 +952,13 @@ def apply_verified_plan_change_checkout(*, plan_change, provider_order_id='', pa
         list_amount=plan_change.list_amount,
         discount_percent=plan_change.discount_percent,
         discount_amount=plan_change.discount_amount + plan_change.credit_amount,
+        taxable_amount=plan_change.taxable_amount,
+        tax_rate_percent=plan_change.tax_rate_percent,
+        tax_amount=plan_change.tax_amount,
         period_start=plan_change.period_start,
         provider_payload={
             **(provider_payload or {}),
+            'gst': (plan_change.provider_payload or {}).get('gst', {}),
             'plan_change_uuid': str(plan_change.uuid),
             'credit_amount': plan_change.credit_amount,
             'base_offer_discount_amount': plan_change.discount_amount,
@@ -940,6 +987,18 @@ def apply_verified_plan_change_checkout(*, plan_change, provider_order_id='', pa
     ])
     get_effective_entitlements(plan_change.tenant)
     return plan_change
+
+
+def verify_captured_payment(*, payment_id, order_id, amount, currency):
+    try:
+        payment = get_razorpay_client().payment.fetch(payment_id)
+    except Exception as exc:
+        raise ValidationError('Unable to confirm payment with Razorpay. Please retry.') from exc
+    if (payment.get('id') != payment_id or payment.get('order_id') != order_id
+            or payment.get('status') != 'captured' or payment.get('amount') != amount
+            or payment.get('currency') != currency):
+        raise ValidationError('Captured payment does not match the checkout amount and currency.')
+    return payment
 
 
 def verify_razorpay_checkout_signature(*, payment_id, order_id, signature):
@@ -1001,6 +1060,10 @@ def _sync_payment_from_webhook(*, payload, event_type):
     order_acquisition = _acquisition_for_order_webhook(payload, order_id)
     if order_acquisition:
         if event_type in ('payment.captured', 'order.paid') and order_id:
+            verify_captured_payment(
+                payment_id=_payment_reference_from_webhook(payload), order_id=order_id,
+                amount=order_acquisition.payable_amount, currency=order_acquisition.plan_price.currency,
+            )
             create_tenant_after_verified_subscription(
                 acquisition=order_acquisition,
                 provider_order_id=order_id,
@@ -1077,6 +1140,9 @@ def _pricing_defaults(plan_price, billing_months):
         'list_amount': pricing.list_amount,
         'discount_percent': pricing.discount_percent,
         'discount_amount': pricing.discount_amount,
+        'taxable_amount': pricing.taxable_amount,
+        'tax_rate_percent': pricing.tax_rate_percent,
+        'tax_amount': pricing.tax_amount,
         'payable_amount': pricing.payable_amount,
     }
 
@@ -1156,6 +1222,9 @@ def update_pending_customer_acquisition(*, acquisition, business_name, publicati
             'list_amount',
             'discount_percent',
             'discount_amount',
+            'taxable_amount',
+            'tax_rate_percent',
+            'tax_amount',
             'payable_amount',
             'updated_at',
         ]
@@ -1166,6 +1235,8 @@ def update_pending_customer_acquisition(*, acquisition, business_name, publicati
 @transaction.atomic
 def create_tenant_after_verified_subscription(*, acquisition, provider_order_id, payment_reference='', provider_signature='', provider_payload=None):
     acquisition = CustomerAcquisition.objects.select_for_update().select_related('user', 'plan_price__plan').get(pk=acquisition.pk)
+    if provider_order_id != acquisition.provider_order_id:
+        raise ValidationError('Payment order does not match the checkout.')
     if acquisition.tenant_id:
         update_fields = []
         if provider_order_id and acquisition.provider_order_id != provider_order_id:
@@ -1189,7 +1260,6 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
         ensure_required_tenant_pages(tenant=acquisition.tenant)
         return acquisition.tenant
 
-    checkout_pricing = calculate_checkout_pricing(acquisition.plan_price, acquisition.billing_months)
     tenant, _ = Tenant.objects.get_or_create(
         slug=acquisition.publication_slug,
         defaults={
@@ -1229,12 +1299,16 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
         provider_order_id=provider_order_id,
         payment_reference=payment_reference,
         provider_signature=provider_signature,
-        amount=acquisition.payable_amount or checkout_pricing.payable_amount,
-        list_amount=acquisition.list_amount or checkout_pricing.list_amount,
-        discount_percent=acquisition.discount_percent or checkout_pricing.discount_percent,
-        discount_amount=acquisition.discount_amount or checkout_pricing.discount_amount,
+        amount=acquisition.payable_amount,
+        list_amount=acquisition.list_amount,
+        discount_percent=acquisition.discount_percent,
+        discount_amount=acquisition.discount_amount,
+        taxable_amount=acquisition.taxable_amount,
+        tax_rate_percent=acquisition.tax_rate_percent,
+        tax_amount=acquisition.tax_amount,
         provider_payload={
             **(provider_payload or {}),
+            'gst': (acquisition.provider_payload or {}).get('gst', {}),
             'acquisition_uuid': str(acquisition.uuid),
         },
     )

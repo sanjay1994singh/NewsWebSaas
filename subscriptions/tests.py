@@ -1,6 +1,7 @@
 import hmac
 import json
 from hashlib import sha256
+from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
@@ -216,7 +217,10 @@ class SubscriptionTests(TestCase):
         self.assertEqual(WebhookEvent.objects.count(), 0)
 
     @override_settings(RAZORPAY_WEBHOOK_SECRET='secret', RAZORPAY_ENVIRONMENT='test')
-    def test_order_webhook_creates_reserved_tenant(self):
+    @patch('subscriptions.services.get_razorpay_client')
+    def test_order_webhook_creates_reserved_tenant(self, client):
+        client.return_value.payment.fetch.return_value = dict(
+            id='pay_test_123', order_id='order_test_123', amount=117941, currency='INR', status='captured')
         acquisition = CustomerAcquisition.objects.create(
             user=self.user,
             plan_price=self.price,
@@ -227,6 +231,8 @@ class SubscriptionTests(TestCase):
             mobile='9999999999',
             status=CustomerAcquisition.Status.PAYMENT_PENDING,
             provider_order_id='order_test_123',
+            list_amount=199900, discount_percent=50, discount_amount=99950,
+            taxable_amount=99950, tax_rate_percent=18, tax_amount=17991, payable_amount=117941,
         )
         body = json.dumps(
             {
@@ -271,6 +277,8 @@ class SubscriptionTests(TestCase):
             mobile='9999999999',
             status=CustomerAcquisition.Status.PAYMENT_PENDING,
             provider_order_id='order_checkout_123',
+            list_amount=199900, discount_percent=50, discount_amount=99950,
+            taxable_amount=99950, tax_rate_percent=18, tax_amount=17991, payable_amount=117941,
         )
 
         tenant = create_tenant_after_verified_subscription(
@@ -289,7 +297,10 @@ class SubscriptionTests(TestCase):
         self.assertEqual(billing_record.razorpay_order_id, 'order_checkout_123')
         self.assertEqual(billing_record.razorpay_signature, 'sig_checkout_123')
         self.assertEqual(billing_record.payload['provider_payment_id'], 'pay_checkout_123')
-        self.assertEqual(billing_record.amount, 99950)
+        self.assertEqual(billing_record.amount, 117941)
+        self.assertEqual(billing_record.taxable_amount, 99950)
+        self.assertEqual(billing_record.tax_rate_percent, 18)
+        self.assertEqual(billing_record.tax_amount, 17991)
         self.assertEqual(billing_record.list_amount, 199900)
         self.assertEqual(billing_record.discount_percent, 50)
         self.assertEqual(billing_record.discount_amount, 99950)
@@ -518,7 +529,7 @@ class SubscriptionTests(TestCase):
             },
         )
 
-        acquisition = CustomerAcquisition.objects.get(publication_slug='accepted-news')
+        acquisition = CustomerAcquisition.objects.get(business_name='Accepted News')
         self.assertRedirects(response, reverse('subscriptions:checkout', kwargs={'acquisition_id': acquisition.uuid}), fetch_redirect_response=False)
         acceptance = PurchaseAgreementAcceptance.objects.get(acquisition=acquisition)
         self.assertEqual(acceptance.user, acquisition.user)
@@ -575,11 +586,14 @@ class SubscriptionTests(TestCase):
 
         self.assertEqual(one_month.list_amount, 199900)
         self.assertEqual(one_month.discount_amount, 99950)
-        self.assertEqual(one_month.payable_amount, 99950)
+        self.assertEqual(one_month.taxable_amount, 99950)
+        self.assertEqual(one_month.tax_rate_percent, 18)
+        self.assertEqual(one_month.tax_amount, 17991)
+        self.assertEqual(one_month.payable_amount, 117941)
         self.assertEqual(twelve_months.list_amount, 2398800)
-        self.assertEqual(twelve_months.payable_amount, 1199400)
+        self.assertEqual(twelve_months.payable_amount, 1415292)
         self.assertEqual(twenty_four_months.list_amount, 4797600)
-        self.assertEqual(twenty_four_months.payable_amount, 2398800)
+        self.assertEqual(twenty_four_months.payable_amount, 2830584)
 
     def test_public_plan_quote_returns_backend_calculated_duration_price(self):
         response = self.client.get(
@@ -592,7 +606,8 @@ class SubscriptionTests(TestCase):
         data = response.json()
         self.assertEqual(data['billing_months'], 12)
         self.assertEqual(data['list_display'], '₹ 23,988')
-        self.assertEqual(data['payable_display'], '₹ 11,994')
+        self.assertEqual(data['tax_display'], '₹ 2,158.92')
+        self.assertEqual(data['payable_display'], '₹ 14,152.92')
         self.assertIn(f'price={self.price.id}', data['signup_url'])
         self.assertIn('months=12', data['signup_url'])
 
@@ -636,7 +651,9 @@ class SubscriptionTests(TestCase):
         self.assertEqual(acquisition.billing_months, 1)
         self.assertEqual(acquisition.list_amount, 199900)
         self.assertEqual(acquisition.discount_amount, 99950)
-        self.assertEqual(acquisition.payable_amount, 99950)
+        self.assertEqual(acquisition.taxable_amount, 99950)
+        self.assertEqual(acquisition.tax_amount, 17991)
+        self.assertEqual(acquisition.payable_amount, 117941)
         self.assertEqual(acquisition.provider_order_id, '')
         self.assertNotIn('pending_checkout', self.client.session)
 
@@ -1052,7 +1069,9 @@ class SubscriptionTests(TestCase):
         self.assertEqual(quote['discount_amount'], 199900)
         self.assertEqual(quote['credit_amount'], 49975)
         self.assertEqual(quote['credit_source_amount'], 99950)
-        self.assertEqual(quote['payable_amount'], 149925)
+        self.assertEqual(quote['taxable_amount'], 149925)
+        self.assertEqual(quote['tax_amount'], 26987)
+        self.assertEqual(quote['payable_amount'], 176912)
         self.assertEqual(quote['period_start'], now)
 
     def test_upgrade_quote_uses_current_subscription_paid_amount_only(self):
@@ -1142,7 +1161,9 @@ class SubscriptionTests(TestCase):
 
         self.assertEqual(quote['credit_source_amount'], 0)
         self.assertEqual(quote['credit_amount'], 0)
-        self.assertEqual(quote['payable_amount'], 79900)
+        self.assertEqual(quote['taxable_amount'], 79900)
+        self.assertEqual(quote['tax_amount'], 14382)
+        self.assertEqual(quote['payable_amount'], 94282)
 
     def test_upgrade_quote_credits_demo_paid_amount_not_plan_price(self):
         new_plan = Plan.objects.create(name='News Pro', code=Plan.Code.NEWS_PRO, entitlements={'news_articles': 2000})
@@ -1309,6 +1330,10 @@ class SubscriptionTests(TestCase):
             list_amount=quote['list_amount'],
             discount_percent=quote['discount_percent'],
             discount_amount=quote['discount_amount'],
+            provider_order_id='order_upgrade',
+            taxable_amount=quote['taxable_amount'],
+            tax_rate_percent=quote['tax_rate_percent'],
+            tax_amount=quote['tax_amount'],
             credit_amount=quote['credit_amount'],
             payable_amount=quote['payable_amount'],
             currency=quote['currency'],

@@ -118,8 +118,10 @@
                     <dl class="plan-costs">
                       <div><dt>Plan amount</dt><dd data-plan-list>{{ form.selected_quote.list }}</dd></div>
                       <div><dt><span data-plan-percent>{{ form.selected_quote.percent }}</span>% offer discount</dt><dd>−<span data-plan-discount>{{ form.selected_quote.discount }}</span></dd></div>
+                      <div><dt>Taxable value</dt><dd data-plan-taxable>{{ form.selected_quote.taxable }}</dd></div>
+                      <div><dt>GST @ <span data-plan-tax-rate>{{ form.selected_quote.tax_rate_percent }}</span>%</dt><dd data-plan-tax>{{ form.selected_quote.tax }}</dd></div>
                     </dl>
-                    <p class="muted">Total payable for the selected duration. Article limits below apply per month.</p>
+                    <p class="muted">Total payable includes GST for the selected duration. Article limits below apply per month.</p>
                   </div>
                   <div data-plan-details {% if not form.selected_quote %}hidden{% endif %}>
                     <h3 data-details-title>{{ form.selected_quote.name }} includes</h3>
@@ -163,9 +165,10 @@
         item.textContent = feature;
         list.appendChild(item);
       });
-      ['payable', 'duration', 'list', 'percent', 'discount'].forEach(function (key) {
+      ['payable', 'duration', 'list', 'percent', 'discount', 'taxable', 'tax'].forEach(function (key) {
         document.querySelector('[data-plan-' + key + ']').textContent = quote[key];
       });
+      document.querySelector('[data-plan-tax-rate]').textContent = quote.tax_rate_percent;
     }
     if (plan && duration) {
       plan.addEventListener('change', updatePlan);

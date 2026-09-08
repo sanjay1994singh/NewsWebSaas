@@ -94,6 +94,9 @@ class SignupPlanChoiceMixin:
                     'duration': quote.billing_label,
                     'list': money_display(quote.list_amount, quote.currency),
                     'discount': money_display(quote.discount_amount, quote.currency),
+                    'taxable': money_display(quote.taxable_amount, quote.currency),
+                    'tax': money_display(quote.tax_amount, quote.currency),
+                    'tax_rate_percent': quote.tax_rate_percent,
                     'percent': quote.discount_percent,
                     'payable': money_display(quote.payable_amount, quote.currency),
                 }

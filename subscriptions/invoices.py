@@ -38,15 +38,21 @@ def build_invoice_pdf(record):
     tenant = record.tenant
     subscription = record.subscription
     plan_name = subscription.plan.name if subscription else 'Press Nexa subscription'
+    if (record.payload or {}).get('gst'):
+        plan_name = record.payload.get('plan', plan_name)
     billing_months = record.billing_months or getattr(subscription, 'billing_months', 1) or 1
     cycle = f"{billing_months} month" if billing_months == 1 else f"{billing_months} months"
     list_amount = record.list_amount or record.amount
     discount_amount = record.discount_amount or 0
+    taxable_amount = record.taxable_amount or max(list_amount - discount_amount, 0)
+    tax_rate_percent = record.tax_rate_percent or 0
+    tax_amount = record.tax_amount or 0
     issued_on = timezone.localtime(record.created_at)
     period_start = record.period_start or getattr(subscription, 'current_period_start', None) or getattr(subscription, 'start_at', None)
     period_end = record.period_end or getattr(subscription, 'current_period_end', None) or getattr(subscription, 'charge_at', None)
     return _invoice_pdf(
         {
+            'gst': (record.payload or {}).get('gst', {}),
             'number': invoice_number(record),
             'date': date_filter(issued_on, 'd M Y, h:i A'),
             'payment_reference': record.razorpay_payment_id or record.razorpay_invoice_id or '-',
@@ -62,6 +68,9 @@ def build_invoice_pdf(record):
             'list_amount': _pdf_money_display(list_amount, record.currency),
             'discount_percent': f"{record.discount_percent or 0}%",
             'discount_amount': _pdf_money_display(discount_amount, record.currency),
+            'taxable_amount': _pdf_money_display(taxable_amount, record.currency),
+            'tax_rate_percent': f'{tax_rate_percent}%',
+            'tax_amount': _pdf_money_display(tax_amount, record.currency),
             'amount': _pdf_money_display(record.amount, record.currency),
         }
     )
@@ -135,6 +144,8 @@ def email_purchase_success(record, *, plain_password=''):
         'amount': money_display(record.amount, record.currency),
         'list_amount': money_display(record.list_amount or record.amount, record.currency),
         'discount_amount': money_display(record.discount_amount or 0, record.currency),
+        'taxable_amount': money_display(record.taxable_amount or 0, record.currency),
+        'tax_amount': money_display(record.tax_amount or 0, record.currency),
         'period_start': record.period_start,
         'period_end': record.period_end,
         'dashboard_url': f"{settings.SITE_BASE_URL}/dashboard/",
@@ -168,7 +179,8 @@ def _invoice_pdf(data):
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Table, TableStyle, Spacer, HRFlowable
 
-    company = invoice_company()
+    company = {**invoice_company(), **data.get('gst', {})}
+    has_gst = bool(data.get('gst'))
     output = BytesIO()
     doc = SimpleDocTemplate(output, pagesize=(595, 842), rightMargin=50,
                             leftMargin=50, topMargin=55, bottomMargin=55,
@@ -200,7 +212,9 @@ def _invoice_pdf(data):
 
     seller = [text(company['brand'], 'brand'), text(company['legal_name']),
               text(company['address']), text(f"CIN: {company['cin']}"),
-              text(f"PAN: {company['pan']}"), text(company['email']),
+              text(f"PAN: {company['pan']}"),
+              *([text(f"GSTIN: {company['gstin']}")] if has_gst else []),
+              text(company['email']),
               text(f"WhatsApp: {company['whatsapp']}")]
     metadata = [text('INVOICE', 'title'), Spacer(1, 10),
                 text(f"INVOICE NO:  {data['number']}", 'right'),
@@ -212,6 +226,7 @@ def _invoice_pdf(data):
              text(f"Channel: {data['business_name']}"), text(data['email']),
              text(f"Mobile: {data['mobile']}"), Spacer(1, 24)]
     description = [text(data['plan'], 'bold'),
+                   *([text(company['supply_description'])] if has_gst else []),
                    text(f"Subscription - {data['cycle']}"),
                    text(f"Period: {data['period_start']} to {data['period_end']}")]
     story.append(table([
@@ -231,10 +246,12 @@ def _invoice_pdf(data):
     totals = table([
         [text('Subtotal'), text(data['list_amount'], 'right')],
         [text('Discount / credit'), text(data['discount_amount'], 'right')],
+        *([[text('Taxable value'), text(data['taxable_amount'], 'right')],
+           [text(f"GST @ {data['tax_rate_percent']}"), text(data['tax_amount'], 'right')]] if has_gst else []),
         [text('Total', 'bold'), text(data['amount'], 'right')],
         [text('Payment status'), text(data['status'].upper(), 'right')],
-    ], [105, 120], [('LINEABOVE', (0, 2), (-1, 2), 1, colors.black),
-                   ('LINEBELOW', (0, 2), (-1, 2), 1, colors.black)])
+    ], [105, 120], [('LINEABOVE', (0, 4 if has_gst else 2), (-1, 4 if has_gst else 2), 1, colors.black),
+                   ('LINEBELOW', (0, 4 if has_gst else 2), (-1, 4 if has_gst else 2), 1, colors.black)])
     story.append(table([[payment, totals]], [270, 225]))
     story.extend([Spacer(1, 38), HRFlowable(width='100%', thickness=.5, color=colors.HexColor('#dddddd')),
                   Spacer(1, 10), text('Thank you for choosing Press Nexa. This invoice is generated electronically.')])

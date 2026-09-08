@@ -29,7 +29,7 @@ class SignupWelcomeTests(TestCase):
         self.assertEqual(len(mail.outbox), 1)
         message = mail.outbox[0]
         self.assertEqual(message.to, ['reader@example.com'])
-        for text in [acquisition.user.username, '9876543210', 'News Starter', '399', 'Payment pending', str(acquisition.uuid)]:
+        for text in [acquisition.user.username, '9876543210', 'News Starter', '470.82', 'Payment pending', str(acquisition.uuid)]:
             self.assertIn(text, message.body)
         self.assertNotIn('PrivatePass123!', message.body)
         self.assertNotIn(acquisition.user.password, message.body)

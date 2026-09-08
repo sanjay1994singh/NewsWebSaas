@@ -62,6 +62,7 @@ from .services import (
     tenant_public_site_url,
     update_pending_customer_acquisition,
     verify_razorpay_checkout_signature,
+    verify_captured_payment,
 )
 from .support import company_profile
 from .whatsapp import notify_payment_failed, notify_payment_success
@@ -175,6 +176,9 @@ def _public_plan_context():
             'list_display': money_display(pricing.list_amount, pricing.currency),
             'discount_percent': pricing.discount_percent,
             'discount_display': money_display(pricing.discount_amount, pricing.currency),
+            'taxable_display': money_display(pricing.taxable_amount, pricing.currency),
+            'tax_rate_percent': pricing.tax_rate_percent,
+            'tax_display': money_display(pricing.tax_amount, pricing.currency),
             'payable_display': money_display(pricing.payable_amount, pricing.currency),
         }
 
@@ -303,6 +307,9 @@ def public_plan_quote(request):
             'list_display': money_display(pricing.list_amount, pricing.currency),
             'discount_percent': pricing.discount_percent,
             'discount_display': money_display(pricing.discount_amount, pricing.currency),
+            'taxable_display': money_display(pricing.taxable_amount, pricing.currency),
+            'tax_rate_percent': pricing.tax_rate_percent,
+            'tax_display': money_display(pricing.tax_amount, pricing.currency),
             'payable_display': money_display(pricing.payable_amount, pricing.currency),
             'signup_url': f"{reverse('public_saas_signup')}?price={plan_price.id}&months={pricing.billing_months}",
         }
@@ -454,6 +461,9 @@ def checkout(request, acquisition_id):
             acquisition.list_amount = pricing.list_amount
             acquisition.discount_percent = pricing.discount_percent
             acquisition.discount_amount = pricing.discount_amount
+            acquisition.taxable_amount = pricing.taxable_amount
+            acquisition.tax_rate_percent = pricing.tax_rate_percent
+            acquisition.tax_amount = pricing.tax_amount
             acquisition.payable_amount = pricing.payable_amount
             acquisition.provider_order_id = ''
             acquisition.provider_payload = {
@@ -465,6 +475,9 @@ def checkout(request, acquisition_id):
                 'list_amount',
                 'discount_percent',
                 'discount_amount',
+                'taxable_amount',
+                'tax_rate_percent',
+                'tax_amount',
                 'payable_amount',
                 'provider_order_id',
                 'provider_payload',
@@ -500,6 +513,11 @@ def checkout(request, acquisition_id):
         'discount_percent': checkout_pricing.discount_percent,
         'discount_amount': checkout_pricing.discount_amount,
         'discount_display': money_display(checkout_pricing.discount_amount, checkout_pricing.currency),
+        'taxable_amount': checkout_pricing.taxable_amount,
+        'taxable_display': money_display(checkout_pricing.taxable_amount, checkout_pricing.currency),
+        'tax_rate_percent': checkout_pricing.tax_rate_percent,
+        'tax_amount': checkout_pricing.tax_amount,
+        'tax_display': money_display(checkout_pricing.tax_amount, checkout_pricing.currency),
         'payable_amount': checkout_pricing.payable_amount,
         'payable_display': money_display(checkout_pricing.payable_amount, checkout_pricing.currency),
     }
@@ -525,8 +543,10 @@ def verify_subscription(request, acquisition_id):
             order_id=order_id,
             signature=signature,
         )
+        verify_captured_payment(payment_id=payment_id, order_id=order_id,
+                                amount=acquisition.payable_amount, currency=acquisition.plan_price.currency)
     except ValidationError:
-        messages.error(request, 'Razorpay payment signature verification failed.')
+        messages.error(request, 'Razorpay payment verification failed. Payment must be captured for the exact checkout amount.')
         return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
     tenant = create_tenant_after_verified_subscription(
         acquisition=acquisition,
@@ -770,6 +790,9 @@ def billing_dashboard(request):
                 'list_amount': plan_price.amount if plan_price else 0,
                 'discount_percent': 0,
                 'discount_amount': 0,
+                'taxable_amount': plan_price.amount if plan_price else 0,
+                'tax_rate_percent': 0,
+                'tax_amount': 0,
                 'period_start': subscription.current_period_start or subscription.start_at,
                 'period_end': subscription.current_period_end or subscription.charge_at,
                 'currency': plan_price.currency if plan_price else 'INR',
@@ -1003,6 +1026,9 @@ def upgrade_plan_quote(request):
             'credit_source': quote['credit_source_display'],
             'unused_days': f"{quote['remaining_days']} / {quote['total_days']} days",
             'credit': f"-{quote['credit_display']}",
+            'taxable': quote['taxable_display'],
+            'tax': quote['tax_display'],
+            'tax_rate_percent': quote['tax_rate_percent'],
             'credit_label': 'Renewal credit' if is_current_plan else 'Unused old-plan credit',
             'final_payable': quote['payable_display'],
             'period': f"{quote['period_start'].strftime('%d %b %Y')} - {quote['period_end'].strftime('%d %b %Y')}",
@@ -1038,8 +1064,10 @@ def verify_plan_upgrade(request, plan_change_id):
             order_id=order_id,
             signature=signature,
         )
+        verify_captured_payment(payment_id=payment_id, order_id=order_id,
+                                amount=plan_change.payable_amount, currency=plan_change.currency)
     except ValidationError:
-        messages.error(request, 'Razorpay payment signature verification failed.')
+        messages.error(request, 'Razorpay payment verification failed. Payment must be captured for the exact checkout amount.')
         return redirect('subscriptions:upgrade_plan')
     apply_verified_plan_change_checkout(
         plan_change=plan_change,
@@ -1072,11 +1100,7 @@ def change_plan(request):
         return JsonResponse({'detail': 'No tenant workspace found.'}, status=404)
     to_plan = get_object_or_404(Plan, pk=request.POST.get('plan_id'), is_active=True)
     plan_change = request_plan_change(tenant=tenant, to_plan=to_plan, requested_by=request.user)
-    if request.POST.get('provider_reference'):
-        apply_verified_plan_change(plan_change=plan_change, provider_reference=request.POST['provider_reference'])
-        messages.success(request, 'Verified plan change applied.')
-    else:
-        messages.success(request, 'Plan change requested. Paid features unlock only after provider verification.')
+    messages.success(request, 'Plan change requested. Complete the verified plan checkout to activate it.')
     return redirect('subscriptions:billing_dashboard')
 
 

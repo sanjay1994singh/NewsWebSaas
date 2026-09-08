@@ -110,6 +110,8 @@
             <div class="detail-row"><span>Unused days</span><strong>{{ quote.remaining_days }} / {{ quote.total_days }} days</strong></div>
           {% endif %}
           <div class="detail-row"><span>{% if selected_price.plan_id == subscription.plan_id %}Renewal credit{% else %}Unused old-plan credit{% endif %}</span><strong>-{{ quote.credit_display }}</strong></div>
+          <div class="detail-row"><span>Taxable value</span><strong>{{ quote.taxable_display }}</strong></div>
+          <div class="detail-row"><span>GST @ {{ quote.tax_rate_percent }}%</span><strong>{{ quote.tax_display }}</strong></div>
           <div class="detail-row"><span>Final payable</span><strong>{{ quote.payable_display }}</strong></div>
           <div class="detail-row"><span>New period</span><strong>{{ quote.period_start|date:"d M Y" }} - {{ quote.period_end|date:"d M Y" }}</strong></div>
         </div>
@@ -155,6 +157,8 @@
             <div class="detail-row" data-upgrade-only{% if option.is_current_plan %} hidden{% endif %}><span>Old paid amount</span><strong data-quote-credit-source>{{ option.quote.credit_source_display }}</strong></div>
             <div class="detail-row" data-upgrade-only{% if option.is_current_plan %} hidden{% endif %}><span>Unused days</span><strong data-quote-unused-days>{{ option.quote.remaining_days }} / {{ option.quote.total_days }} days</strong></div>
             <div class="detail-row"><span data-quote-credit-label>{% if option.is_current_plan %}Renewal credit{% else %}Unused old-plan credit{% endif %}</span><strong data-quote-credit>-{{ option.quote.credit_display }}</strong></div>
+            <div class="detail-row"><span>Taxable value</span><strong data-quote-taxable>{{ option.quote.taxable_display }}</strong></div>
+            <div class="detail-row"><span>GST @ <span data-quote-tax-rate>{{ option.quote.tax_rate_percent }}</span>%</span><strong data-quote-tax>{{ option.quote.tax_display }}</strong></div>
             <div class="detail-row final-row"><span>Final payable</span><strong data-quote-final>{{ option.quote.payable_display }}</strong></div>
             <div class="detail-row"><span>Period</span><strong data-quote-period>{{ option.quote.period_start|date:"d M Y" }} - {{ option.quote.period_end|date:"d M Y" }}</strong></div>
           </div>
@@ -175,6 +179,7 @@
             <th>Period</th>
             <th>Plan amount</th>
             <th>Discount/Credit</th>
+            <th>GST</th>
             <th>Paid</th>
             <th>Status</th>
           </tr>
@@ -187,6 +192,7 @@
               <td data-label="Period">{% if invoice.period_start and invoice.period_end %}{{ invoice.period_start|date:"d M Y" }} - {{ invoice.period_end|date:"d M Y" }}{% else %}{{ invoice.billing_months }} month{% if invoice.billing_months != 1 %}s{% endif %}{% endif %}</td>
               <td data-label="Plan amount">{% money_amount invoice.currency invoice.list_amount|default:invoice.amount %}</td>
               <td data-label="Discount/Credit">{% money_amount invoice.currency invoice.discount_amount|default:0 %}</td>
+              <td data-label="GST">{{ invoice.tax_rate_percent|default:0 }}% / {% money_amount invoice.currency invoice.tax_amount|default:0 %}</td>
               <td data-label="Paid">{% money_amount invoice.currency invoice.amount %}</td>
               <td data-label="Status">{{ invoice.status|title }}</td>
             </tr>
@@ -288,6 +294,9 @@
           form.querySelector('[data-quote-unused-days]').textContent = quote.unused_days;
           form.querySelector('[data-quote-credit-label]').textContent = quote.credit_label;
           form.querySelector('[data-quote-credit]').textContent = quote.credit;
+          form.querySelector('[data-quote-taxable]').textContent = quote.taxable;
+          form.querySelector('[data-quote-tax-rate]').textContent = quote.tax_rate_percent;
+          form.querySelector('[data-quote-tax]').textContent = quote.tax;
           form.querySelector('[data-quote-final]').textContent = quote.final_payable;
           form.querySelector('[data-quote-period]').textContent = quote.period;
           form.querySelector('[data-quote-action]').textContent = quote.action_label;

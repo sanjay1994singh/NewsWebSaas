@@ -80,6 +80,7 @@
                 <th>Period</th>
                 <th>Plan amount</th>
                 <th>Discount</th>
+                <th>GST</th>
                 <th>Paid</th>
                 <th>Status</th>
                 <th>Actions</th>
@@ -99,6 +100,7 @@
                   </td>
                   <td data-label="Plan amount">{% money_amount invoice.currency invoice.list_amount|default:invoice.amount %}</td>
                   <td data-label="Discount">{{ invoice.discount_percent|default:0 }}% / {% money_amount invoice.currency invoice.discount_amount|default:0 %}</td>
+                  <td data-label="GST">{{ invoice.tax_rate_percent|default:0 }}% / {% money_amount invoice.currency invoice.tax_amount|default:0 %}</td>
                   <td data-label="Paid">{% money_amount invoice.currency invoice.amount %}</td>
                   <td data-label="Status">{{ invoice.status|title }}</td>
                   <td data-label="Actions">

@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'domains',
     'audit',
     'subscriptions',
+    'gst',
     'news',
     'categories',
     'media_library',
