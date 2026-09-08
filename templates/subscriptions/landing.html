@@ -199,7 +199,7 @@
                 <h3>{{ card.plan.name }}</h3>
                 {% if card.monthly_price %}
                   <p class="muted">Limited offer: 50% off</p>
-                  <div class="price" data-plan-price>{{ card.offer.payable_display }}<small data-plan-label>{{ card.offer.billing_label }} after offer</small></div>
+                  <div class="price" data-plan-price>{{ card.offer.taxable_display }}<small data-plan-label>{{ card.offer.billing_label }} after offer</small></div>
                 {% elif card.yearly_price %}
                   <div class="price">{{ card.yearly_display }}<small>yearly</small></div>
                 {% else %}
@@ -217,7 +217,6 @@
                   <div class="plan-calc">
                     <div class="plan-row"><span>Plan amount</span><strong data-plan-amount>{{ card.offer.list_display }}</strong></div>
                     <div class="plan-row"><span>50% offer discount</span><strong data-plan-discount>-{{ card.offer.discount_display }}</strong></div>
-                    <div class="plan-row"><span>GST @ <span data-plan-tax-rate>{{ card.offer.tax_rate_percent }}</span>%</span><strong data-plan-tax>{{ card.offer.tax_display }}</strong></div>
                   </div>
                 {% elif card.yearly_price %}
                   <p class="muted">Yearly: {{ card.yearly_display }}</p>
@@ -341,12 +340,10 @@
           return response.json();
         })
         .then(function (quote) {
-          card.querySelector('[data-plan-price]').firstChild.nodeValue = quote.payable_display;
+          card.querySelector('[data-plan-price]').firstChild.nodeValue = quote.taxable_display;
           card.querySelector('[data-plan-label]').textContent = quote.billing_label + ' after offer';
           card.querySelector('[data-plan-amount]').textContent = quote.list_display;
           card.querySelector('[data-plan-discount]').textContent = '-' + quote.discount_display;
-          card.querySelector('[data-plan-tax]').textContent = quote.tax_display;
-          card.querySelector('[data-plan-tax-rate]').textContent = quote.tax_rate_percent;
           signupLink.href = quote.signup_url;
         })
         .finally(function () {
