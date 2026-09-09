@@ -10,7 +10,7 @@
   {% if initial_page %}<meta property="og:image" content="{{ initial_page.image }}">{% endif %}
   <link rel="stylesheet" href="{% static 'epaper/reader.css' %}">
 </head>
-<body{% if pages %} class="has-paper"{% endif %}>
+<body class="has-paper{% if not pages %} reader-empty{% endif %}">
   <header class="brandbar">{% include 'themes/shared/channel_brand.html' %}<nav aria-label="Publication"><a href="{{ site_home_url }}">Home</a><a class="active" href="{{ reader_home_url }}" aria-current="page">E-Paper</a></nav></header>
   <main id="reader" data-edition-url="{{ edition_url }}" data-index="{{ initial_index }}" data-bookmark-key="{{ bookmark_key }}">
     <div class="toolbar">

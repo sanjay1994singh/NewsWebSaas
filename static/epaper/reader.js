@@ -2,6 +2,7 @@
   'use strict';
   const root = document.getElementById('reader');
   const pages = JSON.parse(document.getElementById('readerPages').textContent);
+  document.querySelectorAll('.filters select,.filters input').forEach(field => field.addEventListener('change', () => { if (window.matchMedia('(max-width: 700px)').matches) field.form.requestSubmit(); }));
   if (!pages.length) return;
   const image = document.getElementById('pageImage'), paper = document.getElementById('paper');
   const stage = document.getElementById('stage'), select = document.getElementById('pageSelect');
@@ -58,7 +59,12 @@
       fitWidth(); stage.scrollLeft = 0; stage.scrollTop = 0;
       status.textContent = ''; root.removeAttribute('aria-busy'); controls();
       if (updateURL) history.replaceState(null, '', pageURL());
-      if (!mobile()) stage.scrollIntoView({block: 'start', behavior: 'instant'});
+      if (!mobile()) {
+        const scroller = document.fullscreenElement === root ? root : window;
+        const offset = scroller === root ? root.scrollTop : window.scrollY;
+        const origin = scroller === root ? root.getBoundingClientRect().top : 0;
+        scroller.scrollTo({top: offset + stage.getBoundingClientRect().top - origin - document.querySelector('.toolbar').getBoundingClientRect().height - 12, behavior: 'instant'});
+      }
       preload();
     } catch (_) {
       if (ticket !== requestId) return;
@@ -66,8 +72,23 @@
       status.textContent = 'Page could not load. Select the page again to retry.';
     }
   }
-  async function setZoom(value) {
+  function anchorAt(x, y) {
+    const rect = image.getBoundingClientRect();
+    return {x, y, u: (x - rect.left) / rect.width, v: (y - rect.top) / rect.height};
+  }
+  function applyZoom(value, anchor) {
     zoom = Math.max(1, Math.min(3, value)); fitWidth();
+    const rect = image.getBoundingClientRect();
+    stage.scrollLeft += rect.left + anchor.u * rect.width - anchor.x;
+    const dy = rect.top + anchor.v * rect.height - anchor.y;
+    if (mobile()) stage.scrollTop += dy;
+    else if (document.fullscreenElement === root) root.scrollTop += dy;
+    else window.scrollBy(0, dy);
+  }
+  async function setZoom(value, anchor) {
+    const rect = stage.getBoundingClientRect();
+    anchor = anchor || anchorAt(rect.left + stage.clientWidth / 2, Math.max(rect.top, 0) + Math.min(stage.clientHeight, window.innerHeight / 2) / 2);
+    applyZoom(value, anchor);
     if (zoom <= 1) return;
     const current = index, ticket = requestId;
     try {
@@ -96,20 +117,28 @@
     const end = point(event); selection.hidden = false;
     Object.assign(selection.style, {left: Math.min(start.x,end.x)+'px',top: Math.min(start.y,end.y)+'px',width: Math.abs(end.x-start.x)+'px',height: Math.abs(end.y-start.y)+'px'});
   });
-  image.addEventListener('pointerup', event => {
+  image.addEventListener('pointerup', async event => {
     if (!clipMode || !start) return;
-    const end = point(event), origin = start; setClip(false);
-    const width = Math.abs(end.x-origin.x), height = Math.abs(end.y-origin.y);
-    if (width < 20 || height < 20) return toast('Select a larger area to clip.');
-    const ratio = image.naturalWidth/image.clientWidth;
-    const canvas = document.createElement('canvas'); canvas.width = Math.round(width*ratio); canvas.height = Math.round(height*ratio);
+    const end = point(event), origin = start, rect = image.getBoundingClientRect();
+    const crop = {x: Math.min(origin.x,end.x)/rect.width, y: Math.min(origin.y,end.y)/rect.height,
+      width: Math.abs(end.x-origin.x)/rect.width, height: Math.abs(end.y-origin.y)/rect.height};
+    const current = index, ticket = requestId;
+    setClip(false);
+    if (crop.width*rect.width < 20 || crop.height*rect.height < 20) return toast('Select a larger area to clip.');
     try {
-      canvas.getContext('2d').drawImage(image, Math.min(origin.x,end.x)*ratio, Math.min(origin.y,end.y)*ratio, canvas.width,canvas.height,0,0,canvas.width,canvas.height);
+      // Decode an independent source: srcset density and image swaps cannot alter crop coordinates.
+      const source = await load(pages[current].zoom).catch(() => load(normalURL(pages[current])));
+      if (index !== current || ticket !== requestId) return;
+      const sx=Math.round(crop.x*source.naturalWidth), sy=Math.round(crop.y*source.naturalHeight);
+      const width=Math.min(source.naturalWidth-sx,Math.round(crop.width*source.naturalWidth));
+      const height=Math.min(source.naturalHeight-sy,Math.round(crop.height*source.naturalHeight));
+      const canvas=document.createElement('canvas'); canvas.width=width; canvas.height=height;
+      canvas.getContext('2d').drawImage(source,sx,sy,width,height,0,0,width,height);
       canvas.toBlob(blob => {
-        if (!blob) return toast('Could not create clipping.');
-        if (clipURL) URL.revokeObjectURL(clipURL); clipURL = URL.createObjectURL(blob);
-        document.getElementById('clipPreview').src = clipURL;
-        const link = document.getElementById('clipDownload'); link.href = clipURL; link.download = 'epaper-page-'+(index+1)+'-clip.png'; clipDialog.showModal();
+        if (!blob || index !== current || ticket !== requestId) return;
+        if (clipURL) URL.revokeObjectURL(clipURL); clipURL=URL.createObjectURL(blob);
+        document.getElementById('clipPreview').src=clipURL;
+        const link=document.getElementById('clipDownload');link.href=clipURL;link.download='epaper-page-'+(current+1)+'-clip.png';clipDialog.showModal();
       }, 'image/png');
     } catch (_) { toast('Clipping is unavailable for this image.'); }
   });
@@ -143,19 +172,18 @@
   const distance = touches => Math.hypot(touches[0].clientX-touches[1].clientX,touches[0].clientY-touches[1].clientY);
   stage.addEventListener('touchstart', event => {
     if (clipMode) return;
-    if (event.touches.length===2) { pinch={distance:distance(event.touches),zoom}; swipe=null; }
+    if (event.touches.length===2) { pinch={distance:distance(event.touches),zoom,anchor:anchorAt((event.touches[0].clientX+event.touches[1].clientX)/2,(event.touches[0].clientY+event.touches[1].clientY)/2)}; swipe=null; }
     else if (event.touches.length===1 && zoom===1) swipe={x:event.touches[0].clientX,y:event.touches[0].clientY,time:Date.now()};
   }, {passive:true});
-  stage.addEventListener('touchmove', event => { if (pinch && event.touches.length===2) { event.preventDefault(); zoom=Math.max(1,Math.min(3,pinch.zoom*distance(event.touches)/pinch.distance)); fitWidth(); } }, {passive:false});
+  stage.addEventListener('touchmove', event => { if (pinch && event.touches.length===2) { event.preventDefault(); applyZoom(pinch.zoom*distance(event.touches)/pinch.distance,{...pinch.anchor,x:(event.touches[0].clientX+event.touches[1].clientX)/2,y:(event.touches[0].clientY+event.touches[1].clientY)/2}); } }, {passive:false});
   stage.addEventListener('touchend', event => {
-    if (pinch) { if (event.touches.length<2) { pinch=null; setZoom(zoom); } return; }
+    if (pinch) { if (event.touches.length<2) { const anchor=pinch.anchor; pinch=null; setZoom(zoom,anchorAt(anchor.x,anchor.y)); } return; }
     if (!swipe || clipMode || zoom>1) return;
     const touch=event.changedTouches[0], dx=touch.clientX-swipe.x, dy=touch.clientY-swipe.y;
     if (Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.5 && Date.now()-swipe.time<900) show(index+(dx<0?1:-1));
     swipe=null;
   }, {passive:true});
-  document.querySelectorAll('.filters select,.filters input').forEach(field => field.addEventListener('change', () => { if (mobile()) field.form.requestSubmit(); }));
-  stage.addEventListener('dblclick', event => { if (!clipMode) { event.preventDefault(); setZoom(zoom === 1 ? 2 : 1); } });
+  stage.addEventListener('dblclick', event => { if (!clipMode) { event.preventDefault(); setZoom(zoom === 1 ? 2 : 1,anchorAt(event.clientX,event.clientY)); } });
   window.addEventListener('resize', fitWidth);
   new ResizeObserver(fitWidth).observe(stage);
   image.addEventListener('error', () => { status.textContent='Image unavailable. Select this page again to retry.'; });
