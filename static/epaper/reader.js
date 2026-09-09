@@ -11,7 +11,7 @@
   let pinch = null;
   const cache = new Map();
   const mobile = () => window.matchMedia('(max-width: 700px)').matches;
-  const normalURL = page => mobile() ? page.mobile : page.image;
+  const normalURL = page => mobile() && window.devicePixelRatio <= 2 ? page.mobile : page.image;
   const pageURL = () => { const url = new URL(root.dataset.editionUrl, location.origin); url.searchParams.set('page', index + 1); return url.href; };
   function toast(text) { const el = document.getElementById('toast'); el.textContent = text; el.hidden = false; clearTimeout(toast.timer); toast.timer = setTimeout(() => el.hidden = true, 3000); }
   function bookmarks() { try { const saved = JSON.parse(localStorage.getItem(root.dataset.bookmarkKey) || '[]'); return Array.isArray(saved) ? saved.filter(n => Number.isInteger(n) && n >= 0 && n < pages.length) : []; } catch (_) { return []; } }
@@ -39,7 +39,9 @@
   }
   function fitWidth() {
     paper.style.maxWidth = 'none';
-    paper.style.width = Math.min(1200, stage.clientWidth - (mobile() ? 12 : 48)) * zoom + 'px';
+    const page = pages[index];
+    const fitted = mobile() ? Math.min(stage.clientWidth, stage.clientHeight * page.width / page.height) : Math.min(1200, stage.clientWidth - 48);
+    paper.style.width = fitted * zoom + 'px';
     document.getElementById('zoomLabel').textContent = Math.round(zoom * 100) + '%';
   }
   async function show(next, updateURL = true) {
@@ -53,10 +55,10 @@
       index = next; zoom = 1; setClip(false);
       image.removeAttribute('srcset'); image.src = normalURL(page);
       image.width = page.width; image.height = page.height; image.alt = document.title + ' — page ' + page.number;
-      fitWidth(); stage.scrollLeft = 0;
+      fitWidth(); stage.scrollLeft = 0; stage.scrollTop = 0;
       status.textContent = ''; root.removeAttribute('aria-busy'); controls();
       if (updateURL) history.replaceState(null, '', pageURL());
-      stage.scrollIntoView({block: 'start', behavior: 'instant'});
+      if (!mobile()) stage.scrollIntoView({block: 'start', behavior: 'instant'});
       preload();
     } catch (_) {
       if (ticket !== requestId) return;
@@ -118,6 +120,7 @@
     const close = event.target.closest('[data-close]'); if (close) { close.closest('dialog').close(); return; }
     const button = event.target.closest('[data-action]'); if (!button || button.disabled) return;
     switch (button.dataset.action) {
+      case 'more': { const open = document.querySelector('.toolbar').classList.toggle('more-open'); button.setAttribute('aria-expanded', String(open)); break; }
       case 'next': show(index+1); break; case 'previous': show(index-1); break;
       case 'first': show(0); break; case 'last': show(pages.length-1); break;
       case 'zoom-in': setZoom(zoom+.35); break; case 'zoom-out': setZoom(zoom-.35); break;
@@ -151,7 +154,10 @@
     if (Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.5 && Date.now()-swipe.time<900) show(index+(dx<0?1:-1));
     swipe=null;
   }, {passive:true});
+  document.querySelectorAll('.filters select,.filters input').forEach(field => field.addEventListener('change', () => { if (mobile()) field.form.requestSubmit(); }));
+  stage.addEventListener('dblclick', event => { if (!clipMode) { event.preventDefault(); setZoom(zoom === 1 ? 2 : 1); } });
   window.addEventListener('resize', fitWidth);
+  new ResizeObserver(fitWidth).observe(stage);
   image.addEventListener('error', () => { status.textContent='Image unavailable. Select this page again to retry.'; });
   fitWidth(); controls();
   if (image.complete && image.naturalWidth) preload(); else image.addEventListener('load', preload, {once:true});

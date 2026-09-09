@@ -2,7 +2,7 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% if edition %}{{ edition.title }} · {% endif %}{{ tenant.public_name }} E-Paper</title>
   <meta name="description" content="Read {{ tenant.public_name }} E-Paper online. Browse editions, zoom in and read every page.">
   <link rel="canonical" href="{{ share_url }}">
@@ -10,23 +10,24 @@
   {% if initial_page %}<meta property="og:image" content="{{ initial_page.image }}">{% endif %}
   <link rel="stylesheet" href="{% static 'epaper/reader.css' %}">
 </head>
-<body>
+<body{% if pages %} class="has-paper"{% endif %}>
   <header class="brandbar">{% include 'themes/shared/channel_brand.html' %}<nav aria-label="Publication"><a href="{{ site_home_url }}">Home</a><a class="active" href="{{ reader_home_url }}" aria-current="page">E-Paper</a></nav></header>
   <main id="reader" data-edition-url="{{ edition_url }}" data-index="{{ initial_index }}" data-bookmark-key="{{ bookmark_key }}">
     <div class="toolbar">
+      <a class="reader-back" href="{{ site_home_url }}" aria-label="Back to publication" title="Back to publication"><img class="reader-icon" src="{% static 'epaper/icons/chevron-left.svg' %}" alt="" aria-hidden="true"></a>
       <form class="filters" action="{{ reader_home_url }}" method="get">
-        <label>City<select name="city"><option value="">All cities</option>{% for city in cities %}<option {% if city == selected_city %}selected{% endif %}>{{ city }}</option>{% endfor %}</select></label>
-        <label>Edition<select name="edition"><option value="">All editions</option>{% for name in edition_names %}<option {% if name == selected_name %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
-        <label>Date<input type="date" name="date" value="{{ selected_date }}"></label><button type="submit" class="apply">Show</button>
+        <label class="city-filter"><span>City</span><select aria-label="City" name="city"><option value="">{% if edition.city %}{{ edition.city }}{% else %}City{% endif %}</option>{% for city in cities %}<option {% if city == selected_city %}selected{% endif %}>{{ city }}</option>{% endfor %}</select></label>
+        <label class="edition-filter"><span>Edition</span><select aria-label="Edition" name="edition"><option value="">{% if edition.edition_name %}{{ edition.edition_name }}{% else %}Main{% endif %}</option>{% for name in edition_names %}<option {% if name == selected_name %}selected{% endif %}>{{ name }}</option>{% endfor %}</select></label>
+        <label class="date-filter"><span>Date</span><input aria-label="Publication date" type="date" name="date" value="{{ selected_date }}"></label><button type="submit" class="apply">Show</button>
       </form>
       {% if pages %}<div class="tools" aria-label="Reader tools">
         <button type="button" data-action="zoom-out" aria-label="Zoom out">−</button><button type="button" data-action="fit" id="zoomLabel" title="Fit page">100%</button><button type="button" data-action="zoom-in" aria-label="Zoom in">+</button>
         <button type="button" data-action="fullscreen">Fullscreen</button><button type="button" data-action="bookmark" id="bookmark" aria-pressed="false">☆ Save page</button>
-        {% if edition.allow_download %}<button type="button" data-action="clip" id="clipToggle" aria-pressed="false">✂ Clip</button>{% endif %}
-        <button type="button" data-action="share">Share</button>
+        {% if edition.allow_download %}<button type="button" data-action="clip" id="clipToggle" aria-label="Clip article" aria-pressed="false" title="Clip article"><span class="tool-symbol" aria-hidden="true"><img class="reader-icon" src="{% static 'epaper/icons/crop.svg' %}" alt="" aria-hidden="true"></span><span class="tool-label">Clip</span></button>{% endif %}
+        <button type="button" data-action="share" aria-label="Share page" title="Share page"><span class="tool-symbol" aria-hidden="true"><img class="reader-icon" src="{% static 'epaper/icons/share-2.svg' %}" alt="" aria-hidden="true"></span><span class="tool-label">Share</span></button>
         <a id="whatsapp" class="whatsapp" href="https://wa.me/?text={{ share_url|urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
-        {% if edition.allow_download %}<a href="{% if domain_reader %}{% url 'epaper:domain_download' edition.slug %}{% else %}{% url 'epaper:download' tenant.slug edition.slug %}{% endif %}">PDF ↓</a>{% endif %}
-      </div>{% endif %}
+        {% if edition.allow_download %}<a class="pdf-download" aria-label="Download PDF" title="Download PDF" href="{% if domain_reader %}{% url 'epaper:domain_download' edition.slug %}{% else %}{% url 'epaper:download' tenant.slug edition.slug %}{% endif %}"><span class="tool-symbol" aria-hidden="true"><img class="reader-icon" src="{% static 'epaper/icons/download.svg' %}" alt="" aria-hidden="true"></span><span class="tool-label">PDF</span></a>{% endif %}
+      </div><button class="reader-more" type="button" data-action="more" aria-label="More reader tools" aria-expanded="false" title="More reader tools"><img class="reader-icon" src="{% static 'epaper/icons/ellipsis-vertical.svg' %}" alt="" aria-hidden="true"></button>{% endif %}
     </div>
     {% if pages %}
       <div class="edition-line"><span>{{ edition.title }}{% if edition.city %} · {{ edition.city }}{% endif %}</span><span>{{ edition.publication_date|date:"d M Y" }} · {{ pages|length }} pages</span></div>
@@ -35,7 +36,7 @@
       </div>
       <div class="load-status" id="loadStatus" role="status" aria-live="polite"></div>
       <button type="button" class="side previous" data-action="previous" aria-label="Previous page">❮</button><button type="button" class="side next" data-action="next" aria-label="Next page">❯</button>
-      <nav class="pager" aria-label="Page navigation"><button type="button" data-action="pages">▦ <span>All pages</span></button><button type="button" data-action="first" aria-label="First page">|‹</button><button type="button" data-action="previous" aria-label="Previous page">‹</button><label>Page <select id="pageSelect" aria-label="Select page">{% for page in pages %}<option value="{{ forloop.counter0 }}" {% if forloop.counter0 == initial_index %}selected{% endif %}>{{ page.number }}</option>{% endfor %}</select> / {{ pages|length }}</label><button type="button" data-action="next" aria-label="Next page">›</button><button type="button" data-action="last" aria-label="Last page">›|</button></nav>
+      <nav class="pager" aria-label="Page navigation"><button type="button" data-action="pages"><img class="reader-icon" src="{% static 'epaper/icons/layers.svg' %}" alt="" aria-hidden="true"> <span>All pages</span></button><button type="button" data-action="first" aria-label="First page">|‹</button><button type="button" data-action="previous" aria-label="Previous page"><img class="reader-icon" src="{% static 'epaper/icons/chevron-left.svg' %}" alt="" aria-hidden="true"></button><label><span class="page-label">Page</span> <select id="pageSelect" aria-label="Select page">{% for page in pages %}<option value="{{ forloop.counter0 }}" {% if forloop.counter0 == initial_index %}selected{% endif %}>{{ page.number }}</option>{% endfor %}</select> <span aria-hidden="true">/</span> {{ pages|length }}</label><button type="button" data-action="next" aria-label="Next page"><img class="reader-icon" src="{% static 'epaper/icons/chevron-right.svg' %}" alt="" aria-hidden="true"></button><button type="button" data-action="last" aria-label="Last page">›|</button></nav>
       <dialog id="pagesDialog"><div class="dialog-head"><h2>All pages</h2><button type="button" data-close aria-label="Close all pages">×</button></div><p>Select any page to start reading.</p><div class="thumbnails" id="thumbnails"></div><h3>Saved pages</h3><div id="savedPages"></div></dialog>
       <dialog id="clipDialog"><div class="dialog-head"><h2>Your newspaper clipping</h2><button type="button" data-close aria-label="Close clipping">×</button></div><img id="clipPreview" alt="Selected newspaper clipping"><a id="clipDownload" class="download" download="newspaper-clip.png">Download clipping</a></dialog>
       <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
