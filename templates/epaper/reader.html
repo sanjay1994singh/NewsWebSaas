@@ -14,6 +14,7 @@
   <header class="brandbar">{% include 'themes/shared/channel_brand.html' %}<nav aria-label="Publication"><a href="{{ site_home_url }}">Home</a><a class="active" href="{{ reader_home_url }}" aria-current="page">E-Paper</a></nav></header>
   <main id="reader" data-edition-url="{{ edition_url }}" data-index="{{ initial_index }}" data-bookmark-key="{{ bookmark_key }}">
     <div class="toolbar">
+      <a class="reader-identity" href="{{ site_home_url }}"><strong>{{ tenant.public_name }}</strong><span>E-PAPER</span></a>
       <a class="reader-back" href="{{ site_home_url }}" aria-label="Back to publication" title="Back to publication"><img class="reader-icon" src="{% static 'epaper/icons/chevron-left.svg' %}" alt="" aria-hidden="true"></a>
       <form class="filters" action="{{ reader_home_url }}" method="get">
         <label class="city-filter"><span>City</span><select aria-label="City" name="city"><option value="">{% if edition.city %}{{ edition.city }}{% else %}City{% endif %}</option>{% for city in cities %}<option {% if city == selected_city %}selected{% endif %}>{{ city }}</option>{% endfor %}</select></label>
