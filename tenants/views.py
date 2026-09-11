@@ -372,14 +372,17 @@ def _render_public_tenant_site(request, tenant, page='home', category_slug=''):
     article_queryset = published_queryset.filter(content_type=NewsArticle.ContentType.BLOG if page == 'blogs' else NewsArticle.ContentType.NEWS)
     if active_category:
         article_queryset = article_queryset.filter(category=active_category)
+    top_article = article_queryset.order_by('-view_count', '-published_at', '-created_at').first()
     if page == 'top-stories':
         articles = list(article_queryset.order_by('-view_count', '-published_at', '-created_at')[:12])
     else:
-        articles = list(article_queryset.order_by('-published_at', '-created_at')[:12])
+        card_queryset = article_queryset
+        if page == 'home' and top_article:
+            card_queryset = card_queryset.exclude(pk=top_article.pk)
+        articles = list(card_queryset.order_by('-published_at', '-created_at')[:12])
     latest_source = article_queryset if active_category else published_queryset.filter(content_type=NewsArticle.ContentType.NEWS)
     latest_articles = list(latest_source.order_by('-published_at', '-created_at')[:3])
     has_blogs = has_blog_access and published_queryset.filter(content_type=NewsArticle.ContentType.BLOG).exists()
-    top_article = article_queryset.order_by('-view_count', '-published_at', '-created_at').first()
     try:
         onboarding = tenant.commercial_onboarding
     except TenantOnboarding.DoesNotExist:
