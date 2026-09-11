@@ -292,7 +292,9 @@
       min-height: 340px;
       display: grid;
       place-items: center;
-      background: linear-gradient(135deg, #e7f1ed, #ffffff);
+      background:
+        radial-gradient(circle at 82% 18%, rgba(242,183,47,0.26), transparent 28%),
+        linear-gradient(135deg, #0f3f35 0%, #176e5a 54%, #edf6f1 100%);
       overflow: hidden;
     }
     .lead-media img {
@@ -300,6 +302,28 @@
       width: 100%;
       height: 100%;
       object-fit: cover;
+    }
+    .lead-placeholder {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-end;
+      padding: 24px;
+      color: rgba(255,255,255,0.92);
+      background:
+        linear-gradient(180deg, rgba(6,31,27,0.06), rgba(6,31,27,0.34)),
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.12) 0 1px, transparent 1px 34px);
+    }
+    .lead-placeholder span {
+      border: 1px solid rgba(255,255,255,0.52);
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: rgba(6,31,27,0.34);
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
     .lead-copy {
       position: absolute;
@@ -365,9 +389,9 @@
     }
     .story-card-link {
       display: grid;
-      grid-template-rows: 168px 1fr;
+      grid-template-rows: auto 1fr;
       padding: 0;
-      min-height: 190px;
+      min-height: 250px;
       transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
     }
     .story-thumb {
@@ -383,17 +407,35 @@
       object-fit: contain;
     }
     .story-placeholder {
-      display: grid;
-      place-items: center;
+      display: flex;
+      align-items: flex-end;
       width: 100%;
       height: 100%;
-      color: var(--brand);
-      font-size: 46px;
+      padding: 14px;
+      color: #fff;
+      font-size: 12px;
       font-weight: 900;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
+      background:
+        linear-gradient(180deg, rgba(12,47,39,0.18), rgba(12,47,39,0.82)),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.12) 0 1px, transparent 1px 72px),
+        linear-gradient(135deg, #12624f, #f2b72f);
     }
     .story-card-body {
-      padding: 20px;
+      padding: 16px 18px 18px;
+    }
+    .story-card-body h2 {
+      margin-bottom: 8px;
+      font-size: 21px;
+      line-height: 1.18;
+    }
+    .story-card-body p {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      line-height: 1.45;
     }
     .story-card-link:hover,
     .story-card-link:focus-visible {
@@ -873,7 +915,7 @@
       {% if top_article %}
         <a class="lead-card lead-link" href="/articles/{{ top_article.uuid }}/">
           <div class="lead-media">
-            {% if top_article.featured_image %}<img src="{{ top_article.featured_image.url }}" alt="{{ top_article.image_alt|default:top_article.title }}">{% endif %}
+            {% if top_article.featured_image %}<img src="{{ top_article.featured_image.url }}" alt="{{ top_article.image_alt|default:top_article.title }}">{% else %}<div class="lead-placeholder"><span>{{ top_article.category.name|default:"Top Story" }}</span></div>{% endif %}
           </div>
           <div class="lead-copy">
             <span class="label">Most Viewed</span>
@@ -928,13 +970,13 @@
                   <img src="{{ article.featured_image.url }}" alt="{{ article.image_alt|default:article.title }}">
                 {% else %}
                   {% with site_name=tenant.public_name %}
-                    <div class="story-placeholder">{{ site_name|first }}</div>
+                    <div class="story-placeholder">{{ article.category.name|default:site_name }}</div>
                   {% endwith %}
                 {% endif %}
               </div>
               <div class="story-card-body">
                 <h2>{{ article.title }}</h2>
-                <p>{{ article.title }}</p>
+                <p>{{ article.short_description|default:article.title }}</p>
                 <span class="read-more">Read full story</span>
               </div>
             </article>
