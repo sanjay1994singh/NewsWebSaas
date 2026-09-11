@@ -201,11 +201,11 @@
     }
     .breaking {
       display: flex;
-      gap: 14px;
-      align-items: center;
+      align-items: stretch;
       margin: 22px 0;
       border: 1px solid #f0c7ca;
       background: #fff;
+      overflow: hidden;
     }
     .breaking strong {
       align-self: stretch;
@@ -219,14 +219,51 @@
       text-transform: uppercase;
       white-space: nowrap;
     }
-    .breaking span {
+    .breaking-track {
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+    }
+    .breaking-scroll {
+      display: inline-flex;
+      align-items: center;
+      gap: 28px;
+      width: max-content;
+      min-width: 100%;
       color: #3b514a;
       font-size: 14px;
-      padding-right: 14px;
+      white-space: nowrap;
+      animation: breakingTicker 30s linear infinite;
+      will-change: transform;
+    }
+    .breaking:hover .breaking-scroll,
+    .breaking:focus-within .breaking-scroll {
+      animation-play-state: paused;
+    }
+    .breaking-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 18px;
+      padding-right: 18px;
+    }
+    .breaking-group a + a::before {
+      content: '|';
+      margin-right: 18px;
+      color: #8aa097;
+      font-weight: 700;
     }
     .breaking a {
       font-weight: 800;
       color: var(--ink);
+    }
+    @keyframes breakingTicker {
+      from { transform: translateX(0); }
+      to { transform: translateX(-50%); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .breaking-scroll { animation: none; }
     }
     .hero-grid {
       display: grid;
@@ -899,15 +936,28 @@
     {% else %}
     <div class="breaking">
       <strong>Breaking</strong>
-      <span>
-        {% if latest_articles %}
-          {% for article in latest_articles %}
-            <a href="/articles/{{ article.uuid }}/">{{ article.title }}</a>{% if not forloop.last %} &nbsp;|&nbsp; {% endif %}
-          {% endfor %}
-        {% else %}
-          Latest verified local news and important public updates will appear here.
-        {% endif %}
-      </span>
+      <div class="breaking-track" aria-label="Breaking news ticker">
+        <div class="breaking-scroll">
+          <span class="breaking-group">
+            {% if latest_articles %}
+              {% for article in latest_articles %}
+                <a href="/articles/{{ article.uuid }}/">{{ article.title }}</a>
+              {% endfor %}
+            {% else %}
+              Latest verified local news and important public updates will appear here.
+            {% endif %}
+          </span>
+          <span class="breaking-group" aria-hidden="true">
+            {% if latest_articles %}
+              {% for article in latest_articles %}
+                <a tabindex="-1" href="/articles/{{ article.uuid }}/">{{ article.title }}</a>
+              {% endfor %}
+            {% else %}
+              Latest verified local news and important public updates will appear here.
+            {% endif %}
+          </span>
+        </div>
+      </div>
     </div>
 
     {% if page == "home" or page == "top-stories" %}
