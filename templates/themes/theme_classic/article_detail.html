@@ -29,7 +29,7 @@
     a { color:inherit; text-decoration:none; }
     .wrap { width:min(1180px, calc(100% - 32px)); margin:0 auto; }
     .topbar { background:var(--ink); color:#fff; font-size:13px; }
-    .topbar .wrap, .masthead, .nav, .share-row { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+    .topbar .wrap, .masthead, .nav { display:flex; align-items:center; justify-content:space-between; gap:16px; }
     .topbar .wrap { min-height:34px; }
     .masthead { min-height:92px; padding:18px 0; }
     .brand { display:flex; align-items:flex-start; gap:12px; font-weight:900; font-size:26px; min-width:0; }
@@ -37,7 +37,7 @@
     .brand-copy { display:flex; min-width:0; flex-direction:column; justify-content:flex-start; }
     .site-title { margin:0; font-size:34px; line-height:42px; letter-spacing:0; text-transform:capitalize; }
     .tagline { margin:4px 0 0; color:var(--muted); font-size:15px; line-height:1.35; font-weight:400; }
-    .login-link, .share-btn, .back-link, .account-toggle { display:inline-flex; align-items:center; justify-content:center; min-height:38px; border:1px solid var(--brand); border-radius:999px; padding:8px 14px; color:var(--brand); background:#fff; font-size:14px; font-weight:800; cursor:pointer; }
+    .login-link, .back-link, .account-toggle { display:inline-flex; align-items:center; justify-content:center; min-height:38px; border:1px solid var(--brand); border-radius:999px; padding:8px 14px; color:var(--brand); background:#fff; font-size:14px; font-weight:800; cursor:pointer; }
     .account-toggle { gap:8px; }
     .account-icon { display:block; width:18px; height:18px; }
     .account-menu { position:relative; }
@@ -49,22 +49,22 @@
     .nav { min-height:48px; justify-content:flex-start; gap:34px; overflow-x:auto; overflow-y:hidden; scrollbar-width:thin; -webkit-overflow-scrolling:touch; }
     .nav a { flex:0 0 auto; color:#294039; font-size:14px; font-weight:700; white-space:nowrap; }
     .article-shell { display:grid; gap:22px; margin:26px auto 44px; }
-    .article-head, .article-body, .share-card { border:1px solid var(--line); border-radius:8px; background:var(--paper); }
+    .article-head, .article-body { border:1px solid var(--line); border-radius:8px; background:var(--paper); }
     .article-head { padding:28px; }
     .kicker { margin:0 0 12px; color:var(--brand); font-size:13px; font-weight:900; letter-spacing:.08em; text-transform:uppercase; }
     h1 { max-width:850px; margin:0; font-size:44px; line-height:1.08; letter-spacing:0; }
     .summary { max-width:820px; margin:16px 0 0; color:#40564f; font-size:18px; }
-    .meta-row { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; color:var(--muted); font-size:14px; }
+    .meta-row { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-top:18px; color:var(--muted); font-size:14px; }
+    .meta-share { display:inline-flex; align-items:center; gap:7px; margin-left:4px; }
+    .share-icon { display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border:1px solid var(--line); border-radius:50%; color:var(--brand); background:#fff; cursor:pointer; transition:background .16s ease, border-color .16s ease, color .16s ease; }
+    .share-icon svg { width:17px; height:17px; display:block; }
+    .share-icon:hover, .share-icon:focus-visible { border-color:var(--brand); background:var(--brand); color:#fff; outline:none; }
     .pill { display:inline-flex; border:1px solid var(--line); border-radius:999px; padding:6px 10px; background:#fff; }
     .hero-image { width:100%; max-height:480px; object-fit:cover; border-radius:8px; border:1px solid var(--line); }
     .caption { margin:8px 0 0; color:var(--muted); font-size:13px; }
     .article-body { padding:28px; font-size:18px; }
     .article-body img { max-width:100%; height:auto; border-radius:8px; }
     .article-body p:first-child { margin-top:0; }
-    .share-card { padding:18px; }
-    .share-row { align-items:flex-start; }
-    .share-actions { display:flex; flex-wrap:wrap; gap:10px; justify-content:flex-end; }
-    .share-btn.primary { background:var(--brand); color:#fff; }
     footer { border-top:1px solid var(--line); background:#fff; padding:28px 0; color:var(--muted); font-size:14px; }
     footer strong { color:var(--ink); font-size:18px; }
     .footer-row { display:grid; grid-template-columns:minmax(220px,1fr) minmax(0,2fr); gap:22px; align-items:start; }
@@ -72,7 +72,7 @@
     .footer-links a { color:#385149; font-weight:700; }
     .footer-links a:hover { color:var(--brand); }
     @media (max-width:760px) {
-      .masthead, .share-row { display:flex; align-items:flex-start; }
+      .masthead { display:flex; align-items:flex-start; }
       .brand { flex:1 1 auto; gap:10px; }
       .brand-mark { width:44px; height:44px; flex-basis:44px; font-size:22px; }
       .site-title { font-size:32px; line-height:44px; overflow-wrap:anywhere; }
@@ -83,8 +83,8 @@
       .footer-links { justify-content:flex-start; }
       h1 { font-size:32px; }
       .article-head, .article-body { padding:20px; }
-      .share-actions { justify-content:flex-start; }
-      .back-link, .share-btn { width:100%; }
+      .back-link { width:100%; }
+      .meta-share { width:100%; margin-left:0; }
       .account-toggle { width:44px; height:44px; min-width:44px; padding:0; border-radius:50%; }
       .account-toggle-text { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
     }
@@ -144,6 +144,12 @@
         <div class="meta-row">
           <span class="pill">{{ article.published_at|default:article.created_at|date:"d M Y" }}</span>
           {% if article.public_publisher_name %}<span class="pill">{{ article.public_publisher_name }}</span>{% endif %}
+          <div class="meta-share" aria-label="Share this story">
+            <a class="share-icon" href="https://api.whatsapp.com/send?text={{ share_text|urlencode }}%20{{ share_url|urlencode }}" target="_blank" rel="noopener" aria-label="Share on WhatsApp" title="WhatsApp"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12.04 2C6.57 2 2.13 6.42 2.13 11.86c0 1.74.46 3.44 1.33 4.94L2 22l5.35-1.4a9.95 9.95 0 0 0 4.69 1.19h.01c5.47 0 9.91-4.42 9.91-9.86C21.96 6.42 17.52 2 12.04 2Zm0 18.12h-.01a8.25 8.25 0 0 1-4.2-1.15l-.3-.18-3.18.83.85-3.09-.2-.32a8.13 8.13 0 0 1-1.25-4.35c0-4.52 3.72-8.2 8.29-8.2 2.21 0 4.29.86 5.85 2.41a8.13 8.13 0 0 1 2.43 5.86c0 4.52-3.72 8.19-8.28 8.19Z"/></svg></a>
+            <a class="share-icon" href="https://www.facebook.com/sharer/sharer.php?u={{ share_url|urlencode }}" target="_blank" rel="noopener" aria-label="Share on Facebook" title="Facebook"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M14 8.5h2V5.3c-.35-.05-1.55-.15-2.95-.15-2.92 0-4.92 1.78-4.92 5.04v2.84H5v3.58h3.13V24h3.84v-7.39h3l.48-3.58h-3.48v-2.49c0-1.03.28-1.74 2.03-1.74Z"/></svg></a>
+            <a class="share-icon" href="https://twitter.com/intent/tweet?text={{ share_text|urlencode }}&url={{ share_url|urlencode }}" target="_blank" rel="noopener" aria-label="Share on X" title="X"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M18.9 2h3.27l-7.14 8.16L23.43 22h-6.58l-5.15-6.73L5.8 22H2.53l7.64-8.73L2.1 2h6.75l4.65 6.15L18.9 2Zm-1.15 17.9h1.81L7.86 3.99H5.91L17.75 19.9Z"/></svg></a>
+            <button class="share-icon" type="button" data-copy-url="{{ share_url }}" aria-label="Copy link" title="Copy link"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="currentColor" d="M10.6 13.4a1 1 0 0 1 0-1.4l3.9-3.9a3 3 0 1 1 4.24 4.24l-2.1 2.1a1 1 0 0 1-1.41-1.41l2.1-2.1a1 1 0 0 0-1.42-1.42L12 13.4a1 1 0 0 1-1.4 0Zm2.8-2.8a1 1 0 0 1 0 1.4l-3.9 3.9a3 3 0 1 1-4.24-4.24l2.1-2.1a1 1 0 1 1 1.41 1.41l-2.1 2.1a1 1 0 1 0 1.42 1.42L12 10.6a1 1 0 0 1 1.4 0Z"/></svg></button>
+          </div>
         </div>
       </header>
 
@@ -153,21 +159,6 @@
           {% if article.image_caption %}<p class="caption">{{ article.image_caption }}</p>{% endif %}
         </div>
       {% endif %}
-
-      <section class="share-card">
-        <div class="share-row">
-          <div>
-            <strong>Share this story</strong>
-            <p class="caption">Send this article link to readers on WhatsApp or social media.</p>
-          </div>
-          <div class="share-actions">
-            <a class="share-btn primary" href="https://api.whatsapp.com/send?text={{ share_text|urlencode }}%20{{ share_url|urlencode }}" target="_blank" rel="noopener">WhatsApp</a>
-            <a class="share-btn" href="https://www.facebook.com/sharer/sharer.php?u={{ share_url|urlencode }}" target="_blank" rel="noopener">Facebook</a>
-            <a class="share-btn" href="https://twitter.com/intent/tweet?text={{ share_text|urlencode }}&url={{ share_url|urlencode }}" target="_blank" rel="noopener">X</a>
-            <button class="share-btn" type="button" data-copy-url="{{ share_url }}">Copy Link</button>
-          </div>
-        </div>
-      </section>
 
       <section class="article-body">
         {{ article.content|safe }}
@@ -218,7 +209,7 @@
         const url = button.getAttribute('data-copy-url');
         if (navigator.clipboard) {
           navigator.clipboard.writeText(url).then(function () {
-            button.textContent = 'Copied';
+            button.setAttribute('title', 'Copied'); button.setAttribute('aria-label', 'Copied link');
           });
         } else {
           window.prompt('Copy this article link', url);
