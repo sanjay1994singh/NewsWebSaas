@@ -16,13 +16,15 @@ Including another URLconf
 from analytics.views import platform_contact
 from django.contrib import admin
 from django.urls import include, path
+from django.views.generic import RedirectView
 from subscriptions import views as subscription_views
 
 urlpatterns = [
     path('', subscription_views.customer_home, name='home'),
     path('profile/', subscription_views.tenant_profile_redirect, name='tenant_profile_redirect'),
     path('saas/', subscription_views.landing_page, name='public_saas_landing'),
-    path('saas/signup/', subscription_views.signup, name='public_saas_signup'),
+    path('saas/signup/', RedirectView.as_view(pattern_name='public_saas_signup', permanent=True), name='legacy_public_saas_signup'),
+    path('accounts/signup/', subscription_views.signup, name='public_saas_signup'),
     path('about-us/', subscription_views.about_us, name='about_us'),
     path('contact-us/', platform_contact, name='contact_us'),
     path('privacy-policy/', subscription_views.policy_page, {'policy_type': 'privacy'}, name='privacy_policy'),
@@ -30,7 +32,10 @@ urlpatterns = [
     path('refund-policy/', subscription_views.policy_page, {'policy_type': 'refund'}, name='refund_policy'),
     path('billing-policy/', subscription_views.policy_page, {'policy_type': 'billing'}, name='billing_policy'),
     path('grievance/', subscription_views.policy_page, {'policy_type': 'grievance'}, name='grievance'),
-    path('account/', include('accounts.urls')),
+    path('accounts/', include('accounts.urls')),
+    path('account/login/', RedirectView.as_view(pattern_name='accounts:login', permanent=True), name='legacy_account_login'),
+    path('account/profile/', RedirectView.as_view(pattern_name='accounts:profile', permanent=True), name='legacy_account_profile'),
+    path('account/logout/', RedirectView.as_view(pattern_name='accounts:logout', permanent=True), name='legacy_account_logout'),
     path('', include('seo.urls')),
     path('', include('analytics.urls')),
     path('admin/', admin.site.urls),
