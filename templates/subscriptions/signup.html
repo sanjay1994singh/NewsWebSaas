@@ -38,6 +38,8 @@
 .plan-costs { margin:12px 0; }
 .plan-costs > div { display:flex; justify-content:space-between; gap:16px; padding:8px 0; border-bottom:1px solid var(--line); }
 .plan-costs dd { margin:0; font-weight:700; }
+.plan-costs .final-row { margin-top:4px; padding-top:12px; border-top:1px solid #bed4c9; border-bottom:0; font-size:16px; }
+.plan-costs .final-row dt, .plan-costs .final-row dd { color:var(--deep); font-weight:900; }
 .plan-details h3 { margin:20px 0 10px; font-size:16px; }
 .plan-details h2 { margin:0 0 8px; font-size:18px; }
 .plan-details ul { margin:0; padding-left:20px; }
@@ -114,12 +116,13 @@
                   <p class="signup-kicker">Your selected plan</p>
                   <h2 data-plan-name>{{ form.selected_quote.name|default:"Choose a plan above" }}</h2>
                   <div data-plan-summary {% if not form.selected_quote %}hidden{% endif %}>
-                    <p class="plan-total"><strong data-plan-payable>{{ form.selected_quote.payable }}</strong> <span>for <span data-plan-duration>{{ form.selected_quote.duration }}</span></span></p>
+                    <p class="plan-total"><strong data-plan-taxable-total>{{ form.selected_quote.taxable }}</strong> <span>after discount for <span data-plan-duration>{{ form.selected_quote.duration }}</span></span></p>
                     <dl class="plan-costs">
                       <div><dt>Plan amount</dt><dd data-plan-list>{{ form.selected_quote.list }}</dd></div>
                       <div><dt><span data-plan-percent>{{ form.selected_quote.percent }}</span>% offer discount</dt><dd>−<span data-plan-discount>{{ form.selected_quote.discount }}</span></dd></div>
                       <div><dt>Taxable value</dt><dd data-plan-taxable>{{ form.selected_quote.taxable }}</dd></div>
                       <div><dt>GST @ <span data-plan-tax-rate>{{ form.selected_quote.tax_rate_percent }}</span>%</dt><dd data-plan-tax>{{ form.selected_quote.tax }}</dd></div>
+                      <div class="final-row"><dt>Final amount after GST and discount</dt><dd data-plan-payable>{{ form.selected_quote.payable }}</dd></div>
                     </dl>
                     <p class="muted">Total payable includes GST for the selected duration. Article limits below apply per month.</p>
                   </div>
@@ -168,6 +171,7 @@
       ['payable', 'duration', 'list', 'percent', 'discount', 'taxable', 'tax'].forEach(function (key) {
         document.querySelector('[data-plan-' + key + ']').textContent = quote[key];
       });
+      document.querySelector('[data-plan-taxable-total]').textContent = quote.taxable;
       document.querySelector('[data-plan-tax-rate]').textContent = quote.tax_rate_percent;
     }
     if (plan && duration) {
