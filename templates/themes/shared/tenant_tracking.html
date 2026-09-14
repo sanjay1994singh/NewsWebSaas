@@ -1,0 +1,36 @@
+{% if seo_settings.google_site_verification %}<meta name="google-site-verification" content="{{ seo_settings.google_site_verification }}">{% endif %}
+{% if seo_settings.bing_site_verification %}<meta name="msvalidate.01" content="{{ seo_settings.bing_site_verification }}">{% endif %}
+{% if seo_settings.google_analytics_id or seo_settings.google_ads_id %}
+<script>
+(function () {
+  if (navigator.doNotTrack === '1' || navigator.globalPrivacyControl === true) return;
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
+  if (!window.pressNexaTenantGoogleTagStarted) {
+    window.pressNexaTenantGoogleTagStarted = true;
+    window.gtag('js', new Date());
+  }
+  function config(id, options) {
+    if (!id) return;
+    window.gtag('config', id, Object.assign({
+      page_location: window.location.origin + window.location.pathname,
+      allow_google_signals: false,
+      allow_ad_personalization_signals: false
+    }, options || {}));
+  }
+  {% if seo_settings.google_analytics_id %}config('{{ seo_settings.google_analytics_id|escapejs }}');{% endif %}
+  {% if seo_settings.google_ads_id %}config('{{ seo_settings.google_ads_id|escapejs }}', { send_page_view: false });{% endif %}
+  {% if seo_settings.google_ads_id and seo_settings.google_ads_conversion_label %}
+  window.pressNexaGoogleAdsConversion = '{{ seo_settings.google_ads_id|escapejs }}/{{ seo_settings.google_ads_conversion_label|escapejs }}';
+  {% endif %}
+  var tagId = '{{ seo_settings.google_analytics_id|default:seo_settings.google_ads_id|escapejs }}';
+  if (tagId && !document.querySelector('script[data-tenant-google-tag="true"]')) {
+    var tag = document.createElement('script');
+    tag.async = true;
+    tag.dataset.tenantGoogleTag = 'true';
+    tag.src = 'https://www.googletagmanager.com/gtag/js?id=' + encodeURIComponent(tagId);
+    document.head.appendChild(tag);
+  }
+})();
+</script>
+{% endif %}

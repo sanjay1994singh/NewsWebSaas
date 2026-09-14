@@ -18,13 +18,13 @@ from news.models import NewsArticle
 from news.services import article_public_path, published_articles_for_tenant
 from pages.builder import get_or_create_layout
 from pages.models import HomepageBlock, HomepageLayout, Menu, Page
-from seo.services import article_json_ld, article_meta
+from seo.services import article_json_ld, article_meta, get_or_create_seo_settings
 from subscriptions.entitlements import get_effective_entitlements
 from subscriptions.models import CustomerAcquisition, TenantOnboarding, TenantSubscription
 from subscriptions.services import ensure_required_tenant_pages, tenant_public_site_slug, tenant_public_site_url
 from videos.youtube import fetch_youtube_channel_shorts, fetch_youtube_channel_videos
 
-from .forms import ReporterCreateForm, TenantSettingsForm, VisitorRegistrationForm
+from .forms import ReporterCreateForm, TenantSettingsForm, TenantTrackingForm, VisitorRegistrationForm
 from .models import Tenant, TenantMembership, TenantVisitor
 
 
@@ -401,6 +401,7 @@ def _render_public_tenant_site(request, tenant, page='home', category_slug=''):
         youtube_video_groups = _group_youtube_items_by_day(youtube_videos)
         youtube_short_groups = _group_youtube_items_by_day(youtube_shorts)
     can_access_dashboard = user_can_access_tenant(request.user, tenant)
+    seo_settings = get_or_create_seo_settings(tenant)
     is_registered_visitor = (
         request.user.is_authenticated
         and TenantVisitor.objects.filter(tenant=tenant, user=request.user, is_active=True).exists()
@@ -412,6 +413,7 @@ def _render_public_tenant_site(request, tenant, page='home', category_slug=''):
         'latest_articles': latest_articles,
         'top_article': top_article,
         'tenant': tenant,
+        'seo_settings': seo_settings,
         'onboarding': onboarding,
         'has_videos': has_videos,
         'has_live_tv': has_live_tv,
@@ -446,6 +448,7 @@ def public_article_detail(request, uuid):
     if article.content_type == NewsArticle.ContentType.BLOG and not entitlements.get('blog', {}).get('is_enabled'):
         raise Http404("Article not found.")
     meta = article_meta(article)
+    seo_settings = get_or_create_seo_settings(article.tenant)
     if article.featured_image:
         meta['og_image'] = request.build_absolute_uri(article.featured_image.url)
     share_url = request.build_absolute_uri(article_public_path(article))
@@ -472,6 +475,7 @@ def public_article_detail(request, uuid):
         'article': article,
         'meta': meta,
         'json_ld': article_json_ld(article),
+        'seo_settings': seo_settings,
         'share_url': share_url,
         'share_text': share_text,
         'footer_pages': footer_pages,
@@ -507,12 +511,22 @@ def tenant_settings(request, uuid):
     tenant = get_object_or_404(Tenant, uuid=uuid)
     if not user_can_access_tenant(request.user, tenant):
         raise PermissionDenied("You do not have access to this tenant.")
+    seo_settings = get_or_create_seo_settings(tenant)
     if request.method == 'POST':
         form = TenantSettingsForm(request.POST, instance=tenant)
-        if form.is_valid():
+        tracking_form = TenantTrackingForm(request.POST, instance=seo_settings)
+        if form.is_valid() and tracking_form.is_valid():
             form.save()
+            tracking = tracking_form.save(commit=False)
+            tracking.tenant = tenant
+            tracking.save()
             messages.success(request, 'Workspace settings updated.')
             return redirect('tenants:tenant_settings', uuid=tenant.uuid)
     else:
         form = TenantSettingsForm(instance=tenant)
-    return render(request, 'tenants/tenant_settings.html', {'tenant': tenant, 'form': form})
+        tracking_form = TenantTrackingForm(instance=seo_settings)
+    return render(request, 'tenants/tenant_settings.html', {
+        'tenant': tenant,
+        'form': form,
+        'tracking_form': tracking_form,
+    })

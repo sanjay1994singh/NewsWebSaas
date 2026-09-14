@@ -1,6 +1,8 @@
+import re
 from django import forms
 from django.contrib.auth import get_user_model
 
+from seo.models import TenantSEOSettings
 from .models import Tenant, TenantMembership
 
 
@@ -9,6 +11,68 @@ class TenantSettingsForm(forms.ModelForm):
         model = Tenant
         fields = ['business_name', 'publication_name', 'default_language', 'timezone', 'country', 'email', 'mobile']
 
+
+
+class TenantTrackingForm(forms.ModelForm):
+    class Meta:
+        model = TenantSEOSettings
+        fields = [
+            'google_site_verification',
+            'bing_site_verification',
+            'google_analytics_id',
+            'google_ads_id',
+            'google_ads_conversion_label',
+        ]
+        labels = {
+            'google_site_verification': 'Google site verification code',
+            'bing_site_verification': 'Bing site verification code',
+            'google_analytics_id': 'Google Analytics measurement ID',
+            'google_ads_id': 'Google Ads conversion ID',
+            'google_ads_conversion_label': 'Google Ads conversion label',
+        }
+        help_texts = {
+            'google_site_verification': 'Paste only the content value, not the full meta tag.',
+            'bing_site_verification': 'Paste only the verification token.',
+            'google_analytics_id': 'Example: G-XXXXXXXXXX.',
+            'google_ads_id': 'Example: AW-123456789. This loads only on your public domain pages.',
+            'google_ads_conversion_label': 'Optional label from Google Ads conversion setup.',
+        }
+
+    def _clean_code(self, field_name, pattern, example):
+        value = (self.cleaned_data.get(field_name) or '').strip()
+        if not value:
+            return ''
+        if '<' in value or '>' in value:
+            raise forms.ValidationError('Paste only the ID/code value, not HTML or script code.')
+        if not re.fullmatch(pattern, value):
+            raise forms.ValidationError(f'Invalid format. Example: {example}')
+        return value
+
+    def clean_google_site_verification(self):
+        value = (self.cleaned_data.get('google_site_verification') or '').strip()
+        if '<' in value or '>' in value:
+            raise forms.ValidationError('Paste only the content value, not the full meta tag.')
+        return value
+
+    def clean_bing_site_verification(self):
+        value = (self.cleaned_data.get('bing_site_verification') or '').strip()
+        if '<' in value or '>' in value:
+            raise forms.ValidationError('Paste only the verification token, not the full meta tag.')
+        return value
+
+    def clean_google_analytics_id(self):
+        return self._clean_code('google_analytics_id', r'G-[A-Z0-9-]{4,32}', 'G-XXXXXXXXXX')
+
+    def clean_google_ads_id(self):
+        return self._clean_code('google_ads_id', r'AW-[0-9]{6,20}', 'AW-123456789')
+
+    def clean_google_ads_conversion_label(self):
+        value = (self.cleaned_data.get('google_ads_conversion_label') or '').strip()
+        if not value:
+            return ''
+        if '<' in value or '>' in value or not re.fullmatch(r'[A-Za-z0-9_-]{4,80}', value):
+            raise forms.ValidationError('Use only the conversion label value from Google Ads.')
+        return value
 
 class VisitorRegistrationForm(forms.Form):
     name = forms.CharField(max_length=150)

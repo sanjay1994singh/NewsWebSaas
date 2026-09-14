@@ -13,6 +13,8 @@ class TenantSEOSettings(TenantOwnedModel):
     google_site_verification = models.CharField(max_length=128, blank=True)
     bing_site_verification = models.CharField(max_length=128, blank=True)
     google_analytics_id = models.CharField(max_length=40, blank=True)
+    google_ads_id = models.CharField(max_length=40, blank=True)
+    google_ads_conversion_label = models.CharField(max_length=80, blank=True)
 
     class Meta:
         constraints = [

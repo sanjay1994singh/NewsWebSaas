@@ -22,6 +22,7 @@
   <meta name="twitter:card" content="summary_large_image">
   {% if meta.og_image %}<meta name="twitter:image" content="{{ meta.og_image }}">{% endif %}
   {% if json_ld %}<script type="application/ld+json">{{ json_ld|safe }}</script>{% endif %}
+  {% include "themes/shared/tenant_tracking.html" %}
   <style>
     :root { --ink:#10231d; --muted:#5c7069; --line:#d8e5df; --soft:#f2f8f5; --paper:#fff; --brand:#0b6b57; --accent:#d71920; }
     * { box-sizing:border-box; }
