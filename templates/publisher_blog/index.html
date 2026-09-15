@@ -1,0 +1,13 @@
+{% extends "publisher_blog/base.html" %}
+{% block content %}
+<section class="hero"><div><div class="eyebrow">The Press Nexa journal</div>
+<h1>{% if language == 'hi' %}बेहतर न्यूज़ वेबसाइट।<br>बेहतर शुरुआत।{% else %}Your next chapter<br>in news publishing.{% endif %}</h1>
+<p>{% if language == 'hi' %}अपनी न्यूज़ वेबसाइट शुरू करने, सही प्लान चुनने और वीडियो व ई-पेपर प्रकाशित करने की उपयोगी गाइड। पढ़ें और अपनी टीम के साथ साझा करें।{% else %}Practical ideas for launching your news website, choosing a plan and publishing video and ePaper. Read, learn and share with your team.{% endif %}</p>
+<div class="hero-note"><span>✦ हिंदी & English</span><span>✦ Practical publishing guides</span></div></div>
+<div class="hero-art" aria-hidden="true"><div class="paper-icon"><b>PRESS NEXA</b><div class="paper-lines"></div><div class="paper-block"></div></div><span class="art-label">READ. LEARN. PUBLISH.</span></div></section>
+<div class="toolbar"><div class="tabs" aria-label="Article language"><a class="{% if not active_language %}active{% endif %}" href="/blog/">सभी / All</a><a class="{% if active_language == 'hi' %}active{% endif %}" href="/blog/hi/">हिंदी</a><a class="{% if active_language == 'en' %}active{% endif %}" href="/blog/en/">English</a></div><span class="count">{{ page.paginator.count }} {% if language == 'hi' %}लेख पढ़ने के लिए उपलब्ध{% else %}guides to explore{% endif %}</span></div>
+<h2 class="section-title">{% if language == 'hi' %}पब्लिशर की पाठशाला{% else %}From the publisher's desk{% endif %}</h2>
+<div class="grid">{% for item in page %}{% if forloop.first and page.number == 1 %}{% include "publisher_blog/card.html" with featured=True %}{% else %}{% include "publisher_blog/card.html" with featured=False %}{% endif %}{% empty %}<div class="empty"><h2>{% if language == 'hi' %}नई गाइड जल्द पढ़ें{% else %}New guides are on their way{% endif %}</h2><p class="muted">{% if language == 'hi' %}लेख प्रकाशित होते ही यहाँ दिखाई देंगे।{% else %}Fresh articles will appear here as they are published.{% endif %}</p><a href="/blog/">Browse all guides →</a></div>{% endfor %}</div>
+{% if page.paginator.num_pages > 1 %}<nav class="pagination" aria-label="Pagination">{% if page.has_previous %}<a href="?page={{ page.previous_page_number }}">← Previous</a>{% endif %}<span>{{ page.number }} / {{ page.paginator.num_pages }}</span>{% if page.has_next %}<a href="?page={{ page.next_page_number }}">Next →</a>{% endif %}</nav>{% endif %}
+{% endblock %}
+

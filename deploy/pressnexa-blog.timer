@@ -1,0 +1,12 @@
+[Unit]
+Description=Check Press Nexa scheduled articles every minute
+
+[Timer]
+OnCalendar=*-*-* *:*:00
+AccuracySec=1s
+Persistent=true
+Unit=pressnexa-blog.service
+
+[Install]
+WantedBy=timers.target
+

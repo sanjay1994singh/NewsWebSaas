@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.http import HttpResponse
 from xml.sax.saxutils import escape
 
@@ -8,7 +9,7 @@ from .services import absolute_url, sitemap_items
 
 def robots_txt(request):
     tenant = getattr(request, 'tenant', None)
-    sitemap_url = absolute_url(tenant, '/sitemap.xml') if tenant else '/sitemap.xml'
+    sitemap_url = absolute_url(tenant, '/sitemap.xml') if tenant else settings.SITE_BASE_URL + '/sitemap.xml'
     body = "\n".join([
         "User-agent: *",
         "Allow: /",
@@ -22,6 +23,9 @@ def robots_txt(request):
 
 def sitemap_xml(request):
     tenant = request.tenant
+    if tenant is None:
+        from publisher_blog.views import sitemap
+        return sitemap(request)
     rows = ['<?xml version="1.0" encoding="UTF-8"?>', '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
     for loc, lastmod in sitemap_items(tenant):
         rows.append(f"<url><loc>{escape(loc)}</loc><lastmod>{lastmod.date().isoformat()}</lastmod></url>")

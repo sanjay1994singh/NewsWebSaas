@@ -1,0 +1,6 @@
+<section class="card {% if featured %}featured{% endif %}" lang="{{ item.language }}">
+<a class="cover {{ item.language }}" href="{{ item.get_absolute_url }}" aria-label="{{ item.title }}"><span class="cover-copy">PRESS NEXA<br>PUBLISHER<br>GUIDES</span><span class="cover-mark" aria-hidden="true">PN.</span></a>
+<div class="card-body"><div class="meta"><span class="badge">{% if item.language == 'hi' %}हिंदी गाइड{% else %}ENGLISH GUIDE{% endif %}</span><span>{{ item.read_minutes }} min read</span></div>
+<h2><a href="{{ item.get_absolute_url }}">{{ item.title }}</a></h2><p>{{ item.description }}</p>
+<div class="card-bottom"><a class="read-link" href="{{ item.get_absolute_url }}">{% if item.language == 'hi' %}पूरा लेख पढ़ें{% else %}Read the guide{% endif %} →</a><a class="share-link" href="{{ item.whatsapp_url }}" target="_blank" rel="noopener noreferrer">WhatsApp ↗</a></div></div></section>
+

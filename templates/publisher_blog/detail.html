@@ -1,0 +1,18 @@
+{% extends "publisher_blog/base.html" %}
+{% block extra_head %}<script type="application/ld+json">{{ schema|safe }}</script>{% endblock %}
+{% block content %}<article class="article">
+<nav class="breadcrumb" aria-label="Breadcrumb"><a href="/">Press Nexa</a><span>/</span><a href="/blog/{{ language }}/">{% if language == 'hi' %}हिंदी ब्लॉग{% else %}English blog{% endif %}</a></nav>
+<h1>{{ post.title }}</h1><p class="article-summary">{{ post.description }}</p>
+<div class="meta"><span class="badge">{% if language == 'hi' %}पब्लिशर गाइड{% else %}PUBLISHER GUIDE{% endif %}</span><span>By Press Nexa</span><time datetime="{{ post.published_at|date:'c' }}">{{ post.published_at|date:"d M Y" }}</time><span>{{ post.read_minutes }} min read</span></div>
+<div class="share-bar"><span class="muted">{% if language == 'hi' %}शेयर करें{% else %}Share this guide{% endif %}</span><a class="whatsapp" href="{{ post.whatsapp_url }}" target="_blank" rel="noopener noreferrer">WhatsApp ↗</a><a href="{{ facebook_url }}" target="_blank" rel="noopener noreferrer">Facebook ↗</a><button type="button" id="copy-link" data-url="{{ canonical }}">{% if language == 'hi' %}लिंक कॉपी करें{% else %}Copy link{% endif %}</button><span id="share-status" class="share-status" role="status" aria-live="polite"></span></div>
+<div class="body">{{ post.content|safe }}</div>
+<aside class="cta"><div><strong>{% if language == 'hi' %}अपनी पब्लिशिंग जरूरत से शुरुआत करें{% else %}Make room for your next story{% endif %}</strong><p>{% if language == 'hi' %}मौजूदा कीमतें और शामिल सुविधाएँ देखें।{% else %}Compare current prices and included features.{% endif %}</p></div><a class="button" href="/saas/">{% if language == 'hi' %}प्लान देखें{% else %}Explore plans{% endif %} →</a></aside>
+</article>{% if related %}<section class="related"><h2 class="section-title">{% if language == 'hi' %}पढ़ना जारी रखें{% else %}Keep exploring{% endif %}</h2><div class="grid">{% for item in related %}{% include "publisher_blog/card.html" with featured=False %}{% endfor %}</div></section>{% endif %}{% endblock %}
+{% block scripts %}<script>
+document.getElementById('copy-link').addEventListener('click', async function () {
+const status = document.getElementById('share-status');
+try { await navigator.clipboard.writeText(this.dataset.url); status.textContent = document.documentElement.lang === 'hi' ? 'लिंक कॉपी हो गया' : 'Link copied'; }
+catch (error) { status.textContent = document.documentElement.lang === 'hi' ? 'ब्राउज़र के address bar से लिंक कॉपी करें।' : 'Copy the link from your browser address bar.'; }
+});
+</script>{% endblock %}
+
