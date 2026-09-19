@@ -1194,7 +1194,7 @@ def reserve_customer_acquisition_for_user(*, user, business_name, publication_na
 @transaction.atomic
 def update_pending_customer_acquisition(*, acquisition, business_name, publication_name, publication_slug, email, mobile, plan_price, billing_months=1):
     acquisition = CustomerAcquisition.objects.select_for_update().get(pk=acquisition.pk)
-    if acquisition.tenant_id or acquisition.status != CustomerAcquisition.Status.PAYMENT_PENDING:
+    if acquisition.tenant_id or acquisition.status not in {CustomerAcquisition.Status.PAYMENT_PENDING, CustomerAcquisition.Status.FAILED}:
         raise ValidationError("This workspace reservation can no longer be changed.")
     acquisition.plan_price = plan_price
     acquisition.business_name = business_name
@@ -1205,6 +1205,7 @@ def update_pending_customer_acquisition(*, acquisition, business_name, publicati
     acquisition.publication_slug = publication_slug
     acquisition.email = email or acquisition.user.email
     acquisition.mobile = mobile
+    acquisition.status = CustomerAcquisition.Status.PAYMENT_PENDING
     acquisition.provider_order_id = ''
     pricing_defaults = _pricing_defaults(plan_price, billing_months)
     for field, value in pricing_defaults.items():
@@ -1217,6 +1218,7 @@ def update_pending_customer_acquisition(*, acquisition, business_name, publicati
             'publication_slug',
             'email',
             'mobile',
+            'status',
             'provider_order_id',
             'billing_months',
             'list_amount',
@@ -1366,11 +1368,11 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
     acquisition.save(
         update_fields=[
             'tenant',
+            'status',
             'provider_order_id',
             'provider_payment_id',
             'provider_signature',
             'provider_payload',
-            'status',
             'verified_at',
             'updated_at',
         ]

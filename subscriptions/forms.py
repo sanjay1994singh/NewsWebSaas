@@ -247,7 +247,7 @@ class CustomerWorkspaceForm(SignupPlanChoiceMixin, forms.Form):
                     publication_slug=slug,
                     user=self.user,
                     tenant__isnull=True,
-                    status=CustomerAcquisition.Status.PAYMENT_PENDING,
+                    status__in=[CustomerAcquisition.Status.PAYMENT_PENDING, CustomerAcquisition.Status.FAILED],
                 )
                 .order_by('-created_at')
                 .first()
@@ -256,7 +256,7 @@ class CustomerWorkspaceForm(SignupPlanChoiceMixin, forms.Form):
                 self.existing_acquisition = existing_acquisition
             else:
                 tenant_exists = Tenant.objects.filter(slug=slug).exists()
-                acquisition_conflict = CustomerAcquisition.objects.filter(publication_slug=slug).exclude(user=self.user, tenant__isnull=True, status=CustomerAcquisition.Status.PAYMENT_PENDING).exists()
+                acquisition_conflict = CustomerAcquisition.objects.filter(publication_slug=slug).exclude(user=self.user, tenant__isnull=True, status__in=[CustomerAcquisition.Status.PAYMENT_PENDING, CustomerAcquisition.Status.FAILED]).exists()
                 if tenant_exists or acquisition_conflict:
                     self.add_error('business_name', 'A channel or paper URL with this name is already reserved.')
             cleaned_data['publication_slug'] = slug

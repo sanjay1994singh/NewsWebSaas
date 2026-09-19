@@ -76,7 +76,7 @@ def _pending_customer_acquisition(user, plan_price=None):
         .filter(
             user=user,
             tenant__isnull=True,
-            status=CustomerAcquisition.Status.PAYMENT_PENDING,
+            status__in=[CustomerAcquisition.Status.PAYMENT_PENDING, CustomerAcquisition.Status.FAILED],
         )
     )
     if plan_price is not None:
