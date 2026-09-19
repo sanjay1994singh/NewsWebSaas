@@ -245,6 +245,7 @@
 
     if (window.ClassicEditor) {
       document.querySelectorAll('.rich-text-editor').forEach(function (field) {
+        field.removeAttribute('required');
         ClassicEditor.create(field, {
           extraPlugins: [tenantUploadPlugin]
         }).catch(function () {});
