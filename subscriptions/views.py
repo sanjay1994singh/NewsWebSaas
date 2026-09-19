@@ -68,6 +68,36 @@ from .support import company_profile
 from .whatsapp import notify_payment_failed, notify_payment_success
 
 
+
+def _pending_customer_acquisition(user, plan_price=None):
+    queryset = (
+        CustomerAcquisition.objects
+        .select_related('plan_price__plan')
+        .filter(
+            user=user,
+            tenant__isnull=True,
+            status=CustomerAcquisition.Status.PAYMENT_PENDING,
+        )
+    )
+    if plan_price is not None:
+        queryset = queryset.filter(plan_price=plan_price)
+    return queryset.order_by('-created_at').first()
+
+
+def _workspace_initial_from_acquisition(acquisition, *, fallback_price_id=None, fallback_months='1'):
+    if acquisition is None:
+        return {'price_id': fallback_price_id, 'billing_months': fallback_months}
+    has_acceptance = acquisition.purchase_agreement_acceptances.exists()
+    return {
+        'business_name': acquisition.business_name,
+        'publication_name': acquisition.publication_name,
+        'email': acquisition.email,
+        'mobile': acquisition.mobile,
+        'price_id': acquisition.plan_price_id,
+        'billing_months': str(acquisition.billing_months or 1),
+        'accepted_purchase_terms': has_acceptance,
+    }
+
 def _customer_tenant_context(user):
     if not user.is_authenticated:
         return None, None, None
@@ -327,23 +357,9 @@ def signup(request):
         selected_price = None
         if initial_price_id:
             selected_price = PlanPrice.objects.filter(pk=initial_price_id, is_active=True, plan__is_active=True).first()
-        if request.method == 'GET' and selected_price:
-            pending_acquisition = (
-                CustomerAcquisition.objects
-                .filter(
-                    user=request.user,
-                    plan_price=selected_price,
-                    tenant__isnull=True,
-                    status=CustomerAcquisition.Status.PAYMENT_PENDING,
-                )
-                .order_by('-created_at')
-                .first()
-            )
-            if pending_acquisition:
-                messages.info(request, 'Your workspace details are already saved. Continue the subscription payment to activate it.')
-                return redirect('subscriptions:checkout', acquisition_id=pending_acquisition.uuid)
+        pending_acquisition = _pending_customer_acquisition(request.user, selected_price) or _pending_customer_acquisition(request.user)
         if request.method == 'POST':
-            form = CustomerWorkspaceForm(request.POST, user=request.user)
+            form = CustomerWorkspaceForm(request.POST, user=request.user, existing_acquisition=pending_acquisition)
             if purchase_agreement:
                 form.fields['accepted_purchase_terms'].label = purchase_agreement.checkbox_label
             if form.is_valid():
@@ -380,7 +396,11 @@ def signup(request):
                 )
                 return redirect('subscriptions:checkout', acquisition_id=acquisition.uuid)
         else:
-            form = CustomerWorkspaceForm(initial={'price_id': initial_price_id, 'billing_months': request.GET.get('months', '1')}, user=request.user)
+            initial = _workspace_initial_from_acquisition(pending_acquisition, fallback_price_id=initial_price_id, fallback_months=request.GET.get('months', '1'))
+            if selected_price:
+                initial['price_id'] = selected_price.id
+                initial['billing_months'] = request.GET.get('months', initial.get('billing_months', '1'))
+            form = CustomerWorkspaceForm(initial=initial, user=request.user, existing_acquisition=pending_acquisition)
             if purchase_agreement:
                 form.fields['accepted_purchase_terms'].label = purchase_agreement.checkbox_label
         return render(
@@ -861,6 +881,7 @@ def whatsapp_invoice_pdf(request, token):
 @login_required
 def account_status(request):
     tenant, subscription, onboarding_record = _customer_tenant_context(request.user)
+    pending_acquisition = None if tenant else _pending_customer_acquisition(request.user)
     plans = _public_plan_context()['plan_cards']
     entitlements = get_effective_entitlements(tenant) if tenant else {}
     return render(
@@ -871,6 +892,7 @@ def account_status(request):
             'subscription': subscription,
             'onboarding': onboarding_record,
             'plans': plans,
+            'pending_acquisition': pending_acquisition,
             'entitlements': entitlements,
         },
     )

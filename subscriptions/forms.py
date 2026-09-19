@@ -198,9 +198,9 @@ class CustomerWorkspaceForm(SignupPlanChoiceMixin, forms.Form):
         error_messages={'required': 'Please read and accept the plan purchase terms to continue.'},
     )
 
-    def __init__(self, *args, user=None, **kwargs):
+    def __init__(self, *args, user=None, existing_acquisition=None, **kwargs):
         self.user = user
-        self.existing_acquisition = None
+        self.existing_acquisition = existing_acquisition
         super().__init__(*args, **kwargs)
         if user and user.email:
             self.fields['email'].initial = user.email
@@ -254,8 +254,11 @@ class CustomerWorkspaceForm(SignupPlanChoiceMixin, forms.Form):
             )
             if existing_acquisition:
                 self.existing_acquisition = existing_acquisition
-            elif Tenant.objects.filter(slug=slug).exists() or CustomerAcquisition.objects.filter(publication_slug=slug).exists():
-                self.add_error('business_name', 'A channel or paper URL with this name is already reserved.')
+            else:
+                tenant_exists = Tenant.objects.filter(slug=slug).exists()
+                acquisition_conflict = CustomerAcquisition.objects.filter(publication_slug=slug).exclude(user=self.user, tenant__isnull=True, status=CustomerAcquisition.Status.PAYMENT_PENDING).exists()
+                if tenant_exists or acquisition_conflict:
+                    self.add_error('business_name', 'A channel or paper URL with this name is already reserved.')
             cleaned_data['publication_slug'] = slug
         return cleaned_data
 

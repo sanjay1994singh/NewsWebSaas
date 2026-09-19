@@ -23,6 +23,11 @@
 .price-line { margin:16px 0 4px; display:flex; align-items:flex-end; gap:7px; }
 .price-line strong { font-size:30px; line-height:1; }
 .price-line span { color:var(--muted); font-weight:700; }
+.plan-breakdown { display:grid; gap:7px; margin:14px 0; font-size:13px; }
+.plan-breakdown div { display:flex; justify-content:space-between; gap:12px; padding-top:7px; border-top:1px solid var(--line); }
+.plan-breakdown span { color:var(--muted); }
+.plan-breakdown strong { text-align:right; }
+.plan-breakdown .final strong, .plan-breakdown .final span { color:var(--ink); font-weight:900; }
 .plan-features { display:grid; gap:8px; margin:14px 0 20px; padding:0; list-style:none; color:var(--muted); font-size:14px; }
 .plan-features li::before { content:""; display:inline-block; width:7px; height:7px; margin-right:8px; border-radius:50%; background:var(--brand); vertical-align:middle; }
 .plan-card .btn { margin-top:auto; width:100%; }
@@ -65,11 +70,11 @@
         </div>
         <div class="status-row">
           <span>Plan</span>
-          <strong>{% if subscription %}{{ subscription.plan.name }}{% else %}Not selected{% endif %}</strong>
+          <strong>{% if subscription %}{{ subscription.plan.name }}{% elif pending_acquisition %}{{ pending_acquisition.plan_price.plan.name }}{% else %}Not selected{% endif %}</strong>
         </div>
         <div class="status-row">
-          <span>Onboarding</span>
-          <strong>{% if onboarding %}{{ onboarding.get_status_display }}{% else %}Not started{% endif %}</strong>
+          <span>{% if pending_acquisition and not subscription %}Payment{% else %}Onboarding{% endif %}</span>
+          <strong>{% if onboarding %}{{ onboarding.get_status_display }}{% elif pending_acquisition %}Pending{% else %}Not started{% endif %}</strong>
         </div>
       </div>
     </aside>
@@ -88,13 +93,25 @@
         <article class="plan-card">
           <h3>{{ card.plan.name }}</h3>
           <div class="price-line">
-            {% if card.monthly_display %}
+            {% if card.offer %}
+              <strong>{{ card.offer.taxable_display }}</strong>
+              <span>after discount for {{ card.offer.billing_label }}</span>
+            {% elif card.monthly_display %}
               <strong>{{ card.monthly_display }}</strong>
               <span>/ month</span>
             {% else %}
               <strong>Pricing pending</strong>
             {% endif %}
           </div>
+          {% if card.offer %}
+            <div class="plan-breakdown">
+              <div><span>Plan amount</span><strong>{{ card.offer.list_display }}</strong></div>
+              <div><span>{{ card.offer.discount_percent }}% offer discount</span><strong>-{{ card.offer.discount_display }}</strong></div>
+              <div><span>Taxable value</span><strong>{{ card.offer.taxable_display }}</strong></div>
+              <div><span>GST @ {{ card.offer.tax_rate_percent }}%</span><strong>{{ card.offer.tax_display }}</strong></div>
+              <div class="final"><span>Final amount after GST</span><strong>{{ card.offer.payable_display }}</strong></div>
+            </div>
+          {% endif %}
           <ul class="plan-features">
             {% for plan_feature in card.enabled_features|slice:":4" %}
               <li>{{ plan_feature.feature.name }}{% if plan_feature.limit_value %}: {{ plan_feature.limit_value }}{% if plan_feature.feature.code == 'news_articles' %} / month{% endif %}{% endif %}</li>
@@ -103,7 +120,7 @@
             {% endfor %}
           </ul>
           {% if card.signup_price %}
-            <a class="btn" href="{% url 'public_saas_signup' %}?price={{ card.signup_price.id }}">Choose Plan</a>
+            <a class="btn" href="{% url 'public_saas_signup' %}?price={{ card.signup_price.id }}&amp;months=1">{% if pending_acquisition and pending_acquisition.plan_price_id == card.signup_price.id %}Continue Payment{% else %}Choose Plan{% endif %}</a>
           {% endif %}
         </article>
       {% endfor %}
