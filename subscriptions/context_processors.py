@@ -4,6 +4,7 @@ from django.db import DatabaseError, OperationalError, ProgrammingError
 from tenants.models import Tenant
 
 from .models import CustomerAcquisition, TenantOnboarding, TenantSubscription
+from .services import tenant_public_site_url
 
 
 def _customer_tenant_context(user):
@@ -35,6 +36,7 @@ def customer_navigation(request):
     tenant_domain_tenant = getattr(request, 'tenant', None)
     site_brand_name = tenant_domain_tenant.public_name if tenant_domain_tenant else 'Press Nexa'
     is_tenant_domain = tenant_domain_tenant is not None
+    header_home_url = tenant_public_site_url(tenant_domain_tenant) if tenant_domain_tenant else reverse('home')
     fallback_links = [
         {'label': 'Pricing', 'url': reverse('public_saas_landing')},
         {'label': 'Profile', 'url': reverse('accounts:profile') if user.is_authenticated else reverse('accounts:login')},
@@ -43,6 +45,7 @@ def customer_navigation(request):
         return {
             'site_brand_name': site_brand_name,
             'is_tenant_domain': is_tenant_domain,
+            'header_home_url': header_home_url,
             'customer_nav_stage': 'guest',
             'customer_nav_links': [
                 {'label': 'Home', 'url': '/'} if is_tenant_domain else {'label': 'Pricing', 'url': reverse('public_saas_landing')},
@@ -64,6 +67,7 @@ def customer_navigation(request):
         return {
             'site_brand_name': site_brand_name,
             'is_tenant_domain': is_tenant_domain,
+            'header_home_url': header_home_url,
             'customer_nav_stage': 'account',
             'customer_nav_links': fallback_links,
         }
@@ -117,9 +121,13 @@ def customer_navigation(request):
     if user.is_staff:
         links.append({'label': 'Admin', 'url': reverse('admin:index')})
 
+    if tenant:
+        header_home_url = tenant_public_site_url(tenant)
+
     return {
         'site_brand_name': site_brand_name,
         'is_tenant_domain': is_tenant_domain,
+        'header_home_url': header_home_url,
         'customer_nav_stage': stage,
         'customer_nav_links': links,
     }

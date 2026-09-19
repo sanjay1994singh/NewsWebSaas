@@ -70,7 +70,7 @@
     <div class="nav-wrap">
       {% with header_tenant=tenant|default:request.tenant %}
       {% if header_tenant %}
-        <a href="{% url 'home' %}" style="text-decoration:none;min-width:0">{% include 'themes/shared/channel_brand.html' with tenant=header_tenant %}</a>
+        <a href="{{ header_home_url|default:'/' }}" style="text-decoration:none;min-width:0">{% include 'themes/shared/channel_brand.html' with tenant=header_tenant %}</a>
       {% else %}
         <a class="brand" href="{% url 'home' %}"><img class="brand-logo" src="{% static 'brand/press-nexa-mark.svg' %}" alt="" aria-hidden="true"><span>{{ site_brand_name|default:"Press Nexa" }}</span></a>
       {% endif %}
@@ -127,7 +127,7 @@
     <div class="footer-wrap">
       <div>
         {% if header_tenant %}
-          {% include 'themes/shared/channel_brand.html' with tenant=header_tenant %}
+          <a href="{{ header_home_url|default:'/' }}" style="text-decoration:none;color:inherit">{% include 'themes/shared/channel_brand.html' with tenant=header_tenant %}</a>
         {% else %}
           <div class="footer-brand">{{ site_brand_name|default:"Press Nexa" }}</div>
           <div class="muted">Operated by SHRI INFOWAVE PRIVATE LIMITED</div>
