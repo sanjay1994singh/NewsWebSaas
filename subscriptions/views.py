@@ -55,6 +55,7 @@ from .services import (
     process_webhook,
     record_onboarding_review,
     record_purchase_agreement_acceptance,
+    reconcile_captured_payment_for_acquisition,
     request_plan_change,
     reserve_customer_acquisition,
     reserve_customer_acquisition_for_user,
@@ -458,6 +459,10 @@ def checkout(request, acquisition_id):
     if acquisition.tenant_id or acquisition.status == CustomerAcquisition.Status.TENANT_CREATED:
         messages.info(request, 'This payment is already verified. Continue from your workspace.')
         return redirect('home')
+    reconciled_tenant = reconcile_captured_payment_for_acquisition(acquisition)
+    if reconciled_tenant:
+        messages.success(request, 'Payment verified. Your workspace is active.')
+        return redirect('tenants:tenant_dashboard')
     if tenant and subscription and subscription.status in {
         TenantSubscription.Status.TRIAL,
         TenantSubscription.Status.ACTIVE,
@@ -882,6 +887,11 @@ def whatsapp_invoice_pdf(request, token):
 def account_status(request):
     tenant, subscription, onboarding_record = _customer_tenant_context(request.user)
     pending_acquisition = None if tenant else _pending_customer_acquisition(request.user)
+    if pending_acquisition:
+        reconciled_tenant = reconcile_captured_payment_for_acquisition(pending_acquisition)
+        if reconciled_tenant:
+            messages.success(request, 'Payment verified. Your workspace is active.')
+            return redirect('home')
     plans = _public_plan_context()['plan_cards']
     entitlements = get_effective_entitlements(tenant) if tenant else {}
     return render(

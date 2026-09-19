@@ -1382,6 +1382,51 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
     return tenant
 
 
+def reconcile_captured_payment_for_acquisition(acquisition):
+    """Activate an unpaid acquisition if Razorpay already captured its payment.
+
+    This covers the edge case where the browser callback or webhook did not finish,
+    and the customer retries or returns to the billing pages afterward.
+    """
+    acquisition = CustomerAcquisition.objects.select_related('plan_price__plan', 'user', 'tenant').get(pk=acquisition.pk)
+    if acquisition.tenant_id or acquisition.status not in {CustomerAcquisition.Status.PAYMENT_PENDING, CustomerAcquisition.Status.FAILED}:
+        return acquisition.tenant if acquisition.tenant_id else None
+    try:
+        payments = get_razorpay_client().payment.all({'count': 100}).get('items', [])
+    except Exception:
+        return None
+    acquisition_uuid = str(acquisition.uuid)
+    for payment in payments:
+        notes = payment.get('notes') or {}
+        order_id = payment.get('order_id') or ''
+        payment_id = payment.get('id') or ''
+        if notes.get('acquisition_uuid') != acquisition_uuid:
+            continue
+        if payment.get('status') != 'captured' or not payment.get('captured'):
+            continue
+        if payment.get('amount') != acquisition.payable_amount or payment.get('currency') != acquisition.plan_price.currency:
+            continue
+        try:
+            verify_captured_payment(
+                payment_id=payment_id,
+                order_id=order_id,
+                amount=acquisition.payable_amount,
+                currency=acquisition.plan_price.currency,
+            )
+        except ValidationError:
+            continue
+        acquisition.provider_order_id = order_id
+        acquisition.provider_payment_id = ''
+        acquisition.status = CustomerAcquisition.Status.PAYMENT_PENDING
+        acquisition.save(update_fields=['provider_order_id', 'provider_payment_id', 'status', 'updated_at'])
+        return create_tenant_after_verified_subscription(
+            acquisition=acquisition,
+            provider_order_id=order_id,
+            payment_reference=payment_id,
+            provider_payload={'reconciled_checkout': payment},
+        )
+    return None
+
 @transaction.atomic
 def submit_onboarding_for_review(*, onboarding, actor=None):
     onboarding.status = TenantOnboarding.Status.SUBMITTED_FOR_REVIEW
