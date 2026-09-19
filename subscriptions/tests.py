@@ -456,6 +456,23 @@ class SubscriptionTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.cleaned_data['publication_slug'], 'aajtak')
 
+    def test_signup_replaces_ampersand_with_and_in_site_slug(self):
+        form = CustomerSignupForm(
+            data={
+                'business_name': 'D&G News',
+                'publication_name': 'D&G News',
+                'email': 'owner2@example.com',
+                'mobile': '9999999998',
+                'password': 'testpass123',
+                'confirm_password': 'testpass123',
+                'price_id': self.price.id,
+                'accepted_purchase_terms': 'on',
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['publication_slug'], 'dandgnews')
+
     def test_signup_email_is_optional(self):
         form = CustomerSignupForm(
             data={
