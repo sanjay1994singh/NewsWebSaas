@@ -23,6 +23,46 @@ COUNTRY_STATE_CHOICES = {
     'Australia': ['New South Wales', 'Queensland', 'Victoria', 'Western Australia'],
 }
 
+OTHER_LOCATION_VALUE = '__other__'
+
+INDIA_DISTRICT_CITY_CHOICES = {
+    'Delhi': {
+        'New Delhi': ['New Delhi', 'Connaught Place', 'Chanakyapuri'],
+        'Central Delhi': ['Daryaganj', 'Karol Bagh', 'Paharganj'],
+        'North Delhi': ['Civil Lines', 'Rohini', 'Model Town'],
+        'South Delhi': ['Saket', 'Hauz Khas', 'Mehrauli'],
+        'East Delhi': ['Preet Vihar', 'Mayur Vihar', 'Laxmi Nagar'],
+        'West Delhi': ['Janakpuri', 'Punjabi Bagh', 'Rajouri Garden'],
+    },
+    'Uttar Pradesh': {
+        'Agra': ['Agra', 'Fatehabad', 'Kiraoli'],
+        'Aligarh': ['Aligarh', 'Atrauli', 'Khair'],
+        'Gautam Buddha Nagar': ['Noida', 'Greater Noida', 'Dadri'],
+        'Ghaziabad': ['Ghaziabad', 'Modinagar', 'Loni'],
+        'Lucknow': ['Lucknow', 'Malihabad', 'Mohanlalganj'],
+        'Mathura': ['Mathura', 'Vrindavan', 'Govardhan', 'Barsana', 'Chhata'],
+        'Meerut': ['Meerut', 'Sardhana', 'Mawana'],
+        'Varanasi': ['Varanasi', 'Rohaniya', 'Pindra'],
+    },
+    'Madhya Pradesh': {
+        'Bhopal': ['Bhopal', 'Berasia', 'Huzur'],
+        'Gwalior': ['Gwalior', 'Dabra', 'Bhitarwar'],
+        'Indore': ['Indore', 'Mhow', 'Sanwer'],
+        'Ujjain': ['Ujjain', 'Nagda', 'Mahidpur'],
+    },
+    'Maharashtra': {
+        'Mumbai City': ['Mumbai', 'Colaba', 'Dadar'],
+        'Mumbai Suburban': ['Andheri', 'Bandra', 'Borivali'],
+        'Nagpur': ['Nagpur', 'Kamptee', 'Hingna'],
+        'Pune': ['Pune', 'Pimpri-Chinchwad', 'Baramati'],
+    },
+    'Rajasthan': {
+        'Jaipur': ['Jaipur', 'Amer', 'Sanganer'],
+        'Jodhpur': ['Jodhpur', 'Osian', 'Bilara'],
+        'Kota': ['Kota', 'Ramganj Mandi', 'Ladpura'],
+        'Udaipur': ['Udaipur', 'Girwa', 'Mavli'],
+    },
+}
 
 def country_choices():
     return [(country, country) for country in COUNTRY_STATE_CHOICES]
@@ -32,6 +72,29 @@ def state_choices_for_country(country):
     states = COUNTRY_STATE_CHOICES.get(country or 'India', [])
     return [('', 'Select state')] + [(state, state) for state in states]
 
+
+
+
+def district_choices_for_location(country, state, current=''):
+    districts = INDIA_DISTRICT_CITY_CHOICES.get(state or '', {}) if (country or 'India') == 'India' else {}
+    choices = [('', 'Select district')]
+    choices.extend((district, district) for district in districts)
+    if current and current not in districts:
+        choices.append((current, current))
+    choices.append((OTHER_LOCATION_VALUE, 'Other / add district'))
+    return choices
+
+
+def city_choices_for_location(country, state, district, current=''):
+    cities = []
+    if (country or 'India') == 'India':
+        cities = INDIA_DISTRICT_CITY_CHOICES.get(state or '', {}).get(district or '', [])
+    choices = [('', 'Select city')]
+    choices.extend((city, city) for city in cities)
+    if current and current not in cities:
+        choices.append((current, current))
+    choices.append((OTHER_LOCATION_VALUE, 'Other / add city'))
+    return choices
 
 def _safe_slug_from_title(title):
     base = slugify(title or '')[:220]
@@ -65,7 +128,7 @@ class NewsArticleForm(TenantScopedFormMixin, forms.ModelForm):
             'publisher_name',
             'category', 'author', 'reporters', 'tags', 'title', 'content_type', 'slug',
             'short_description', 'content', 'featured_image', 'image_caption',
-            'image_alt', 'source_name', 'source_url', 'city', 'state', 'country',
+            'image_alt', 'source_name', 'source_url', 'city', 'district', 'state', 'country',
             'latitude', 'longitude', 'status', 'published_at', 'scheduled_at',
             'is_breaking', 'is_featured', 'is_trending', 'is_editor_pick',
             'allow_comments', 'seo_title', 'meta_description', 'focus_keyword',
@@ -104,8 +167,11 @@ class NewsArticleForm(TenantScopedFormMixin, forms.ModelForm):
         self.fields['content_type'].required = False
         self.fields['category'].required = True
         self.fields['city'].required = True
+        self.fields['district'].required = True
         self.fields['state'].required = True
         self.fields['country'].required = False
+        self.fields['image_caption'].required = False
+        self.fields['image_alt'].required = False
         self.fields['content'].required = True
         self.fields['featured_image'].required = not bool(self.instance and self.instance.pk and self.instance.featured_image)
         self.fields['author'].required = False
@@ -118,10 +184,22 @@ class NewsArticleForm(TenantScopedFormMixin, forms.ModelForm):
             if self.is_bound
             else self.instance.country or initial_country or 'India'
         )
+        state_value = (
+            self.data.get(self.add_prefix('state'))
+            if self.is_bound
+            else self.instance.state or initial_state or ''
+        )
+        district_value = (
+            self.data.get(self.add_prefix('district'))
+            if self.is_bound
+            else self.instance.district or ''
+        )
         self.fields['state'].widget = forms.Select(choices=state_choices_for_country(country_value))
+        self.fields['district'].widget = forms.Select(choices=district_choices_for_location(country_value, state_value, self.instance.district))
+        self.fields['city'].widget = forms.Select(choices=city_choices_for_location(country_value, state_value, district_value, self.instance.city))
         self.fields['published_at'].required = False
+        self.fields['scheduled_at'].required = False
         if not self.is_bound and not self.instance.pk:
-            self.fields['published_at'].initial = timezone.now().strftime('%Y-%m-%dT%H:%M')
             self.fields['country'].initial = initial_country or 'India'
             self.fields['publisher_name'].initial = default_publisher_name_for_tenant(self.tenant)
             if initial_state:
@@ -137,6 +215,23 @@ class NewsArticleForm(TenantScopedFormMixin, forms.ModelForm):
 
     def clean_country(self):
         return (self.cleaned_data.get('country') or 'India').strip()
+
+
+    def clean_district(self):
+        value = (self.cleaned_data.get('district') or '').strip()
+        if value == OTHER_LOCATION_VALUE:
+            value = (self.data.get(self.add_prefix('district_other')) or '').strip()
+        if not value:
+            raise forms.ValidationError('District is required.')
+        return value
+
+    def clean_city(self):
+        value = (self.cleaned_data.get('city') or '').strip()
+        if value == OTHER_LOCATION_VALUE:
+            value = (self.data.get(self.add_prefix('city_other')) or '').strip()
+        if not value:
+            raise forms.ValidationError('City is required.')
+        return value
 
     def clean(self):
         cleaned_data = super().clean()

@@ -767,6 +767,7 @@ def create_razorpay_order_for_acquisition(acquisition):
                 'tax_rate_percent': str(checkout_pricing.tax_rate_percent),
                 'tax_amount': str(checkout_pricing.tax_amount),
                 'payable_amount': str(checkout_pricing.payable_amount),
+                'customer_gstin': acquisition.customer_gstin,
             },
         }
     )
@@ -778,6 +779,7 @@ def create_razorpay_order_for_acquisition(acquisition):
         'order': order,
         'created_by': 'checkout',
         'gst': invoice_snapshot(),
+        'customer_gstin': acquisition.customer_gstin,
     }
     acquisition.save(update_fields=['provider_order_id', 'provider_receipt', 'provider_payload', 'billing_months', 'list_amount', 'discount_percent', 'discount_amount', 'taxable_amount', 'tax_rate_percent', 'tax_amount', 'payable_amount', 'updated_at'])
     return {
@@ -1148,7 +1150,7 @@ def _pricing_defaults(plan_price, billing_months):
 
 
 @transaction.atomic
-def reserve_customer_acquisition(*, business_name, publication_name, publication_slug, email, mobile, password, plan_price, billing_months=1):
+def reserve_customer_acquisition(*, business_name, publication_name, publication_slug, email, mobile, customer_gstin, password, plan_price, billing_months=1):
     User = get_user_model()
     username = generate_customer_username(publication_name=publication_name, mobile=mobile)
     user = User.objects.create_user(username=username, email=email, password=password,
@@ -1162,6 +1164,7 @@ def reserve_customer_acquisition(*, business_name, publication_name, publication
         publication_slug=publication_slug,
         email=email,
         mobile=mobile,
+        customer_gstin=customer_gstin,
         status=CustomerAcquisition.Status.PAYMENT_PENDING,
         **pricing_defaults,
     )
@@ -1172,7 +1175,7 @@ def reserve_customer_acquisition(*, business_name, publication_name, publication
 
 
 @transaction.atomic
-def reserve_customer_acquisition_for_user(*, user, business_name, publication_name, publication_slug, email, mobile, plan_price, billing_months=1):
+def reserve_customer_acquisition_for_user(*, user, business_name, publication_name, publication_slug, email, mobile, customer_gstin, plan_price, billing_months=1):
     user.first_name = publication_name.strip()
     user.last_name = ''
     user.save(update_fields=['first_name', 'last_name'])
@@ -1185,6 +1188,7 @@ def reserve_customer_acquisition_for_user(*, user, business_name, publication_na
         publication_slug=publication_slug,
         email=email or user.email,
         mobile=mobile,
+        customer_gstin=customer_gstin,
         status=CustomerAcquisition.Status.PAYMENT_PENDING,
         **pricing_defaults,
     )
@@ -1192,7 +1196,7 @@ def reserve_customer_acquisition_for_user(*, user, business_name, publication_na
 
 
 @transaction.atomic
-def update_pending_customer_acquisition(*, acquisition, business_name, publication_name, publication_slug, email, mobile, plan_price, billing_months=1):
+def update_pending_customer_acquisition(*, acquisition, business_name, publication_name, publication_slug, email, mobile, customer_gstin, plan_price, billing_months=1):
     acquisition = CustomerAcquisition.objects.select_for_update().get(pk=acquisition.pk)
     if acquisition.tenant_id or acquisition.status not in {CustomerAcquisition.Status.PAYMENT_PENDING, CustomerAcquisition.Status.FAILED}:
         raise ValidationError("This workspace reservation can no longer be changed.")
@@ -1205,6 +1209,7 @@ def update_pending_customer_acquisition(*, acquisition, business_name, publicati
     acquisition.publication_slug = publication_slug
     acquisition.email = email or acquisition.user.email
     acquisition.mobile = mobile
+    acquisition.customer_gstin = customer_gstin
     acquisition.status = CustomerAcquisition.Status.PAYMENT_PENDING
     acquisition.provider_order_id = ''
     pricing_defaults = _pricing_defaults(plan_price, billing_months)
@@ -1218,6 +1223,7 @@ def update_pending_customer_acquisition(*, acquisition, business_name, publicati
             'publication_slug',
             'email',
             'mobile',
+            'customer_gstin',
             'status',
             'provider_order_id',
             'billing_months',
@@ -1272,6 +1278,7 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
             'onboarding_status': Tenant.OnboardingStatus.IN_PROGRESS,
             'email': acquisition.email,
             'mobile': acquisition.mobile,
+            'customer_gstin': acquisition.customer_gstin,
         },
     )
     TenantMembership.objects.get_or_create(
@@ -1311,6 +1318,7 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
         provider_payload={
             **(provider_payload or {}),
             'gst': (acquisition.provider_payload or {}).get('gst', {}),
+            'customer_gstin': acquisition.customer_gstin,
             'acquisition_uuid': str(acquisition.uuid),
         },
     )

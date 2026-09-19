@@ -114,6 +114,7 @@ class CustomerSignupForm(SignupPlanChoiceMixin, forms.Form):
     publication_name = forms.CharField(max_length=150, label='Publication name / Full name')
     email = forms.EmailField(required=False)
     mobile = forms.CharField(max_length=32)
+    customer_gstin = forms.CharField(max_length=15, required=False, label='GSTIN (optional)', help_text='If you have a GST number, enter it for invoice billing.')
     password = forms.CharField(
         min_length=8,
         widget=forms.PasswordInput,
@@ -143,6 +144,7 @@ class CustomerSignupForm(SignupPlanChoiceMixin, forms.Form):
             'publication_name': 'News publication name',
             'email': 'owner@example.com',
             'mobile': 'WhatsApp mobile number',
+            'customer_gstin': 'Example: 09ABCDE1234F1Z5',
             'password': 'Create password',
             'confirm_password': 'Confirm password',
         }
@@ -154,6 +156,12 @@ class CustomerSignupForm(SignupPlanChoiceMixin, forms.Form):
                     'placeholder': placeholders[name],
                     'autocomplete': 'off',
                 })
+
+    def clean_customer_gstin(self):
+        value = (self.cleaned_data.get('customer_gstin') or '').strip().upper().replace(' ', '')
+        if value and not re.fullmatch(r'[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]', value):
+            raise forms.ValidationError('Enter a valid 15-character GSTIN, for example 09ABCDE1234F1Z5.')
+        return value
 
     def clean_price_id(self):
         price_id = self.cleaned_data['price_id']
@@ -185,6 +193,7 @@ class CustomerWorkspaceForm(SignupPlanChoiceMixin, forms.Form):
     publication_name = forms.CharField(max_length=150, label='Publication name / Full name')
     email = forms.EmailField(required=False)
     mobile = forms.CharField(max_length=32)
+    customer_gstin = forms.CharField(max_length=15, required=False, label='GSTIN (optional)', help_text='If you have a GST number, enter it for invoice billing.')
     price_id = forms.IntegerField(widget=forms.HiddenInput)
     billing_months = forms.ChoiceField(
         label='Subscription duration',
@@ -209,6 +218,7 @@ class CustomerWorkspaceForm(SignupPlanChoiceMixin, forms.Form):
             'publication_name': 'News publication name',
             'email': 'owner@example.com',
             'mobile': 'WhatsApp mobile number',
+            'customer_gstin': 'Example: 09ABCDE1234F1Z5',
         }
         disable_autofill(self.fields)
         for name, field in self.fields.items():
@@ -217,6 +227,13 @@ class CustomerWorkspaceForm(SignupPlanChoiceMixin, forms.Form):
                     'placeholder': placeholders[name],
                     'autocomplete': 'off',
                 })
+
+
+    def clean_customer_gstin(self):
+        value = (self.cleaned_data.get('customer_gstin') or '').strip().upper().replace(' ', '')
+        if value and not re.fullmatch(r'[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]', value):
+            raise forms.ValidationError('Enter a valid 15-character GSTIN, for example 09ABCDE1234F1Z5.')
+        return value
 
     def clean_price_id(self):
         price_id = self.cleaned_data['price_id']

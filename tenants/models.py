@@ -30,6 +30,7 @@ class Tenant(UUIDModel, TimeStampedModel):
     country = models.CharField(max_length=80, blank=True)
     email = models.EmailField()
     mobile = models.CharField(max_length=32, blank=True)
+    customer_gstin = models.CharField(max_length=15, blank=True)
 
     class Meta:
         indexes = [

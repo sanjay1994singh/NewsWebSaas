@@ -61,6 +61,7 @@ def build_invoice_pdf(record):
             'business_name': tenant.business_name,
             'email': tenant.email,
             'mobile': tenant.mobile or '-',
+            'customer_gstin': (record.payload or {}).get('customer_gstin') or getattr(tenant, 'customer_gstin', '') or '',
             'plan': plan_name,
             'cycle': cycle,
             'period_start': date_filter(timezone.localtime(period_start), 'd M Y') if period_start else '-',
@@ -224,7 +225,9 @@ def _invoice_pdf(data):
              HRFlowable(width='100%', thickness=1, color=colors.black), Spacer(1, 14),
              text('BILLED TO', 'label'), text(data['publication'], 'bold'),
              text(f"Channel: {data['business_name']}"), text(data['email']),
-             text(f"Mobile: {data['mobile']}"), Spacer(1, 24)]
+             text(f"Mobile: {data['mobile']}"),
+             *([text(f"Buyer GSTIN: {data['customer_gstin']}")] if data.get('customer_gstin') else []),
+             Spacer(1, 24)]
     description = [text(data['plan'], 'bold'),
                    *([text(company['supply_description'])] if has_gst else []),
                    text(f"Subscription - {data['cycle']}"),

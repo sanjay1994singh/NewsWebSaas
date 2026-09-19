@@ -218,6 +218,7 @@ class CustomerAcquisition(UUIDModel, TimeStampedModel):
     publication_slug = models.SlugField(max_length=160)
     email = models.EmailField()
     mobile = models.CharField(max_length=32, blank=True)
+    customer_gstin = models.CharField(max_length=15, blank=True)
     status = models.CharField(max_length=40, choices=Status.choices, default=Status.DRAFT, db_index=True)
     provider_order_id = models.CharField(max_length=120, blank=True, db_index=True)
     provider_payment_id = models.CharField(max_length=120, blank=True, db_index=True)

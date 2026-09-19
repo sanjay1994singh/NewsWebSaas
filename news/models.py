@@ -77,6 +77,7 @@ class NewsArticle(TenantOwnedModel):
     source_name = models.CharField(max_length=180, blank=True)
     source_url = models.URLField(blank=True)
     city = models.CharField(max_length=120, blank=True)
+    district = models.CharField(max_length=120, blank=True)
     state = models.CharField(max_length=120, blank=True)
     country = models.CharField(max_length=120, blank=True)
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)

@@ -9,8 +9,15 @@ from .models import Tenant, TenantMembership
 class TenantSettingsForm(forms.ModelForm):
     class Meta:
         model = Tenant
-        fields = ['business_name', 'publication_name', 'default_language', 'timezone', 'country', 'email', 'mobile']
+        fields = ['business_name', 'publication_name', 'default_language', 'timezone', 'country', 'email', 'mobile', 'customer_gstin']
+        labels = {'customer_gstin': 'GSTIN (optional)'}
+        help_texts = {'customer_gstin': 'Used on future GST invoices. Leave blank if you do not have GST registration.'}
 
+    def clean_customer_gstin(self):
+        value = (self.cleaned_data.get('customer_gstin') or '').strip().upper().replace(' ', '')
+        if value and not re.fullmatch(r'[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]', value):
+            raise forms.ValidationError('Enter a valid 15-character GSTIN, for example 09ABCDE1234F1Z5.')
+        return value
 
 
 class TenantTrackingForm(forms.ModelForm):

@@ -14,7 +14,7 @@ from categories.models import Category
 from core.models import user_can_access_tenant
 from tenants.models import TenantMembership
 
-from .forms import CategoryForm, NewsArticleForm, state_choices_for_country
+from .forms import CategoryForm, NewsArticleForm, city_choices_for_location, district_choices_for_location, state_choices_for_country
 from .models import AuthorProfile
 from .models import NewsArticle
 from .services import active_breaking_news_for_tenant, search_articles, validate_news_article_monthly_limit
@@ -167,8 +167,11 @@ def article_create(request):
             form.save_m2m()
             request.session['last_article_country'] = article.country
             request.session['last_article_state'] = article.state
+            request.session['last_article_district'] = article.district
             messages.success(request, 'Post saved successfully.')
             return redirect(_article_dashboard_url(article.content_type))
+    elif request.method == 'POST':
+        messages.error(request, 'Post save nahi hua. Highlighted fields check karke dobara try karein.')
     title = 'Add Blog Post' if content_type == NewsArticle.ContentType.BLOG else 'Add News Article'
     return render(request, 'news/article_form.html', {'tenant': tenant, 'form': form, 'title': title, 'content_type': content_type})
 
@@ -210,8 +213,11 @@ def article_update(request, uuid):
             form.save_m2m()
             request.session['last_article_country'] = article.country
             request.session['last_article_state'] = article.state
+            request.session['last_article_district'] = article.district
             messages.success(request, 'Post updated successfully.')
             return redirect(_article_dashboard_url(article.content_type))
+    elif request.method == 'POST':
+        messages.error(request, 'Post update nahi hua. Highlighted fields check karke dobara try karein.')
     title = 'Edit Blog Post' if article.content_type == NewsArticle.ContentType.BLOG else 'Edit News Article'
     return render(request, 'news/article_form.html', {'tenant': tenant, 'form': form, 'article': article, 'title': title, 'content_type': article.content_type})
 
@@ -299,8 +305,13 @@ def ajax_author_create(request):
 
 
 def ajax_state_choices(request):
+    country = request.GET.get('country')
+    state = request.GET.get('state')
+    district = request.GET.get('district')
     return JsonResponse({
-        'states': [{'value': value, 'label': label} for value, label in state_choices_for_country(request.GET.get('country'))]
+        'states': [{'value': value, 'label': label} for value, label in state_choices_for_country(country)],
+        'districts': [{'value': value, 'label': label} for value, label in district_choices_for_location(country, state)],
+        'cities': [{'value': value, 'label': label} for value, label in city_choices_for_location(country, state, district)],
     })
 
 

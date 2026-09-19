@@ -91,8 +91,15 @@
             {{ form.state.errors }}
           </div>
           <div class="field">
+            <label for="{{ form.district.id_for_label }}">District *</label>
+            {{ form.district }}
+            <input type="text" name="{{ form.district.html_name }}_other" id="{{ form.district.id_for_label }}_other" placeholder="Type district name" value="{{ request.POST.district_other }}" hidden>
+            {{ form.district.errors }}
+          </div>
+          <div class="field">
             <label for="{{ form.city.id_for_label }}">City *</label>
             {{ form.city }}
+            <input type="text" name="{{ form.city.html_name }}_other" id="{{ form.city.id_for_label }}_other" placeholder="Type city name" value="{{ request.POST.city_other }}" hidden>
             {{ form.city.errors }}
           </div>
           <div class="field full">
@@ -112,12 +119,12 @@
             {{ form.featured_image.errors }}
           </div>
           <div class="field">
-            {{ form.image_caption.label_tag }}
+            <label for="{{ form.image_caption.id_for_label }}">Image caption <span class="field-help">(optional)</span></label>
             {{ form.image_caption }}
             {{ form.image_caption.errors }}
           </div>
           <div class="field">
-            {{ form.image_alt.label_tag }}
+            <label for="{{ form.image_alt.id_for_label }}">Image alt <span class="field-help">(optional)</span></label>
             {{ form.image_alt }}
             {{ form.image_alt.errors }}
           </div>
@@ -130,12 +137,9 @@
         {{ form.status }}
         {{ form.status.errors }}
 
-        {{ form.published_at.label_tag }}
-        {{ form.published_at }}
-        {{ form.published_at.errors }}
-
-        {{ form.scheduled_at.label_tag }}
+        <label for="{{ form.scheduled_at.id_for_label }}">Schedule for later <span class="field-help">(optional)</span></label>
         {{ form.scheduled_at }}
+        <div class="field-help">Blank rakhenge to post save/publish action ke hisab se time auto rahega.</div>
         {{ form.scheduled_at.errors }}
 
         <label class="check-row">{{ form.is_breaking }} Breaking news</label>
@@ -251,6 +255,10 @@
     const authorSelect = document.getElementById('{{ form.author.id_for_label }}');
     const countrySelect = document.getElementById('{{ form.country.id_for_label }}');
     const stateSelect = document.getElementById('{{ form.state.id_for_label }}');
+    const districtSelect = document.getElementById('{{ form.district.id_for_label }}');
+    const citySelect = document.getElementById('{{ form.city.id_for_label }}');
+    const districtOther = document.getElementById('{{ form.district.id_for_label }}_other');
+    const cityOther = document.getElementById('{{ form.city.id_for_label }}_other');
     function csrfToken() {
       return document.querySelector('[name=csrfmiddlewaretoken]').value;
     }
@@ -305,20 +313,58 @@
           });
       });
     });
+    function fillSelect(select, items) {
+      if (!select) return;
+      select.innerHTML = '';
+      items.forEach(function (item) {
+        select.add(new Option(item.label, item.value));
+      });
+    }
+    function toggleOther(select, input) {
+      if (!select || !input) return;
+      const isOther = select.value === '__other__';
+      input.hidden = !isOther;
+      input.required = isOther;
+    }
+    function refreshLocations(params) {
+      const query = new URLSearchParams(params);
+      return fetch("{% url 'news:ajax_state_choices' %}?" + query.toString(), {
+        credentials: 'same-origin',
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+      }).then(function (response) { return response.json(); });
+    }
     if (countrySelect && stateSelect) {
       countrySelect.addEventListener('change', function () {
-        fetch("{% url 'news:ajax_state_choices' %}?country=" + encodeURIComponent(countrySelect.value), {
-          credentials: 'same-origin',
-          headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        })
-          .then(function (response) { return response.json(); })
-          .then(function (data) {
-            stateSelect.innerHTML = '';
-            data.states.forEach(function (state) {
-              stateSelect.add(new Option(state.label, state.value));
-            });
-          });
+        refreshLocations({ country: countrySelect.value }).then(function (data) {
+          fillSelect(stateSelect, data.states || []);
+          fillSelect(districtSelect, data.districts || []);
+          fillSelect(citySelect, data.cities || []);
+          toggleOther(districtSelect, districtOther);
+          toggleOther(citySelect, cityOther);
+        });
       });
+      stateSelect.addEventListener('change', function () {
+        refreshLocations({ country: countrySelect.value, state: stateSelect.value }).then(function (data) {
+          fillSelect(districtSelect, data.districts || []);
+          fillSelect(citySelect, data.cities || []);
+          toggleOther(districtSelect, districtOther);
+          toggleOther(citySelect, cityOther);
+        });
+      });
+    }
+    if (districtSelect) {
+      districtSelect.addEventListener('change', function () {
+        toggleOther(districtSelect, districtOther);
+        refreshLocations({ country: countrySelect.value, state: stateSelect.value, district: districtSelect.value }).then(function (data) {
+          fillSelect(citySelect, data.cities || []);
+          toggleOther(citySelect, cityOther);
+        });
+      });
+      toggleOther(districtSelect, districtOther);
+    }
+    if (citySelect) {
+      citySelect.addEventListener('change', function () { toggleOther(citySelect, cityOther); });
+      toggleOther(citySelect, cityOther);
     }
   </script>
 {% endblock %}
