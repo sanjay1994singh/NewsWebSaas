@@ -13,7 +13,7 @@ from subscriptions.models import Plan, PlanPrice, TenantSubscription
 from tenants.models import Tenant, TenantMembership
 
 from .forms import NewsArticleForm
-from .models import AuthorProfile, BreakingNews, NewsArticle, Tag
+from .models import AuthorProfile, BreakingNews, NewsArticle, NewsLocation, Tag
 from .services import active_breaking_news_for_tenant, search_articles
 
 
@@ -289,6 +289,7 @@ class TenantNewsCMSTests(TestCase):
                 'slug': '',
                 'content': '<p>Body</p>',
                 'city': 'Lucknow',
+                'district': 'Lucknow',
                 'country': 'India',
                 'state': 'Uttar Pradesh',
                 'featured_image': tiny_gif('location.gif'),
@@ -328,6 +329,33 @@ class TenantNewsCMSTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn({'value': 'Uttar Pradesh', 'label': 'Uttar Pradesh'}, response.json()['states'])
+
+    def test_ajax_location_create_saves_tenant_district_and_city(self):
+        self.client.force_login(self.user_a)
+
+        district_response = self.client.post(
+            reverse('news:ajax_location_create'),
+            {'location_type': 'district', 'country': 'India', 'state': 'Uttar Pradesh', 'name': 'Naya Zila'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        city_response = self.client.post(
+            reverse('news:ajax_location_create'),
+            {'location_type': 'city', 'country': 'India', 'state': 'Uttar Pradesh', 'district': 'Naya Zila', 'name': 'Naya Shehar'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(district_response.status_code, 200)
+        self.assertEqual(city_response.status_code, 200)
+        self.assertTrue(NewsLocation.objects.filter(tenant=self.tenant_a, location_type='district', name='Naya Zila').exists())
+        self.assertTrue(NewsLocation.objects.filter(tenant=self.tenant_a, location_type='city', district='Naya Zila', name='Naya Shehar').exists())
+
+        choices_response = self.client.get(
+            reverse('news:ajax_state_choices'),
+            {'country': 'India', 'state': 'Uttar Pradesh', 'district': 'Naya Zila'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertIn({'value': 'Naya Zila', 'label': 'Naya Zila'}, choices_response.json()['districts'])
+        self.assertIn({'value': 'Naya Shehar', 'label': 'Naya Shehar'}, choices_response.json()['cities'])
 
     def test_default_editor_name_is_not_public_publisher_name(self):
         default_author = AuthorProfile.objects.create(

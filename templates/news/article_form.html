@@ -92,14 +92,18 @@
           </div>
           <div class="field">
             <label for="{{ form.district.id_for_label }}">District *</label>
-            {{ form.district }}
-            <input type="text" name="{{ form.district.html_name }}_other" id="{{ form.district.id_for_label }}_other" placeholder="Type district name" value="{{ request.POST.district_other }}" hidden>
+            <div class="field-control-row">
+              {{ form.district }}
+              <button class="mini-add-btn" type="button" data-modal-open="district-modal" aria-label="Add district">+</button>
+            </div>
             {{ form.district.errors }}
           </div>
           <div class="field">
             <label for="{{ form.city.id_for_label }}">City *</label>
-            {{ form.city }}
-            <input type="text" name="{{ form.city.html_name }}_other" id="{{ form.city.id_for_label }}_other" placeholder="Type city name" value="{{ request.POST.city_other }}" hidden>
+            <div class="field-control-row">
+              {{ form.city }}
+              <button class="mini-add-btn" type="button" data-modal-open="city-modal" aria-label="Add city">+</button>
+            </div>
             {{ form.city.errors }}
           </div>
           <div class="field full">
@@ -206,6 +210,45 @@
         </form>
       </div>
     </div>
+
+    <div class="modal-backdrop" id="district-modal" aria-hidden="true">
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="district-modal-title">
+        <h2 id="district-modal-title">Add District</h2>
+        <div class="modal-errors" data-modal-errors></div>
+        <form data-ajax-create="district" data-url="{% url 'news:ajax_location_create' %}" data-no-loader="true">
+          {% csrf_token %}
+          <input type="hidden" name="location_type" value="district">
+          <input type="hidden" name="country">
+          <input type="hidden" name="state">
+          <label>District name <input name="name" required></label>
+          <div class="field-help">Selected state ke under district save hoga.</div>
+          <div class="form-actions">
+            <button class="btn" type="submit">Save District</button>
+            <button class="btn secondary" type="button" data-modal-close>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <div class="modal-backdrop" id="city-modal" aria-hidden="true">
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="city-modal-title">
+        <h2 id="city-modal-title">Add City</h2>
+        <div class="modal-errors" data-modal-errors></div>
+        <form data-ajax-create="city" data-url="{% url 'news:ajax_location_create' %}" data-no-loader="true">
+          {% csrf_token %}
+          <input type="hidden" name="location_type" value="city">
+          <input type="hidden" name="country">
+          <input type="hidden" name="state">
+          <input type="hidden" name="district">
+          <label>City name <input name="name" required></label>
+          <div class="field-help">Selected district ke under city save hoga.</div>
+          <div class="form-actions">
+            <button class="btn" type="submit">Save City</button>
+            <button class="btn secondary" type="button" data-modal-close>Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </main>
   <script src="https://cdn.ckeditor.com/ckeditor5/41.4.2/classic/ckeditor.js"></script>
   <script>
@@ -258,8 +301,6 @@
     const stateSelect = document.getElementById('{{ form.state.id_for_label }}');
     const districtSelect = document.getElementById('{{ form.district.id_for_label }}');
     const citySelect = document.getElementById('{{ form.city.id_for_label }}');
-    const districtOther = document.getElementById('{{ form.district.id_for_label }}_other');
-    const cityOther = document.getElementById('{{ form.city.id_for_label }}_other');
     function csrfToken() {
       return document.querySelector('[name=csrfmiddlewaretoken]').value;
     }
@@ -274,6 +315,7 @@
     document.querySelectorAll('[data-modal-open]').forEach(function (button) {
       button.addEventListener('click', function () {
         const modal = document.getElementById(button.dataset.modalOpen);
+        syncLocationModalFields(modal);
         if (modal) setModal(modal, true);
       });
     });
@@ -302,10 +344,22 @@
               errorBox.textContent = result.data.error || 'Please check the details and try again.';
               return;
             }
-            const target = formEl.dataset.ajaxCreate === 'category' ? categorySelect : authorSelect;
-            const option = new Option(result.data.name, result.data.id, true, true);
-            target.add(option);
-            target.value = result.data.id;
+            const type = formEl.dataset.ajaxCreate;
+            if (type === 'category' || type === 'author') {
+              const target = type === 'category' ? categorySelect : authorSelect;
+              const option = new Option(result.data.name, result.data.id, true, true);
+              target.add(option);
+              target.value = result.data.id;
+            } else if (type === 'district') {
+              const option = new Option(result.data.name, result.data.value, true, true);
+              districtSelect.add(option);
+              districtSelect.value = result.data.value;
+              fillSelect(citySelect, [{ value: '', label: 'Select city' }]);
+            } else if (type === 'city') {
+              const option = new Option(result.data.name, result.data.value, true, true);
+              citySelect.add(option);
+              citySelect.value = result.data.value;
+            }
             formEl.reset();
             setModal(modal, false);
           })
@@ -321,11 +375,14 @@
         select.add(new Option(item.label, item.value));
       });
     }
-    function toggleOther(select, input) {
-      if (!select || !input) return;
-      const isOther = select.value === '__other__';
-      input.hidden = !isOther;
-      input.required = isOther;
+    function syncLocationModalFields(modal) {
+      if (!modal) return;
+      const countryInput = modal.querySelector('input[name="country"]');
+      const stateInput = modal.querySelector('input[name="state"]');
+      const districtInput = modal.querySelector('input[name="district"]');
+      if (countryInput) countryInput.value = countrySelect ? countrySelect.value : 'India';
+      if (stateInput) stateInput.value = stateSelect ? stateSelect.value : '';
+      if (districtInput) districtInput.value = districtSelect ? districtSelect.value : '';
     }
     function refreshLocations(params) {
       const query = new URLSearchParams(params);
@@ -340,32 +397,26 @@
           fillSelect(stateSelect, data.states || []);
           fillSelect(districtSelect, data.districts || []);
           fillSelect(citySelect, data.cities || []);
-          toggleOther(districtSelect, districtOther);
-          toggleOther(citySelect, cityOther);
+
         });
       });
       stateSelect.addEventListener('change', function () {
         refreshLocations({ country: countrySelect.value, state: stateSelect.value }).then(function (data) {
           fillSelect(districtSelect, data.districts || []);
           fillSelect(citySelect, data.cities || []);
-          toggleOther(districtSelect, districtOther);
-          toggleOther(citySelect, cityOther);
+
         });
       });
     }
     if (districtSelect) {
       districtSelect.addEventListener('change', function () {
-        toggleOther(districtSelect, districtOther);
         refreshLocations({ country: countrySelect.value, state: stateSelect.value, district: districtSelect.value }).then(function (data) {
           fillSelect(citySelect, data.cities || []);
-          toggleOther(citySelect, cityOther);
         });
       });
-      toggleOther(districtSelect, districtOther);
     }
     if (citySelect) {
-      citySelect.addEventListener('change', function () { toggleOther(citySelect, cityOther); });
-      toggleOther(citySelect, cityOther);
+      citySelect.addEventListener('change', function () {});
     }
   </script>
 {% endblock %}

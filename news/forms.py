@@ -5,7 +5,7 @@ from django.utils.text import slugify
 from core.models import TenantScopedFormMixin
 from categories.models import Category
 
-from .models import AuthorProfile, BreakingNews, NewsArticle
+from .models import AuthorProfile, BreakingNews, NewsArticle, NewsLocation
 
 
 COUNTRY_STATE_CHOICES = {
@@ -75,25 +75,40 @@ def state_choices_for_country(country):
 
 
 
-def district_choices_for_location(country, state, current=''):
+def _tenant_location_names(tenant, location_type, country, state, district=''):
+    if tenant is None or not getattr(tenant, 'pk', None):
+        return []
+    queryset = NewsLocation.objects.filter(
+        tenant=tenant,
+        location_type=location_type,
+        country=(country or 'India'),
+        state=state or '',
+    )
+    if location_type == NewsLocation.LocationType.CITY:
+        queryset = queryset.filter(district=district or '')
+    return list(queryset.order_by('name').values_list('name', flat=True))
+
+
+def district_choices_for_location(country, state, current='', tenant=None):
     districts = INDIA_DISTRICT_CITY_CHOICES.get(state or '', {}) if (country or 'India') == 'India' else {}
+    names = list(districts)
+    names.extend(name for name in _tenant_location_names(tenant, NewsLocation.LocationType.DISTRICT, country, state) if name not in names)
     choices = [('', 'Select district')]
-    choices.extend((district, district) for district in districts)
-    if current and current not in districts:
+    choices.extend((district, district) for district in names)
+    if current and current not in names:
         choices.append((current, current))
-    choices.append((OTHER_LOCATION_VALUE, 'Other / add district'))
     return choices
 
 
-def city_choices_for_location(country, state, district, current=''):
+def city_choices_for_location(country, state, district, current='', tenant=None):
     cities = []
     if (country or 'India') == 'India':
-        cities = INDIA_DISTRICT_CITY_CHOICES.get(state or '', {}).get(district or '', [])
+        cities = list(INDIA_DISTRICT_CITY_CHOICES.get(state or '', {}).get(district or '', []))
+    cities.extend(name for name in _tenant_location_names(tenant, NewsLocation.LocationType.CITY, country, state, district) if name not in cities)
     choices = [('', 'Select city')]
     choices.extend((city, city) for city in cities)
     if current and current not in cities:
         choices.append((current, current))
-    choices.append((OTHER_LOCATION_VALUE, 'Other / add city'))
     return choices
 
 def _safe_slug_from_title(title):
@@ -195,8 +210,8 @@ class NewsArticleForm(TenantScopedFormMixin, forms.ModelForm):
             else self.instance.district or ''
         )
         self.fields['state'].widget = forms.Select(choices=state_choices_for_country(country_value))
-        self.fields['district'].widget = forms.Select(choices=district_choices_for_location(country_value, state_value, self.instance.district))
-        self.fields['city'].widget = forms.Select(choices=city_choices_for_location(country_value, state_value, district_value, self.instance.city))
+        self.fields['district'].widget = forms.Select(choices=district_choices_for_location(country_value, state_value, self.instance.district, tenant=self.tenant))
+        self.fields['city'].widget = forms.Select(choices=city_choices_for_location(country_value, state_value, district_value, self.instance.city, tenant=self.tenant))
         self.fields['published_at'].required = False
         self.fields['scheduled_at'].required = False
         if not self.is_bound and not self.instance.pk:

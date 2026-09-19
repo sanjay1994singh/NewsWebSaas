@@ -50,6 +50,40 @@ class Tag(TenantOwnedModel):
         return self.name
 
 
+
+
+class NewsLocation(TenantOwnedModel):
+    class LocationType(models.TextChoices):
+        DISTRICT = 'district', 'District'
+        CITY = 'city', 'City'
+
+    location_type = models.CharField(max_length=20, choices=LocationType.choices, db_index=True)
+    country = models.CharField(max_length=120, blank=True, default='India')
+    state = models.CharField(max_length=120)
+    district = models.CharField(max_length=120, blank=True)
+    name = models.CharField(max_length=120)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['tenant', 'location_type', 'country', 'state', 'district', 'name'], name='unique_news_location_per_tenant'),
+        ]
+        indexes = [
+            models.Index(fields=['tenant', 'location_type', 'country', 'state']),
+            models.Index(fields=['tenant', 'location_type', 'district']),
+        ]
+        ordering = ['state', 'district', 'name']
+
+    def save(self, *args, **kwargs):
+        self.country = (self.country or 'India').strip()
+        self.state = (self.state or '').strip()
+        self.district = (self.district or '').strip()
+        self.name = (self.name or '').strip()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+
 class NewsArticle(TenantOwnedModel):
     class ContentType(models.TextChoices):
         NEWS = 'news', 'News'

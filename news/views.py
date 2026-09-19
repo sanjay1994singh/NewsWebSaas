@@ -16,7 +16,7 @@ from tenants.models import TenantMembership
 
 from .forms import CategoryForm, NewsArticleForm, city_choices_for_location, district_choices_for_location, state_choices_for_country
 from .models import AuthorProfile
-from .models import NewsArticle
+from .models import NewsArticle, NewsLocation
 from .services import active_breaking_news_for_tenant, search_articles, validate_news_article_monthly_limit
 from subscriptions.entitlements import get_effective_entitlements
 from subscriptions.models import TenantSubscription
@@ -305,14 +305,48 @@ def ajax_author_create(request):
 
 
 def ajax_state_choices(request):
+    tenant = _active_tenant_for_user(request) if request.user.is_authenticated else None
     country = request.GET.get('country')
     state = request.GET.get('state')
     district = request.GET.get('district')
     return JsonResponse({
         'states': [{'value': value, 'label': label} for value, label in state_choices_for_country(country)],
-        'districts': [{'value': value, 'label': label} for value, label in district_choices_for_location(country, state)],
-        'cities': [{'value': value, 'label': label} for value, label in city_choices_for_location(country, state, district)],
+        'districts': [{'value': value, 'label': label} for value, label in district_choices_for_location(country, state, tenant=tenant)],
+        'cities': [{'value': value, 'label': label} for value, label in city_choices_for_location(country, state, district, tenant=tenant)],
     })
+
+
+@login_required
+@require_POST
+def ajax_location_create(request):
+    tenant = _active_tenant_for_user(request)
+    if tenant is None:
+        return JsonResponse({'ok': False, 'error': 'Workspace not available.'}, status=403)
+    location_type = (request.POST.get('location_type') or '').strip()
+    country = (request.POST.get('country') or 'India').strip()
+    state = (request.POST.get('state') or '').strip()
+    district = (request.POST.get('district') or '').strip()
+    name = (request.POST.get('name') or '').strip()
+    if location_type not in {NewsLocation.LocationType.DISTRICT, NewsLocation.LocationType.CITY}:
+        return JsonResponse({'ok': False, 'error': 'Invalid location type.'}, status=400)
+    if not state:
+        return JsonResponse({'ok': False, 'error': 'State select karein.'}, status=400)
+    if not name:
+        label = 'District' if location_type == NewsLocation.LocationType.DISTRICT else 'City'
+        return JsonResponse({'ok': False, 'error': f'{label} name required hai.'}, status=400)
+    if location_type == NewsLocation.LocationType.CITY and not district:
+        return JsonResponse({'ok': False, 'error': 'City add karne se pehle district select karein.'}, status=400)
+    if location_type == NewsLocation.LocationType.DISTRICT:
+        district = ''
+    location, _ = NewsLocation.objects.get_or_create(
+        tenant=tenant,
+        location_type=location_type,
+        country=country,
+        state=state,
+        district=district,
+        name=name,
+    )
+    return JsonResponse({'ok': True, 'type': location.location_type, 'name': location.name, 'value': location.name})
 
 
 @login_required

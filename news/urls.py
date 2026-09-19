@@ -15,6 +15,7 @@ urlpatterns = [
     path('categories/ajax-add/', views.ajax_category_create, name='ajax_category_create'),
     path('authors/ajax-add/', views.ajax_author_create, name='ajax_author_create'),
     path('locations/states/', views.ajax_state_choices, name='ajax_state_choices'),
+    path('locations/ajax-add/', views.ajax_location_create, name='ajax_location_create'),
     path('categories/<int:pk>/edit/', views.category_update, name='category_update'),
     path('categories/<int:pk>/delete/', views.category_delete, name='category_delete'),
     path('uploads/ckeditor/', views.ckeditor_image_upload, name='ckeditor_image_upload'),
