@@ -282,9 +282,15 @@
       object-fit: contain;
     }
     .site-banner {
-      aspect-ratio: 16 / 3.6;
+      width:100vw;
+      margin: 16px 0 22px calc(50% - 50vw);
+      aspect-ratio: 16 / 3.25;
+      border-left:0;
+      border-right:0;
+      border-radius:0;
       background: var(--soft);
     }
+    .site-banner img { object-fit: cover; }
     .ad-slot {
       display: block;
       color: inherit;
@@ -296,7 +302,15 @@
     }
     .ad-slot.square {
       aspect-ratio: 1 / 1;
-      margin-top: 18px;
+      margin: 0 0 18px;
+    }
+    .ad-slot.square img { object-fit: cover; }
+    .side-card > .ad-slot.square:first-child {
+      margin: -22px -22px 18px;
+      border-top:0;
+      border-left:0;
+      border-right:0;
+      border-radius:8px 8px 0 0;
     }
     .ad-label {
       display: block;
@@ -951,11 +965,7 @@
     </div>
   </header>
 
-  {% if onboarding and onboarding.header_banner and page == "home" and not static_page %}
-  <div class="wrap">
-    <div class="site-banner"><img src="{{ onboarding.header_banner.url }}" alt="{{ tenant.public_name }} header banner"></div>
-  </div>
-  {% endif %}
+
   <div class="nav-shell">
     <nav class="wrap nav" aria-label="Primary navigation">
       {% public_epaper_url as epaper_menu_url %}
@@ -1009,7 +1019,9 @@
         </div>
       </div>
     </div>
-
+    {% if onboarding and onboarding.header_banner and page == "home" and not static_page %}
+      <div class="site-banner"><img src="{{ onboarding.header_banner.url }}" alt="{{ tenant.public_name }} header banner"></div>
+    {% endif %}
     {% for ad in ad_slots.header_rectangle|slice:":1" %}
       {% if ad.target_url %}<a class="ad-slot rectangle" href="{{ ad.target_url }}" target="_blank" rel="noopener">{% else %}<div class="ad-slot rectangle">{% endif %}
         <span class="ad-label">Advertisement / 970 x 250</span>
@@ -1038,6 +1050,12 @@
         </article>
       {% endif %}
       <aside class="side-card">
+        {% for ad in ad_slots.sidebar_square|slice:":1" %}
+          {% if ad.target_url %}<a class="ad-slot square" href="{{ ad.target_url }}" target="_blank" rel="noopener">{% else %}<div class="ad-slot square">{% endif %}
+            <span class="ad-label">Advertisement / 300 x 300</span>
+            <img src="{{ ad.image.url }}" alt="{{ ad.title|default:'Advertisement' }}">
+          {% if ad.target_url %}</a>{% else %}</div>{% endif %}
+        {% endfor %}
         <h2>Today</h2>
         <div class="headline-list">
           <div class="headline-item">
@@ -1061,12 +1079,7 @@
             <span>Follow this site for upcoming reports and announcements.</span>
           </div>
         </div>
-        {% for ad in ad_slots.sidebar_square|slice:":1" %}
-          {% if ad.target_url %}<a class="ad-slot square" href="{{ ad.target_url }}" target="_blank" rel="noopener">{% else %}<div class="ad-slot square">{% endif %}
-            <span class="ad-label">Advertisement / 300 x 300</span>
-            <img src="{{ ad.image.url }}" alt="{{ ad.title|default:'Advertisement' }}">
-          {% if ad.target_url %}</a>{% else %}</div>{% endif %}
-        {% endfor %}
+
       </aside>
     </section>
     {% for ad in ad_slots.after_hero_rectangle|slice:":1" %}
