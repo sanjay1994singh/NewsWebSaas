@@ -24,8 +24,8 @@ from subscriptions.models import CustomerAcquisition, TenantOnboarding, TenantSu
 from subscriptions.services import ensure_required_tenant_pages, tenant_public_site_slug, tenant_public_site_url
 from videos.youtube import fetch_youtube_channel_shorts, fetch_youtube_channel_videos
 
-from .forms import ReporterCreateForm, TenantSettingsForm, TenantTrackingForm, VisitorRegistrationForm
-from .models import Tenant, TenantMembership, TenantVisitor
+from .forms import ReporterCreateForm, TenantAdvertisementForm, TenantSettingsForm, TenantTrackingForm, VisitorRegistrationForm
+from .models import Tenant, TenantAdvertisement, TenantMembership, TenantVisitor
 
 
 def is_platform_admin(user):
@@ -152,7 +152,7 @@ def tenant_dashboard(request):
         ('youtube_videos', 'YouTube Videos', reverse('subscriptions:onboarding') + '#youtube-channel'),
         ('youtube_shorts', 'YouTube Shorts', reverse('subscriptions:onboarding') + '#youtube-channel'),
         ('live_tv', 'Live TV', '/cms/live-tv/'),
-        ('advertisement_manager', 'Advertisements', '/dashboard/ads/'),
+        ('advertisement_manager', 'Advertisements', reverse('tenants:tenant_ads')),
         ('analytics', 'Analytics', '/dashboard/analytics/'),
         ('custom_domain', 'Domain Setup', reverse('domains:domain_list')),
         ('multiple_staff', 'Reporters', '/dashboard/reporters/'),
@@ -191,6 +191,52 @@ def tenant_dashboard(request):
         },
     )
 
+
+
+@login_required
+def tenant_ads(request):
+    tenant = getattr(request, 'tenant', None) or _tenant_for_user(request.user)
+    if tenant is None:
+        messages.info(request, 'Create or select a workspace before managing advertisements.')
+        return redirect('subscriptions:account_status')
+    if not user_can_access_tenant(request.user, tenant, roles=[
+        TenantMembership.Role.OWNER,
+        TenantMembership.Role.ADMINISTRATOR,
+        TenantMembership.Role.ADVERTISEMENT_MANAGER,
+    ]):
+        raise PermissionDenied('You do not have access to manage advertisements for this tenant.')
+
+    edit_ad = None
+    edit_id = request.GET.get('edit')
+    if edit_id:
+        edit_ad = get_object_or_404(TenantAdvertisement, pk=edit_id, tenant=tenant)
+
+    if request.method == 'POST':
+        delete_id = request.POST.get('delete_ad')
+        if delete_id:
+            ad = get_object_or_404(TenantAdvertisement, pk=delete_id, tenant=tenant)
+            ad.delete()
+            messages.success(request, 'Advertisement removed.')
+            return redirect('tenants:tenant_ads')
+        ad_id = request.POST.get('ad_id')
+        instance = get_object_or_404(TenantAdvertisement, pk=ad_id, tenant=tenant) if ad_id else None
+        form = TenantAdvertisementForm(request.POST, request.FILES, instance=instance)
+        if form.is_valid():
+            ad = form.save(commit=False)
+            ad.tenant = tenant
+            ad.save()
+            messages.success(request, 'Advertisement saved. It will show on your public website when active.')
+            return redirect('tenants:tenant_ads')
+    else:
+        form = TenantAdvertisementForm(instance=edit_ad)
+
+    ads = tenant.advertisements.all()
+    return render(request, 'tenants/tenant_ads.html', {
+        'tenant': tenant,
+        'ads': ads,
+        'form': form,
+        'edit_ad': edit_ad,
+    })
 
 def public_tenant_site(request, tenant_slug):
     public_tenants = Tenant.objects.select_related('owner').filter(status__in=[Tenant.Status.TRIAL, Tenant.Status.ACTIVE])
@@ -406,6 +452,9 @@ def _render_public_tenant_site(request, tenant, page='home', category_slug=''):
         request.user.is_authenticated
         and TenantVisitor.objects.filter(tenant=tenant, user=request.user, is_active=True).exists()
     )
+    ad_slots = {key: [] for key, _ in TenantAdvertisement.Placement.choices}
+    for ad in tenant.advertisements.filter(is_active=True).order_by('placement', 'display_order', '-created_at'):
+        ad_slots.setdefault(ad.placement, []).append(ad)
     return render(request, 'themes/theme_classic/homepage.html', {
         'layout': layout,
         'blocks': blocks,
@@ -432,6 +481,7 @@ def _render_public_tenant_site(request, tenant, page='home', category_slug=''):
         'preview': False,
         'can_access_dashboard': can_access_dashboard,
         'is_registered_visitor': is_registered_visitor,
+        'ad_slots': ad_slots,
     })
 
 
@@ -469,6 +519,9 @@ def public_article_detail(request, uuid):
         request.user.is_authenticated
         and TenantVisitor.objects.filter(tenant=tenant, user=request.user, is_active=True).exists()
     )
+    ad_slots = {key: [] for key, _ in TenantAdvertisement.Placement.choices}
+    for ad in tenant.advertisements.filter(is_active=True).order_by('placement', 'display_order', '-created_at'):
+        ad_slots.setdefault(ad.placement, []).append(ad)
     _, visitor_cookie = record_article_view(request, article)
     response = render(request, 'themes/theme_classic/article_detail.html', {
         'tenant': tenant,
@@ -482,6 +535,7 @@ def public_article_detail(request, uuid):
         'nav_categories': nav_categories,
         'can_access_dashboard': can_access_dashboard,
         'is_registered_visitor': is_registered_visitor,
+        'ad_slots': ad_slots,
     })
     if visitor_cookie:
         response.set_cookie(

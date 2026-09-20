@@ -287,6 +287,7 @@ class OnboardingForm(forms.ModelForm):
             'tagline': 'Tagline',
             'address': 'Office address',
             'logo': 'Logo',
+            'header_banner': 'Homepage header banner',
             'primary_color': 'Primary color',
             'secondary_color': 'Secondary color',
             'youtube_channel_url': 'YouTube channel link',
@@ -304,6 +305,7 @@ class OnboardingForm(forms.ModelForm):
         }
         help_texts = {
             'logo': 'Optional. You can upload or change it later from the dashboard.',
+            'header_banner': 'Optional. Recommended 1600 x 360 px rectangle. It appears below the menu on your homepage.',
             'primary_color': 'Optional. Use a hex color code.',
             'secondary_color': 'Optional. Use a hex color code.',
             'youtube_channel_url': 'Add your channel link. Videos and shorts will be fetched automatically without direct video upload.',
@@ -328,6 +330,7 @@ class OnboardingForm(forms.ModelForm):
             'tagline',
             'address',
             'logo',
+            'header_banner',
             'primary_color',
             'secondary_color',
             'youtube_channel_url',

@@ -269,6 +269,7 @@ class TenantOnboarding(UUIDModel, TimeStampedModel):
     address = models.TextField(blank=True)
     logo = models.ImageField(upload_to='tenant-branding/logos/', blank=True)
     header_logo = models.ImageField(upload_to='tenant-branding/header-logos/', blank=True)
+    header_banner = models.ImageField(upload_to='tenant-branding/header-banners/', blank=True)
     favicon = models.ImageField(upload_to='tenant-branding/favicons/', blank=True)
     primary_color = models.CharField(max_length=20, blank=True)
     secondary_color = models.CharField(max_length=20, blank=True)

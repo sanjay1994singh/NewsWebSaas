@@ -30,7 +30,7 @@
     .onboarding-actions .btn { width:100%; }
   }
   .logo-preview { margin:8px 0 12px; }
-  .logo-preview img { display:block; max-width:120px; max-height:80px; border:1px solid var(--line); border-radius:6px; object-fit:contain; background:#fff; padding:6px; }
+  .logo-preview img { display:block; max-width:120px; max-height:80px; border:1px solid var(--line); border-radius:6px; object-fit:contain; background:#fff; padding:6px; }`r`n  .banner-preview img { display:block; width:min(100%, 520px); aspect-ratio:16 / 3.6; border:1px solid var(--line); border-radius:8px; object-fit:cover; background:#fff; }
 {% endblock %}
 
 {% block content %}
@@ -86,6 +86,14 @@
             <div class="form-field {% if field.errors %}has-error{% endif %}">
               <label for="{{ field.id_for_label }}">{{ field.label }}</label>
               {% if field.value %}<div class="logo-preview"><img src="{{ field.value.url }}" alt="Current logo"></div>{% endif %}
+              {{ field }}
+              {% if field.help_text %}<p class="field-help">{{ field.help_text }}</p>{% endif %}
+              {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}
+            </div>
+          {% elif field.name == 'header_banner' %}
+            <div class="form-field full {% if field.errors %}has-error{% endif %}">
+              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {% if field.value %}<div class="banner-preview"><img src="{{ field.value.url }}" alt="Current homepage header banner"></div>{% endif %}
               {{ field }}
               {% if field.help_text %}<p class="field-help">{{ field.help_text }}</p>{% endif %}
               {% for error in field.errors %}<p class="field-error">{{ error }}</p>{% endfor %}

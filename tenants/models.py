@@ -100,3 +100,30 @@ class TenantVisitor(TimeStampedModel):
 
     def __str__(self):
         return f"{self.name} - {self.tenant}"
+
+class TenantAdvertisement(TimeStampedModel):
+    class Placement(models.TextChoices):
+        HEADER_RECTANGLE = 'header_rectangle', 'Header rectangle - 970 x 250 recommended'
+        AFTER_HERO_RECTANGLE = 'after_hero_rectangle', 'After top story - 970 x 250 recommended'
+        SIDEBAR_SQUARE = 'sidebar_square', 'Sidebar square - 300 x 300 recommended'
+
+    tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='advertisements')
+    placement = models.CharField(max_length=40, choices=Placement.choices, db_index=True)
+    title = models.CharField(max_length=120, blank=True)
+    image = models.ImageField(upload_to='tenant-ads/')
+    target_url = models.URLField(blank=True)
+    is_active = models.BooleanField(default=True, db_index=True)
+    display_order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['placement', 'display_order', '-created_at']
+        indexes = [
+            models.Index(fields=['tenant', 'placement', 'is_active']),
+        ]
+
+    @property
+    def recommended_size(self):
+        return '300 x 300 px' if self.placement == self.Placement.SIDEBAR_SQUARE else '970 x 250 px'
+
+    def __str__(self):
+        return f"{self.tenant.public_name} - {self.get_placement_display()}"

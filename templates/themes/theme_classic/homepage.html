@@ -266,6 +266,48 @@
     @media (prefers-reduced-motion: reduce) {
       .breaking-scroll { animation: none; }
     }
+    .site-banner,
+    .ad-slot {
+      margin: 18px 0;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+      background: #fff;
+    }
+    .site-banner img,
+    .ad-slot img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+    .site-banner {
+      aspect-ratio: 16 / 3.6;
+      background: var(--soft);
+    }
+    .ad-slot {
+      display: block;
+      color: inherit;
+      text-decoration: none;
+    }
+    .ad-slot.rectangle {
+      aspect-ratio: 970 / 250;
+      max-height: 250px;
+    }
+    .ad-slot.square {
+      aspect-ratio: 1 / 1;
+      margin-top: 18px;
+    }
+    .ad-label {
+      display: block;
+      padding: 6px 10px;
+      border-bottom: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
     .hero-grid {
       display: grid;
       grid-template-columns: minmax(0, 1.35fr) minmax(280px, 0.65fr);
@@ -682,7 +724,9 @@
       font-size: 18px;
     }
     @media (max-width: 1040px) {
-      .hero-grid {
+
+
+    .hero-grid {
         grid-template-columns: 1fr;
       }
       .section-grid,
@@ -907,6 +951,11 @@
     </div>
   </header>
 
+  {% if onboarding and onboarding.header_banner and page == "home" and not static_page %}
+  <div class="wrap">
+    <div class="site-banner"><img src="{{ onboarding.header_banner.url }}" alt="{{ tenant.public_name }} header banner"></div>
+  </div>
+  {% endif %}
   <div class="nav-shell">
     <nav class="wrap nav" aria-label="Primary navigation">
       {% public_epaper_url as epaper_menu_url %}
@@ -961,6 +1010,12 @@
       </div>
     </div>
 
+    {% for ad in ad_slots.header_rectangle|slice:":1" %}
+      {% if ad.target_url %}<a class="ad-slot rectangle" href="{{ ad.target_url }}" target="_blank" rel="noopener">{% else %}<div class="ad-slot rectangle">{% endif %}
+        <span class="ad-label">Advertisement / 970 x 250</span>
+        <img src="{{ ad.image.url }}" alt="{{ ad.title|default:'Advertisement' }}">
+      {% if ad.target_url %}</a>{% else %}</div>{% endif %}
+    {% endfor %}
     {% if page == "home" or page == "top-stories" %}
     <section class="hero-grid">
       {% if top_article %}
@@ -1006,8 +1061,20 @@
             <span>Follow this site for upcoming reports and announcements.</span>
           </div>
         </div>
+        {% for ad in ad_slots.sidebar_square|slice:":1" %}
+          {% if ad.target_url %}<a class="ad-slot square" href="{{ ad.target_url }}" target="_blank" rel="noopener">{% else %}<div class="ad-slot square">{% endif %}
+            <span class="ad-label">Advertisement / 300 x 300</span>
+            <img src="{{ ad.image.url }}" alt="{{ ad.title|default:'Advertisement' }}">
+          {% if ad.target_url %}</a>{% else %}</div>{% endif %}
+        {% endfor %}
       </aside>
     </section>
+    {% for ad in ad_slots.after_hero_rectangle|slice:":1" %}
+      {% if ad.target_url %}<a class="ad-slot rectangle" href="{{ ad.target_url }}" target="_blank" rel="noopener">{% else %}<div class="ad-slot rectangle">{% endif %}
+        <span class="ad-label">Advertisement / 970 x 250</span>
+        <img src="{{ ad.image.url }}" alt="{{ ad.title|default:'Advertisement' }}">
+      {% if ad.target_url %}</a>{% else %}</div>{% endif %}
+    {% endfor %}
     {% endif %}
 
     {% if page == "home" or page == "latest-news" or page == "top-stories" or page == "blogs" or page == "category" %}

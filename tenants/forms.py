@@ -3,7 +3,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 
 from seo.models import TenantSEOSettings
-from .models import Tenant, TenantMembership
+from .models import Tenant, TenantAdvertisement, TenantMembership
 
 
 class TenantSettingsForm(forms.ModelForm):
@@ -127,3 +127,27 @@ class ReporterCreateForm(forms.Form):
         if cleaned.get('password') and cleaned.get('confirm_password') and cleaned['password'] != cleaned['confirm_password']:
             self.add_error('confirm_password', 'Passwords do not match.')
         return cleaned
+
+class TenantAdvertisementForm(forms.ModelForm):
+    class Meta:
+        model = TenantAdvertisement
+        fields = ['placement', 'title', 'image', 'target_url', 'display_order', 'is_active']
+        labels = {
+            'placement': 'Ad position',
+            'title': 'Ad title / advertiser name (optional)',
+            'image': 'Ad image',
+            'target_url': 'Click URL (optional)',
+            'display_order': 'Display order',
+            'is_active': 'Show this ad on website',
+        }
+        help_texts = {
+            'placement': 'Header and after-top-story ads use rectangle 970 x 250 px. Sidebar ads use square 300 x 300 px.',
+            'image': 'Upload a clean ad image. Rectangle: 970 x 250 px. Square: 300 x 300 px. The site will auto-fit without stretching.',
+            'target_url': 'Optional advertiser URL opened in a new tab.',
+            'display_order': 'Lower number shows first when multiple ads use the same position.',
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['display_order'].initial = self.fields['display_order'].initial or 0
+        self.fields['image'].widget.attrs.update({'accept': 'image/*'})
