@@ -907,10 +907,12 @@
       .lead-media {
         min-height: 300px;
       }
-      .site-title {
-        font-size: 32px;
-        line-height: 44px;
-        overflow-wrap: anywhere;
+      .brand-copy > .site-title {
+        font-size: clamp(16px, 4.8vw, 24px);
+        line-height: 1.14;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .tagline {
         display: none;

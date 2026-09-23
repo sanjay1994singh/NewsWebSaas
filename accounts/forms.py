@@ -1,11 +1,12 @@
 from django import forms
+from core.forms import TrimmedFormMixin
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import AuthenticationForm
 
 from subscriptions.forms import disable_autofill
 
 
-class IdentifierAuthenticationForm(AuthenticationForm):
+class IdentifierAuthenticationForm(TrimmedFormMixin, AuthenticationForm):
     username = forms.CharField(label='Email, mobile, or username')
 
     def __init__(self, request=None, *args, **kwargs):
@@ -21,8 +22,11 @@ class IdentifierAuthenticationForm(AuthenticationForm):
     def clean_username(self):
         return self.cleaned_data['username'].strip()
 
+    def clean_password(self):
+        return self.cleaned_data['password'].strip()
 
-class ProfileForm(forms.ModelForm):
+
+class ProfileForm(TrimmedFormMixin, forms.ModelForm):
     username = forms.CharField(disabled=True, required=False, help_text='Username cannot be changed.')
     full_name = forms.CharField(label='Full name', required=False, max_length=150)
 

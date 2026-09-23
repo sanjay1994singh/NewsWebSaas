@@ -1,4 +1,5 @@
 from django import forms
+from core.forms import TrimmedFormMixin
 from django.utils.functional import cached_property
 
 from tenants.models import Tenant
@@ -109,7 +110,7 @@ class SignupPlanChoiceMixin:
             str(normalize_billing_months(self['billing_months'].value())))
 
 
-class CustomerSignupForm(SignupPlanChoiceMixin, forms.Form):
+class CustomerSignupForm(SignupPlanChoiceMixin, TrimmedFormMixin, forms.Form):
     business_name = forms.CharField(max_length=255, label='Channel name / Paper name')
     publication_name = forms.CharField(max_length=150, label='Publication name / Full name')
     email = forms.EmailField(required=False)
@@ -188,7 +189,7 @@ class CustomerSignupForm(SignupPlanChoiceMixin, forms.Form):
         return cleaned_data
 
 
-class CustomerWorkspaceForm(SignupPlanChoiceMixin, forms.Form):
+class CustomerWorkspaceForm(SignupPlanChoiceMixin, TrimmedFormMixin, forms.Form):
     business_name = forms.CharField(max_length=255, label='Channel name / Paper name')
     publication_name = forms.CharField(max_length=150, label='Publication name / Full name')
     email = forms.EmailField(required=False)
@@ -280,7 +281,7 @@ class CustomerWorkspaceForm(SignupPlanChoiceMixin, forms.Form):
         return cleaned_data
 
 
-class OnboardingForm(forms.ModelForm):
+class OnboardingForm(TrimmedFormMixin, forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         labels = {
@@ -361,7 +362,7 @@ class OnboardingForm(forms.ModelForm):
         return site_title or (tenant.business_name if tenant else '')
 
 
-class ReviewActionForm(forms.Form):
+class ReviewActionForm(TrimmedFormMixin, forms.Form):
     action = forms.ChoiceField(
         choices=(
             ('under_review', 'Under Review'),

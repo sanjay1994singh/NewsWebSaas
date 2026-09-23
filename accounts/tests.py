@@ -35,6 +35,10 @@ class IdentifierLoginTests(TestCase):
         user = authenticate(username='geeta_2152', password='strongpass123')
         self.assertEqual(user, self.user)
 
+
+    def test_login_trims_identifier_and_password_spaces(self):
+        user = authenticate(username='  geeta@example.com  ', password='  strongpass123  ')
+        self.assertEqual(user, self.user)
     def test_mobile_login_uses_matching_password_when_mobile_is_shared(self):
         other = get_user_model().objects.create_user(
             username='other_2152',

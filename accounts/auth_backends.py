@@ -14,6 +14,7 @@ class IdentifierBackend(ModelBackend):
         identifier = (username or kwargs.get(get_user_model().USERNAME_FIELD) or '').strip()
         if not identifier or password is None:
             return None
+        password = str(password).strip()
 
         User = get_user_model()
         candidates = list(User.objects.filter(Q(username__iexact=identifier) | Q(email__iexact=identifier)).order_by('id'))

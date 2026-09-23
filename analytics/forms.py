@@ -1,9 +1,10 @@
 from django import forms
+from core.forms import TrimmedFormMixin
 from django.core.validators import RegexValidator
 from .models import PlatformEnquiry
 
 
-class PlatformEnquiryForm(forms.ModelForm):
+class PlatformEnquiryForm(TrimmedFormMixin, forms.ModelForm):
     consent = forms.BooleanField(label='I agree to be contacted about this enquiry and have read the Privacy Policy.')
     website = forms.CharField(required=False, widget=forms.HiddenInput)
     phone = forms.CharField(required=False, max_length=25, validators=[

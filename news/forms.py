@@ -1,4 +1,5 @@
 from django import forms
+from core.forms import TrimmedFormMixin
 from django.utils import timezone
 from django.utils.text import slugify
 
@@ -127,7 +128,7 @@ def default_publisher_name_for_tenant(tenant):
     return f'{brand_name} News Desk'
 
 
-class NewsArticleForm(TenantScopedFormMixin, forms.ModelForm):
+class NewsArticleForm(TrimmedFormMixin, TenantScopedFormMixin, forms.ModelForm):
     tenant_scoped_fields = ('category', 'author', 'reporters', 'tags')
     publisher_name = forms.CharField(
         label='Publisher name',
@@ -278,7 +279,7 @@ class NewsArticleForm(TenantScopedFormMixin, forms.ModelForm):
         return super().save(commit=commit)
 
 
-class CategoryForm(TenantScopedFormMixin, forms.ModelForm):
+class CategoryForm(TrimmedFormMixin, TenantScopedFormMixin, forms.ModelForm):
     tenant_scoped_fields = ('parent',)
 
     class Meta:
@@ -307,7 +308,7 @@ class CategoryForm(TenantScopedFormMixin, forms.ModelForm):
         self.fields['slug'].required = False
 
 
-class BreakingNewsForm(TenantScopedFormMixin, forms.ModelForm):
+class BreakingNewsForm(TrimmedFormMixin, TenantScopedFormMixin, forms.ModelForm):
     tenant_scoped_fields = ('article',)
 
     class Meta:

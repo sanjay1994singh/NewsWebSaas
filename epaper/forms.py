@@ -1,4 +1,5 @@
 from django import forms
+from core.forms import TrimmedFormMixin
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from django.utils.text import slugify
@@ -9,7 +10,7 @@ from .models import EPaperEdition
 MAX_EPAPER_UPLOAD_MB = 50
 
 
-class EPaperEditionForm(forms.ModelForm):
+class EPaperEditionForm(TrimmedFormMixin, forms.ModelForm):
     title = forms.CharField(max_length=180, required=False, help_text='Optional. Leave blank to use the edition name and date.')
     publication_date = forms.DateField(
         initial=timezone.localdate,

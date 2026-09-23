@@ -1,15 +1,16 @@
 from django import forms
+from core.forms import TrimmedFormMixin
 
 from .models import Page
 
 
-class PageForm(forms.ModelForm):
+class PageForm(TrimmedFormMixin, forms.ModelForm):
     class Meta:
         model = Page
         fields = ['title', 'slug', 'page_type', 'content', 'is_published', 'seo_title', 'meta_description']
 
 
-class TenantStaticPageForm(forms.ModelForm):
+class TenantStaticPageForm(TrimmedFormMixin, forms.ModelForm):
     class Meta:
         model = Page
         fields = ['title', 'content', 'seo_title', 'meta_description']

@@ -1,10 +1,10 @@
 <style>
 .channel-identity{display:flex;align-items:flex-start;gap:12px;min-width:0;font-family:Arial,Helvetica,sans-serif;text-decoration:none;color:#10231d;flex-shrink:1}
 .channel-identity .channel-badge{box-sizing:border-box;display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border-radius:6px;background:#0b6b57;color:#fff;font:800 21px/1 Arial,Helvetica,sans-serif;text-transform:uppercase;overflow:hidden}.channel-identity .channel-badge img{width:100%;height:100%;object-fit:contain;background:#fff}
-.channel-identity .channel-copy{display:flex;flex-direction:column;min-width:0}
-.channel-identity .channel-name{margin:0;font:700 34px/42px Arial,Helvetica,sans-serif;letter-spacing:0;text-transform:capitalize;overflow-wrap:anywhere}
-.channel-identity .channel-tagline{display:block;margin:4px 0 0;color:#5c7069;font:400 15px/1.35 Arial,Helvetica,sans-serif;letter-spacing:0;text-transform:none}
-@media(max-width:760px){.channel-identity{gap:10px}.channel-identity .channel-badge{width:44px;height:44px;flex-basis:44px;font-size:22px}.channel-identity .channel-name{font-size:32px;line-height:44px}}
+.channel-identity .channel-copy{display:flex;flex-direction:column;min-width:0;max-width:100%;overflow:hidden}
+.channel-identity .channel-name{display:block;max-width:100%;margin:0;font:700 clamp(20px,5vw,34px)/1.12 Arial,Helvetica,sans-serif;letter-spacing:0;text-transform:capitalize;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.channel-identity .channel-tagline{display:block;max-width:100%;margin:4px 0 0;color:#5c7069;font:400 15px/1.35 Arial,Helvetica,sans-serif;letter-spacing:0;text-transform:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:760px){.channel-identity{gap:10px;max-width:100%}.channel-identity .channel-badge{width:44px;height:44px;flex-basis:44px;font-size:22px}.channel-identity .channel-name{font-size:clamp(16px,4.8vw,24px);line-height:1.14}.channel-identity .channel-tagline{font-size:clamp(12px,3.5vw,15px)}}
 </style>
 <div class="channel-identity" aria-label="{{ tenant.public_name }}">
   <span class="channel-badge" aria-hidden="true">{% if tenant.commercial_onboarding.header_logo %}<img src="{{ tenant.commercial_onboarding.header_logo.url }}" alt="">{% elif tenant.commercial_onboarding.logo %}<img src="{{ tenant.commercial_onboarding.logo.url }}" alt="">{% else %}{{ tenant.public_name|first }}{% endif %}</span>

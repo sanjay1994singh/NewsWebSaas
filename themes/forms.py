@@ -1,9 +1,10 @@
 from django import forms
+from core.forms import TrimmedFormMixin
 
 from .models import TenantBranding, ThemeActivation
 
 
-class TenantBrandingForm(forms.ModelForm):
+class TenantBrandingForm(TrimmedFormMixin, forms.ModelForm):
     class Meta:
         model = TenantBranding
         fields = [
@@ -14,7 +15,7 @@ class TenantBrandingForm(forms.ModelForm):
         ]
 
 
-class ThemeActivationForm(forms.ModelForm):
+class ThemeActivationForm(TrimmedFormMixin, forms.ModelForm):
     class Meta:
         model = ThemeActivation
         fields = ['draft_theme']

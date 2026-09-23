@@ -1,12 +1,13 @@
 import re
 from django import forms
+from core.forms import TrimmedFormMixin
 from django.contrib.auth import get_user_model
 
 from seo.models import TenantSEOSettings
 from .models import Tenant, TenantAdvertisement, TenantMembership
 
 
-class TenantSettingsForm(forms.ModelForm):
+class TenantSettingsForm(TrimmedFormMixin, forms.ModelForm):
     class Meta:
         model = Tenant
         fields = ['business_name', 'publication_name', 'default_language', 'timezone', 'country', 'email', 'mobile', 'customer_gstin']
@@ -20,7 +21,7 @@ class TenantSettingsForm(forms.ModelForm):
         return value
 
 
-class TenantTrackingForm(forms.ModelForm):
+class TenantTrackingForm(TrimmedFormMixin, forms.ModelForm):
     class Meta:
         model = TenantSEOSettings
         fields = [
@@ -81,7 +82,7 @@ class TenantTrackingForm(forms.ModelForm):
             raise forms.ValidationError('Use only the conversion label value from Google Ads.')
         return value
 
-class VisitorRegistrationForm(forms.Form):
+class VisitorRegistrationForm(TrimmedFormMixin, forms.Form):
     name = forms.CharField(max_length=150)
     email = forms.EmailField(required=False)
     mobile = forms.CharField(max_length=32, required=False)
@@ -101,7 +102,7 @@ class VisitorRegistrationForm(forms.Form):
         return cleaned
 
 
-class ReporterCreateForm(forms.Form):
+class ReporterCreateForm(TrimmedFormMixin, forms.Form):
     full_name = forms.CharField(max_length=150)
     email = forms.EmailField()
     mobile = forms.CharField(max_length=32, required=False)
@@ -128,7 +129,7 @@ class ReporterCreateForm(forms.Form):
             self.add_error('confirm_password', 'Passwords do not match.')
         return cleaned
 
-class TenantAdvertisementForm(forms.ModelForm):
+class TenantAdvertisementForm(TrimmedFormMixin, forms.ModelForm):
     class Meta:
         model = TenantAdvertisement
         fields = ['placement', 'title', 'image', 'target_url', 'display_order', 'is_active']
