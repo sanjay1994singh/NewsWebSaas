@@ -66,7 +66,7 @@ from .services import (
     verify_captured_payment,
 )
 from .support import company_profile
-from .whatsapp import notify_payment_failed, notify_payment_success
+from .whatsapp import notify_payment_failed
 
 
 
@@ -590,22 +590,9 @@ def verify_subscription(request, acquisition_id):
         },
     )
     billing_record = BillingRecord.objects.filter(tenant=tenant, status='paid').order_by('-created_at').first()
-    invoice_document_url = ''
     if billing_record:
         plain_password = request.session.pop(f'acquisition_plain_password:{acquisition.uuid}', '')
         email_purchase_success(billing_record, plain_password=plain_password)
-        token = signing.dumps({'record_id': billing_record.id}, salt=WHATSAPP_INVOICE_SIGNER_SALT)
-        invoice_document_url = request.build_absolute_uri(
-            reverse('subscriptions:whatsapp_invoice_pdf', kwargs={'token': token})
-        )
-    notify_payment_success(
-        acquisition=acquisition,
-        tenant=tenant,
-        payment_reference=payment_id,
-        dashboard_url=request.build_absolute_uri('/dashboard/'),
-        profile_url=request.build_absolute_uri('/account/profile/'),
-        invoice_document_url=invoice_document_url,
-    )
     messages.success(
         request,
         'Payment successful. Aapki site develop ho rahi hai. 30 minutes ke andar aapki site ready ho sakti hai. Domain/SSL setup complete hote hi website live open hogi.',

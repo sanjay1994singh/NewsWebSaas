@@ -12,9 +12,11 @@ import razorpay
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.core import signing
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
+from django.urls import reverse
 from django.utils.text import slugify
 
 from categories.models import Category
@@ -40,8 +42,53 @@ from .models import (
 )
 from .pricing import calculate_checkout_pricing, money_display, monthly_price_for_plan, normalize_billing_months
 from .slugs import compact_publication_slug
-from .whatsapp import notify_payment_failed
+from .whatsapp import notify_payment_failed, notify_payment_success
 
+
+
+WHATSAPP_INVOICE_SIGNER_SALT = 'subscriptions.whatsapp.invoice'
+
+
+def _absolute_site_url(path):
+    base_url = (settings.SITE_BASE_URL or '').rstrip('/')
+    return f'{base_url}{path}' if base_url else path
+
+
+def _send_payment_success_whatsapp_once(acquisition_id, tenant_id, payment_reference):
+    acquisition = CustomerAcquisition.objects.select_related('plan_price__plan', 'user', 'tenant').get(pk=acquisition_id)
+    provider_payload = acquisition.provider_payload or {}
+    whatsapp_status = provider_payload.get('whatsapp_success_notification') or {}
+    if whatsapp_status.get('sent'):
+        return True
+    tenant = Tenant.objects.get(pk=tenant_id)
+    billing_record = BillingRecord.objects.filter(tenant=tenant, status='paid').order_by('-created_at').first()
+    invoice_document_url = ''
+    if billing_record:
+        token = signing.dumps({'record_id': billing_record.id}, salt=WHATSAPP_INVOICE_SIGNER_SALT)
+        invoice_document_url = _absolute_site_url(reverse('subscriptions:whatsapp_invoice_pdf', kwargs={'token': token}))
+    sent = notify_payment_success(
+        acquisition=acquisition,
+        tenant=tenant,
+        payment_reference=payment_reference,
+        dashboard_url=_absolute_site_url('/dashboard/'),
+        profile_url=_absolute_site_url('/account/profile/'),
+        invoice_document_url=invoice_document_url,
+    )
+    acquisition.provider_payload = {
+        **provider_payload,
+        'whatsapp_success_notification': {
+            'sent': bool(sent),
+            'payment_reference': payment_reference,
+            'sent_at': timezone.now().isoformat(),
+            'source': 'central_payment_success',
+        },
+    }
+    acquisition.save(update_fields=['provider_payload', 'updated_at'])
+    return sent
+
+
+def queue_payment_success_whatsapp(*, acquisition, tenant, payment_reference):
+    transaction.on_commit(lambda: _send_payment_success_whatsapp_once(acquisition.pk, tenant.pk, payment_reference))
 
 def _add_months(value, months):
     month = value.month - 1 + months
@@ -1266,6 +1313,11 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
             update_fields.append('updated_at')
             acquisition.save(update_fields=update_fields)
         ensure_required_tenant_pages(tenant=acquisition.tenant)
+        queue_payment_success_whatsapp(
+            acquisition=acquisition,
+            tenant=acquisition.tenant,
+            payment_reference=payment_reference or provider_order_id,
+        )
         return acquisition.tenant
 
     tenant, _ = Tenant.objects.get_or_create(
@@ -1387,6 +1439,7 @@ def create_tenant_after_verified_subscription(*, acquisition, provider_order_id,
     )
     get_effective_entitlements(tenant)
     ensure_platform_domain_for_tenant(tenant)
+    queue_payment_success_whatsapp(acquisition=acquisition, tenant=tenant, payment_reference=payment_reference or provider_order_id)
     return tenant
 
 
