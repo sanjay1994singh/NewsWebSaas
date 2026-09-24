@@ -279,7 +279,7 @@
       display: block;
       width: 100%;
       height: 100%;
-      object-fit: contain;
+      object-fit: cover;
     }
     .site-banner {
       width:100%;
@@ -305,11 +305,11 @@
     }
     .ad-slot.square {
       margin: 0 0 18px;
+      aspect-ratio: 1 / 1;
     }
     .ad-slot.square img {
       width:100%;
-      height:auto;
-      max-height:none;
+      height:100%;
       background:#fff;
       object-fit:contain;
     }
@@ -388,6 +388,7 @@
       font-size: 15px;
     }
     .lead-media {
+      aspect-ratio: 16 / 9;
       min-height: 340px;
       display: grid;
       place-items: center;
@@ -494,7 +495,8 @@
       transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
     }
     .story-thumb {
-      min-height: 168px;
+      aspect-ratio: 16 / 10;
+      min-height: 0;
       background: linear-gradient(135deg, #e7f1ed, #ffffff);
       border-bottom: 1px solid var(--line);
       overflow: hidden;
@@ -503,7 +505,7 @@
       display: block;
       width: 100%;
       height: 100%;
-      object-fit: contain;
+      object-fit: cover;
     }
     .story-placeholder {
       display: flex;
@@ -525,6 +527,10 @@
       padding: 16px 18px 18px;
     }
     .story-card-body h2 {
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
       margin-bottom: 8px;
       font-size: 21px;
       line-height: 1.18;
@@ -920,8 +926,8 @@
       .lead-card h2 {
         font-size: 24px;
       }
-      .story-card-link {
-        grid-template-rows: 150px 1fr;
+      .story-thumb {
+        aspect-ratio: 16 / 10;
       }
     }
   </style>
