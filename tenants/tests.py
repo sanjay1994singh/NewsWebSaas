@@ -509,6 +509,7 @@ class TenantIsolationTests(TestCase):
         self.assertContains(response, 'name="robots"')
         self.assertContains(response, 'property="og:site_name"')
         self.assertContains(response, 'City Desk')
+        self.assertContains(response, '1 views')
         content = response.content.decode()
         self.assertLess(content.index('Share this story'), content.index('Full story body'))
 
@@ -557,6 +558,7 @@ class TenantIsolationTests(TestCase):
         self.assertEqual(article.view_count, 0)
         self.assertEqual(article.page_views.count(), 0)
         self.assertNotIn('pnx_visitor', response.cookies)
+
     def test_tenant_domain_slug_article_url_redirects_to_news_id_url(self):
         category = Category.objects.create(tenant=self.tenant_a, name='Local', slug='local')
         author = AuthorProfile.objects.create(tenant=self.tenant_a, display_name='City Desk', slug='city-desk')
