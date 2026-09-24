@@ -17,7 +17,6 @@
   .ads-list { display:grid; gap:12px; }
   .ad-row { display:grid; grid-template-columns:180px minmax(0,1fr) auto; gap:14px; align-items:center; border:1px solid var(--line); border-radius:8px; padding:12px; background:#fff; }
   .ad-preview { width:100%; aspect-ratio:16 / 5; display:grid; place-items:center; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#f5faf7; }
-  .ad-preview.square { aspect-ratio:1 / 1; }
   .ad-preview img { width:100%; height:100%; object-fit:contain; }
   .ad-meta strong { display:block; margin-bottom:4px; }
   .ad-tools { display:flex; flex-wrap:wrap; gap:8px; justify-content:flex-end; }
@@ -30,7 +29,7 @@
     <div>
       <p class="muted">Website monetization</p>
       <h1>Advertisements</h1>
-      <p class="muted">Upload square and rectangle ads for {{ tenant.public_name }}. Ads are auto-fitted so the site layout stays clean.</p>
+      <p class="muted">Upload rectangle ads or sidebar ads for {{ tenant.public_name }}. Sidebar ads keep the original uploaded image ratio.</p>
     </div>
     <a class="btn secondary" href="{% url 'tenants:tenant_dashboard' %}">Back to Dashboard</a>
   </section>
@@ -38,7 +37,7 @@
   <section class="size-grid" aria-label="Recommended ad sizes">
     <article class="size-card"><strong>Header rectangle</strong><span class="muted">970 x 250 px. Shows below menu before breaking news.</span></article>
     <article class="size-card"><strong>After top story</strong><span class="muted">970 x 250 px. Shows after top story section.</span></article>
-    <article class="size-card"><strong>Sidebar square</strong><span class="muted">300 x 300 px. Shows near Today panel.</span></article>
+    <article class="size-card"><strong>Sidebar ad</strong><span class="muted">Original uploaded size/ratio. Shows near Today panel.</span></article>
   </section>
 
   <form class="card" method="post" enctype="multipart/form-data">
@@ -67,7 +66,7 @@
     <div class="ads-list">
       {% for ad in ads %}
         <article class="ad-row">
-          <div class="ad-preview {% if ad.placement == 'sidebar_square' %}square{% endif %}"><img src="{{ ad.image.url }}" alt="{{ ad.title|default:'Advertisement' }}"></div>
+          <div class="ad-preview"><img src="{{ ad.image.url }}" alt="{{ ad.title|default:'Advertisement' }}"></div>
           <div class="ad-meta">
             <strong>{{ ad.get_placement_display }}</strong>
             <p class="muted">Recommended: {{ ad.recommended_size }}{% if ad.title %} / {{ ad.title }}{% endif %}{% if not ad.is_active %} / Hidden{% endif %}</p>

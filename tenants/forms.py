@@ -148,8 +148,8 @@ class TenantAdvertisementForm(TrimmedFormMixin, forms.ModelForm):
             'is_active': 'Show this ad on website',
         }
         help_texts = {
-            'placement': 'Header and after-top-story ads use rectangle 970 x 250 px. Sidebar ads use square 300 x 300 px.',
-            'image': 'Upload a clean ad image. Rectangle: 970 x 250 px. Square: 300 x 300 px. The site will auto-fit without stretching.',
+            'placement': 'Header and after-top-story ads use rectangle 970 x 250 px. Sidebar ads keep the original uploaded image ratio.',
+            'image': 'Upload a clean ad image. Rectangle: 970 x 250 px. Sidebar ads keep their original size/ratio without stretching.',
             'target_url': 'Optional advertiser URL opened in a new tab.',
             'display_order': 'Lower number shows first when multiple ads use the same position.',
         }

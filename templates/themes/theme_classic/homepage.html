@@ -305,11 +305,10 @@
     }
     .ad-slot.square {
       margin: 0 0 18px;
-      aspect-ratio: 1 / 1;
     }
     .ad-slot.square img {
       width:100%;
-      height:100%;
+      height:auto;
       background:#fff;
       object-fit:contain;
     }
@@ -1063,7 +1062,7 @@
       <aside class="side-card">
         {% for ad in ad_slots.sidebar_square|slice:":1" %}
           {% if ad.target_url %}<a class="ad-slot square" href="{{ ad.target_url }}" target="_blank" rel="noopener">{% else %}<div class="ad-slot square">{% endif %}
-            <span class="ad-label">Advertisement / 300 x 300</span>
+            <span class="ad-label">Advertisement</span>
             <img src="{{ ad.image.url }}" alt="{{ ad.title|default:'Advertisement' }}">
           {% if ad.target_url %}</a>{% else %}</div>{% endif %}
         {% endfor %}

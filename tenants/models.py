@@ -106,7 +106,7 @@ class TenantAdvertisement(TimeStampedModel):
     class Placement(models.TextChoices):
         HEADER_RECTANGLE = 'header_rectangle', 'Header rectangle - 970 x 250 recommended'
         AFTER_HERO_RECTANGLE = 'after_hero_rectangle', 'After top story - 970 x 250 recommended'
-        SIDEBAR_SQUARE = 'sidebar_square', 'Sidebar square - 300 x 300 recommended'
+        SIDEBAR_SQUARE = 'sidebar_square', 'Sidebar ad - original size'
 
     tenant = models.ForeignKey(Tenant, on_delete=models.CASCADE, related_name='advertisements')
     placement = models.CharField(max_length=40, choices=Placement.choices, db_index=True)
@@ -124,7 +124,7 @@ class TenantAdvertisement(TimeStampedModel):
 
     @property
     def recommended_size(self):
-        return '300 x 300 px' if self.placement == self.Placement.SIDEBAR_SQUARE else '970 x 250 px'
+        return 'Original uploaded size' if self.placement == self.Placement.SIDEBAR_SQUARE else '970 x 250 px'
 
     def __str__(self):
         return f"{self.tenant.public_name} - {self.get_placement_display()}"
