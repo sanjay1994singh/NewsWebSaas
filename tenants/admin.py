@@ -11,8 +11,8 @@ class TenantMembershipInline(admin.TabularInline):
 
 @admin.register(Tenant)
 class TenantAdmin(admin.ModelAdmin):
-    list_display = ('publication_name', 'business_name', 'slug', 'status', 'owner', 'created_at')
-    list_filter = ('status', 'onboarding_status', 'country')
+    list_display = ('publication_name', 'business_name', 'slug', 'status', 'article_view_tracking_enabled', 'owner', 'created_at')
+    list_filter = ('status', 'onboarding_status', 'country', 'article_view_tracking_enabled')
     search_fields = ('publication_name', 'business_name', 'slug', 'email')
     autocomplete_fields = ('owner',)
     inlines = (TenantMembershipInline,)

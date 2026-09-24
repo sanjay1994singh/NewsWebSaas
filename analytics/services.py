@@ -53,6 +53,8 @@ def visitor_key_for_request(request):
 
 
 def record_article_view(request, article):
+    if not getattr(article.tenant, 'article_view_tracking_enabled', True):
+        return False, None
     visitor_key, new_cookie_value = visitor_key_for_request(request)
     created = False
     try:
@@ -106,10 +108,11 @@ def tenant_analytics(tenant):
     now = timezone.now()
     base = PageView.objects.for_tenant(tenant)
     return {
+        'article_view_tracking_enabled': tenant.article_view_tracking_enabled,
         'today_views': base.filter(occurred_at__date=now.date()).count(),
         'weekly_views': base.filter(occurred_at__gte=now - timedelta(days=7)).count(),
         'monthly_views': base.filter(occurred_at__gte=now - timedelta(days=30)).count(),
-        'top_articles': list(base.exclude(article=None).values('article__title').annotate(views=Count('id')).order_by('-views')[:10]),
+        'top_articles': list(base.exclude(article=None).values('article__title').annotate(unique_viewers=Count('id')).order_by('-unique_viewers')[:10]),
         'top_categories': list(base.exclude(category=None).values('category__name').annotate(views=Count('id')).order_by('-views')[:10]),
         'referrers': list(base.exclude(referrer_domain='').values('referrer_domain').annotate(views=Count('id')).order_by('-views')[:10]),
         'devices': list(base.exclude(device_type='').values('device_type').annotate(views=Count('id')).order_by('-views')[:10]),

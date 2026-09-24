@@ -2,9 +2,18 @@
 <html lang="en"><head><meta charset="utf-8"><title>Analytics</title></head>
 <body><main>
 <h1>Analytics</h1>
+<p>Article view tracking: {% if analytics.article_view_tracking_enabled %}Enabled{% else %}Disabled{% endif %}</p>
 <dl>
-<dt>Today</dt><dd>{{ analytics.today_views }}</dd>
-<dt>7 days</dt><dd>{{ analytics.weekly_views }}</dd>
-<dt>30 days</dt><dd>{{ analytics.monthly_views }}</dd>
+<dt>Unique article viewers today</dt><dd>{{ analytics.today_views }}</dd>
+<dt>Unique article viewers in 7 days</dt><dd>{{ analytics.weekly_views }}</dd>
+<dt>Unique article viewers in 30 days</dt><dd>{{ analytics.monthly_views }}</dd>
 </dl>
+{% if analytics.top_articles %}
+<h2>Top news articles by unique viewers</h2>
+<ol>
+{% for article in analytics.top_articles %}
+  <li>{{ article.article__title }} - {{ article.unique_viewers }}</li>
+{% endfor %}
+</ol>
+{% endif %}
 </main></body></html>

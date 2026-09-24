@@ -81,6 +81,7 @@
               <th>Title</th>
               <th>Category</th>
               <th>Status</th>
+              <th>Unique viewers</th>
               <th>Updated</th>
               <th>Actions</th>
             </tr>
@@ -94,6 +95,7 @@
                 </td>
                 <td data-label="Category">{{ article.category.name }}</td>
                 <td data-label="Status"><span class="status-pill">{{ article.get_status_display }}</span></td>
+                <td data-label="Unique viewers">{{ article.view_count }}</td>
                 <td data-label="Updated">{{ article.updated_at|date:"d M Y" }}</td>
                 <td data-label="Actions">
                   <div class="row-actions" aria-label="Article actions">

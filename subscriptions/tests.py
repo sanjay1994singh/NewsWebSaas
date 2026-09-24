@@ -311,7 +311,11 @@ class SubscriptionTests(TestCase):
         platform_domain = tenant.domains.get(is_primary=True)
         self.assertEqual(platform_domain.domain, 'checkoutmedia.live-app.in')
         self.assertTrue(platform_domain.is_verified)
-        self.assertEqual(platform_domain.ssl_status, platform_domain.SSLStatus.ACTIVE)
+        self.assertEqual(platform_domain.ssl_status, platform_domain.SSLStatus.PENDING)
+        alias_domain = tenant.domains.get(domain='checkoutnews.live-app.in')
+        self.assertFalse(alias_domain.is_primary)
+        self.assertTrue(alias_domain.is_verified)
+        self.assertEqual(alias_domain.ssl_status, alias_domain.SSLStatus.PENDING)
         onboarding = tenant.commercial_onboarding
         self.assertEqual(onboarding.status, TenantOnboarding.Status.PUBLISHED)
         self.assertIsNotNone(onboarding.submitted_at)

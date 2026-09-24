@@ -535,6 +535,28 @@ class TenantIsolationTests(TestCase):
         self.assertEqual(article.view_count, 1)
         self.assertEqual(article.page_views.count(), 1)
 
+    def test_article_view_tracking_can_be_disabled_for_tenant(self):
+        self.tenant_a.article_view_tracking_enabled = False
+        self.tenant_a.save(update_fields=['article_view_tracking_enabled', 'updated_at'])
+        category = Category.objects.create(tenant=self.tenant_a, name='Local', slug='local')
+        author = AuthorProfile.objects.create(tenant=self.tenant_a, display_name='City Desk', slug='city-desk')
+        article = NewsArticle.objects.create(
+            tenant=self.tenant_a,
+            category=category,
+            author=author,
+            title='Untracked update',
+            slug='untracked-update',
+            content='<p>Body</p>',
+            status=NewsArticle.Status.PUBLISHED,
+        )
+
+        response = self.client.get(f'/articles/{article.uuid}/', HTTP_HOST='customera.platformdomain.com', HTTP_USER_AGENT='reader-browser')
+
+        self.assertEqual(response.status_code, 200)
+        article.refresh_from_db()
+        self.assertEqual(article.view_count, 0)
+        self.assertEqual(article.page_views.count(), 0)
+        self.assertNotIn('pnx_visitor', response.cookies)
     def test_tenant_domain_slug_article_url_redirects_to_news_id_url(self):
         category = Category.objects.create(tenant=self.tenant_a, name='Local', slug='local')
         author = AuthorProfile.objects.create(tenant=self.tenant_a, display_name='City Desk', slug='city-desk')

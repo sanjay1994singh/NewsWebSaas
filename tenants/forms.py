@@ -10,9 +10,15 @@ from .models import Tenant, TenantAdvertisement, TenantMembership
 class TenantSettingsForm(TrimmedFormMixin, forms.ModelForm):
     class Meta:
         model = Tenant
-        fields = ['business_name', 'publication_name', 'default_language', 'timezone', 'country', 'email', 'mobile', 'customer_gstin']
-        labels = {'customer_gstin': 'GSTIN (optional)'}
-        help_texts = {'customer_gstin': 'Used on future GST invoices. Leave blank if you do not have GST registration.'}
+        fields = ['business_name', 'publication_name', 'default_language', 'timezone', 'country', 'email', 'mobile', 'customer_gstin', 'article_view_tracking_enabled']
+        labels = {
+            'customer_gstin': 'GSTIN (optional)',
+            'article_view_tracking_enabled': 'Count unique article viewers',
+        }
+        help_texts = {
+            'customer_gstin': 'Used on future GST invoices. Leave blank if you do not have GST registration.',
+            'article_view_tracking_enabled': 'When enabled, one viewer is counted only once for the same news article.',
+        }
 
     def clean_customer_gstin(self):
         value = (self.cleaned_data.get('customer_gstin') or '').strip().upper().replace(' ', '')

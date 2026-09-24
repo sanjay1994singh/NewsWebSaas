@@ -31,6 +31,7 @@ class Tenant(UUIDModel, TimeStampedModel):
     email = models.EmailField()
     mobile = models.CharField(max_length=32, blank=True)
     customer_gstin = models.CharField(max_length=15, blank=True)
+    article_view_tracking_enabled = models.BooleanField(default=True)
 
     class Meta:
         indexes = [

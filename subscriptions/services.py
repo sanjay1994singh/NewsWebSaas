@@ -418,6 +418,22 @@ def platform_domain_for_name(name):
     return f'{subdomain}.{root_domain}'
 
 
+
+def _platform_domain_candidates_for_tenant(tenant):
+    root_domain = platform_root_domain()
+    values = [
+        tenant.business_name,
+        tenant.publication_name,
+        tenant.slug,
+    ]
+    seen = set()
+    for value in values:
+        subdomain = compact_publication_slug(value, fallback=tenant.slug)
+        if not subdomain or subdomain in seen:
+            continue
+        seen.add(subdomain)
+        yield f'{subdomain}.{root_domain}'
+
 def tenant_public_site_slug(tenant):
     return compact_publication_slug(tenant.business_name or tenant.publication_name or tenant.slug, fallback=tenant.slug)
 
@@ -431,33 +447,54 @@ def tenant_public_site_url(tenant):
 
 def ensure_platform_domain_for_tenant(tenant):
     primary = TenantDomain.objects.filter(tenant=tenant, is_primary=True).first()
-    if primary:
-        return primary
+    primary_domain = primary
     root_domain = platform_root_domain()
     base_subdomain = compact_publication_slug(tenant.business_name or tenant.publication_name or tenant.slug, fallback=tenant.slug)
-    for index in range(1, 1000):
-        subdomain = base_subdomain if index == 1 else f'{base_subdomain}-{index}'
-        domain_name = f'{subdomain}.{root_domain}'
+    if not primary_domain:
+        for index in range(1, 1000):
+            subdomain = base_subdomain if index == 1 else f'{base_subdomain}-{index}'
+            domain_name = f'{subdomain}.{root_domain}'
+            existing = TenantDomain.objects.filter(domain=domain_name).first()
+            if existing and existing.tenant_id == tenant.id:
+                if not existing.is_primary or not existing.is_verified or existing.status != TenantDomain.Status.ACTIVE:
+                    existing.is_primary = True
+                    existing.is_verified = True
+                    existing.status = TenantDomain.Status.ACTIVE
+                    existing.ssl_status = TenantDomain.SSLStatus.PENDING
+                    existing.save(update_fields=['is_primary', 'is_verified', 'status', 'ssl_status', 'updated_at'])
+                primary_domain = existing
+                break
+            if not existing:
+                primary_domain = TenantDomain.objects.create(
+                    tenant=tenant,
+                    domain=domain_name,
+                    domain_type=TenantDomain.DomainType.PLATFORM_SUBDOMAIN,
+                    is_primary=True,
+                    is_verified=True,
+                    status=TenantDomain.Status.ACTIVE,
+                    ssl_status=TenantDomain.SSLStatus.PENDING,
+                )
+                break
+    if not primary_domain:
+        raise ValidationError('Unable to create a unique platform domain for this tenant.')
+
+    for domain_name in _platform_domain_candidates_for_tenant(tenant):
+        if domain_name == primary_domain.domain:
+            continue
         existing = TenantDomain.objects.filter(domain=domain_name).first()
-        if existing and existing.tenant_id == tenant.id:
-            if not existing.is_primary or not existing.is_verified or existing.status != TenantDomain.Status.ACTIVE:
-                existing.is_primary = True
-                existing.is_verified = True
-                existing.status = TenantDomain.Status.ACTIVE
-                existing.ssl_status = TenantDomain.SSLStatus.ACTIVE
-                existing.save(update_fields=['is_primary', 'is_verified', 'status', 'ssl_status', 'updated_at'])
-            return existing
+        if existing and existing.tenant_id != tenant.id:
+            continue
         if not existing:
-            return TenantDomain.objects.create(
+            TenantDomain.objects.create(
                 tenant=tenant,
                 domain=domain_name,
                 domain_type=TenantDomain.DomainType.PLATFORM_SUBDOMAIN,
-                is_primary=True,
+                is_primary=False,
                 is_verified=True,
                 status=TenantDomain.Status.ACTIVE,
-                ssl_status=TenantDomain.SSLStatus.ACTIVE,
+                ssl_status=TenantDomain.SSLStatus.PENDING,
             )
-    raise ValidationError('Unable to create a unique platform domain for this tenant.')
+    return primary_domain
 
 
 def _append_issue(issues, code, message, fixed=False):
