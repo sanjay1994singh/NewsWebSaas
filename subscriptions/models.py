@@ -224,6 +224,8 @@ class CustomerAcquisition(UUIDModel, TimeStampedModel):
     provider_payment_id = models.CharField(max_length=120, blank=True, db_index=True)
     provider_signature = models.CharField(max_length=255, blank=True)
     provider_receipt = models.CharField(max_length=120, blank=True, db_index=True)
+    provider_payment_link_id = models.CharField(max_length=120, blank=True, db_index=True)
+    provider_payment_link_url = models.URLField(blank=True)
     provider_payload = JSONTextField(blank=True)
     billing_months = models.PositiveIntegerField(default=1)
     list_amount = models.PositiveIntegerField(default=0)

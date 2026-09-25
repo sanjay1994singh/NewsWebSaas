@@ -897,6 +897,63 @@ def create_razorpay_order_for_acquisition(acquisition):
     }
 
 
+def create_razorpay_payment_link_for_acquisition(acquisition):
+    if acquisition.tenant_id or acquisition.status != CustomerAcquisition.Status.PAYMENT_PENDING:
+        raise ValidationError('Payment link can be generated only for a pending acquisition.')
+    price = acquisition.plan_price
+    checkout_pricing = calculate_checkout_pricing(price, acquisition.billing_months)
+    client = get_razorpay_client()
+    reference_id = f"acq_{acquisition.uuid.hex[:28]}"
+    callback_url = f"{settings.SITE_BASE_URL}/billing/saas/checkout/{acquisition.uuid}/"
+    payload = {
+        'amount': checkout_pricing.payable_amount,
+        'currency': price.currency,
+        'accept_partial': False,
+        'reference_id': reference_id,
+        'description': f"{price.plan.name} - {checkout_pricing.billing_label}",
+        'customer': {
+            'name': acquisition.publication_name,
+            'email': acquisition.email,
+            'contact': acquisition.mobile,
+        },
+        'notify': {'sms': True, 'email': bool(acquisition.email)},
+        'reminder_enable': True,
+        'callback_url': callback_url,
+        'callback_method': 'get',
+        'notes': {
+            'acquisition_uuid': str(acquisition.uuid),
+            'plan_price_id': str(price.id),
+            'billing_months': str(checkout_pricing.billing_months),
+        },
+    }
+    payment_link = client.payment_link.create(payload)
+    acquisition.provider_payment_link_id = payment_link.get('id', '')
+    acquisition.provider_payment_link_url = payment_link.get('short_url', '')
+    acquisition.provider_order_id = payment_link.get('id', '')
+    acquisition.provider_receipt = reference_id
+    acquisition.billing_months = checkout_pricing.billing_months
+    acquisition.list_amount = checkout_pricing.list_amount
+    acquisition.discount_percent = checkout_pricing.discount_percent
+    acquisition.discount_amount = checkout_pricing.discount_amount
+    acquisition.taxable_amount = checkout_pricing.taxable_amount
+    acquisition.tax_rate_percent = checkout_pricing.tax_rate_percent
+    acquisition.tax_amount = checkout_pricing.tax_amount
+    acquisition.payable_amount = checkout_pricing.payable_amount
+    acquisition.provider_payload = {
+        **(acquisition.provider_payload or {}),
+        'payment_link': payment_link,
+        'payment_link_request': payload,
+        'created_by': 'admin_payment_link',
+        'gst': invoice_snapshot(),
+        'customer_gstin': acquisition.customer_gstin,
+    }
+    acquisition.save(update_fields=[
+        'provider_payment_link_id', 'provider_payment_link_url', 'provider_order_id', 'provider_receipt',
+        'provider_payload', 'billing_months', 'list_amount', 'discount_percent', 'discount_amount',
+        'taxable_amount', 'tax_rate_percent', 'tax_amount', 'payable_amount', 'updated_at',
+    ])
+    return payment_link
+
 def create_razorpay_order_for_plan_change(plan_change):
     if plan_change.payable_amount <= 0:
         return {
@@ -1142,6 +1199,33 @@ def _payment_reference_from_webhook(payload):
 
 
 def _sync_payment_from_webhook(*, payload, event_type):
+    if event_type == 'payment_link.paid':
+        payment_link = _razorpay_entity(payload, 'payment_link')
+        link_id = payment_link.get('id', '')
+        acquisition_uuid = _acquisition_uuid_from_webhook(payload)
+        link_acquisition = None
+        if link_id:
+            link_acquisition = CustomerAcquisition.objects.select_related('plan_price__plan', 'user').filter(provider_payment_link_id=link_id).order_by('-created_at').first()
+        if link_acquisition is None and acquisition_uuid:
+            link_acquisition = CustomerAcquisition.objects.select_related('plan_price__plan', 'user').filter(uuid=acquisition_uuid).first()
+        if link_acquisition and link_acquisition.status in {CustomerAcquisition.Status.PAYMENT_PENDING, CustomerAcquisition.Status.FAILED}:
+            paid_amount = payment_link.get('amount_paid') or payment_link.get('amount') or 0
+            currency = payment_link.get('currency') or link_acquisition.plan_price.currency
+            if payment_link.get('status') != 'paid' or paid_amount < link_acquisition.payable_amount or currency != link_acquisition.plan_price.currency:
+                raise ValidationError('Paid payment link does not match the acquisition amount and currency.')
+            if link_id and link_acquisition.provider_order_id != link_id:
+                link_acquisition.provider_order_id = link_id
+                link_acquisition.provider_payment_link_id = link_id
+                if payment_link.get('short_url'):
+                    link_acquisition.provider_payment_link_url = payment_link.get('short_url')
+                link_acquisition.save(update_fields=['provider_order_id', 'provider_payment_link_id', 'provider_payment_link_url', 'updated_at'])
+            create_tenant_after_verified_subscription(
+                acquisition=link_acquisition,
+                provider_order_id=link_acquisition.provider_order_id or link_id,
+                payment_reference=_payment_reference_from_webhook(payload) or link_id,
+                provider_payload={'webhook_event': event_type, 'payload': payload},
+            )
+            return True
     order_id = _order_id_from_webhook(payload)
     order_acquisition = _acquisition_for_order_webhook(payload, order_id)
     if order_acquisition:
