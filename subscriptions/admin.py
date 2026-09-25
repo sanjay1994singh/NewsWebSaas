@@ -5,7 +5,7 @@ from django.contrib import admin, messages
 from django.utils.html import format_html
 
 from .pricing import money_display
-from .services import create_razorpay_payment_link_for_acquisition
+from .services import create_razorpay_payment_link_for_acquisition, create_razorpay_payment_qr_for_acquisition
 from .models import (
     AddOn,
     BillingRecord,
@@ -110,12 +110,12 @@ class TenantSubscriptionAdmin(admin.ModelAdmin):
 
 @admin.register(CustomerAcquisition)
 class CustomerAcquisitionAdmin(admin.ModelAdmin):
-    list_display = ('publication_name', 'user', 'plan_price', 'status', 'tax_amount_display', 'payable_amount_display', 'tenant', 'payment_link_anchor', 'provider_order_id', 'provider_payment_id', 'created_at')
+    list_display = ('publication_name', 'user', 'plan_price', 'status', 'tax_amount_display', 'payable_amount_display', 'tenant', 'payment_link_anchor', 'payment_qr_anchor', 'provider_order_id', 'provider_payment_id', 'created_at')
     list_filter = ('status', 'plan_price__billing_cycle')
-    search_fields = ('publication_name', 'publication_slug', 'business_name', 'email', 'provider_order_id', 'provider_payment_id', 'provider_receipt', 'provider_payment_link_id', 'provider_payment_link_url')
+    search_fields = ('publication_name', 'publication_slug', 'business_name', 'email', 'provider_order_id', 'provider_payment_id', 'provider_receipt', 'provider_payment_link_id', 'provider_payment_link_url', 'provider_payment_qr_id', 'provider_payment_qr_url')
     autocomplete_fields = ('user', 'plan_price', 'tenant')
-    readonly_fields = ('payment_link_anchor', 'payment_link_qr')
-    actions = ('generate_payment_links',)
+    readonly_fields = ('payment_link_anchor', 'payment_link_qr', 'payment_qr_anchor', 'payment_qr_image')
+    actions = ('generate_payment_links', 'generate_payment_qrs')
 
     @admin.display(description='GST')
     def tax_amount_display(self, obj):
@@ -145,6 +145,29 @@ class CustomerAcquisitionAdmin(admin.ModelAdmin):
         image.save(buffer, format='PNG')
         encoded = base64.b64encode(buffer.getvalue()).decode('ascii')
         return format_html('<img src="data:image/png;base64,{}" alt="Payment QR" width="180" height="180">', encoded)
+
+    @admin.display(description='Scan-to-pay QR')
+    def payment_qr_anchor(self, obj):
+        if not obj.provider_payment_qr_url:
+            return '-'
+        return format_html('<a href="{}" target="_blank" rel="noopener">Open Razorpay QR</a>', obj.provider_payment_qr_url)
+
+    @admin.display(description='Direct payment QR image')
+    def payment_qr_image(self, obj):
+        if obj.provider_payment_qr_image_url:
+            return format_html('<img src="{}" alt="Direct payment QR" width="220" height="220" style="object-fit:contain">', obj.provider_payment_qr_image_url)
+        if obj.provider_payment_qr_url:
+            try:
+                import qrcode
+            except ImportError:
+                return 'Install qrcode[pil] to render QR codes in admin.'
+            image = qrcode.make(obj.provider_payment_qr_url)
+            buffer = BytesIO()
+            image.save(buffer, format='PNG')
+            encoded = base64.b64encode(buffer.getvalue()).decode('ascii')
+            return format_html('<img src="data:image/png;base64,{}" alt="Direct payment QR" width="220" height="220">', encoded)
+        return '-'
+
     @admin.action(description='Generate Razorpay payment link for selected pending acquisitions')
     def generate_payment_links(self, request, queryset):
         created = 0
@@ -170,6 +193,33 @@ class CustomerAcquisitionAdmin(admin.ModelAdmin):
             self.message_user(request, f'{skipped} record(s) skipped because they are not pending or already have a payment link.', level=messages.WARNING)
         if failed and not created:
             self.message_user(request, 'No payment links were generated.', level=messages.ERROR)
+
+
+    @admin.action(description='Generate direct Razorpay scan-to-pay QR for selected pending acquisitions')
+    def generate_payment_qrs(self, request, queryset):
+        created = 0
+        skipped = 0
+        failed = 0
+        for acquisition in queryset.select_related('plan_price__plan', 'user', 'tenant'):
+            if acquisition.tenant_id or acquisition.status != CustomerAcquisition.Status.PAYMENT_PENDING:
+                skipped += 1
+                continue
+            if acquisition.provider_payment_qr_id:
+                skipped += 1
+                continue
+            try:
+                create_razorpay_payment_qr_for_acquisition(acquisition)
+            except Exception as exc:
+                failed += 1
+                self.message_user(request, f'{acquisition.publication_name}: {exc}', level=messages.ERROR)
+            else:
+                created += 1
+        if created:
+            self.message_user(request, f'{created} scan-to-pay QR code(s) generated. Open each Customer Acquisition row to share the QR image.', level=messages.SUCCESS)
+        if skipped:
+            self.message_user(request, f'{skipped} record(s) skipped because they are not pending or already have a direct QR.', level=messages.WARNING)
+        if failed and not created:
+            self.message_user(request, 'No QR codes were generated.', level=messages.ERROR)
 
 class OnboardingReviewEventInline(admin.TabularInline):
     model = OnboardingReviewEvent

@@ -18,4 +18,19 @@ class Migration(migrations.Migration):
             name='provider_payment_link_url',
             field=models.URLField(blank=True),
         ),
+        migrations.AddField(
+            model_name='customeracquisition',
+            name='provider_payment_qr_id',
+            field=models.CharField(blank=True, db_index=True, max_length=120),
+        ),
+        migrations.AddField(
+            model_name='customeracquisition',
+            name='provider_payment_qr_url',
+            field=models.URLField(blank=True),
+        ),
+        migrations.AddField(
+            model_name='customeracquisition',
+            name='provider_payment_qr_image_url',
+            field=models.URLField(blank=True),
+        ),
     ]

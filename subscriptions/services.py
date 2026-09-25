@@ -905,10 +905,12 @@ def create_razorpay_payment_link_for_acquisition(acquisition):
     client = get_razorpay_client()
     reference_id = f"acq_{acquisition.uuid.hex[:28]}"
     callback_url = f"{settings.SITE_BASE_URL}/billing/saas/checkout/{acquisition.uuid}/"
+    expire_by = int((timezone.now() + timezone.timedelta(days=7)).timestamp())
     payload = {
         'amount': checkout_pricing.payable_amount,
         'currency': price.currency,
         'accept_partial': False,
+        'expire_by': expire_by,
         'reference_id': reference_id,
         'description': f"{price.plan.name} - {checkout_pricing.billing_label}",
         'customer': {
@@ -953,6 +955,61 @@ def create_razorpay_payment_link_for_acquisition(acquisition):
         'taxable_amount', 'tax_rate_percent', 'tax_amount', 'payable_amount', 'updated_at',
     ])
     return payment_link
+
+
+def create_razorpay_payment_qr_for_acquisition(acquisition):
+    if acquisition.tenant_id or acquisition.status != CustomerAcquisition.Status.PAYMENT_PENDING:
+        raise ValidationError('Payment QR can be generated only for a pending acquisition.')
+    price = acquisition.plan_price
+    checkout_pricing = calculate_checkout_pricing(price, acquisition.billing_months)
+    client = get_razorpay_client()
+    reference_id = f"qr_acq_{acquisition.uuid.hex[:25]}"
+    close_by = int((timezone.now() + timezone.timedelta(days=7)).timestamp())
+    payload = {
+        'type': 'upi_qr',
+        'name': acquisition.publication_name[:80] or 'Subscription payment',
+        'usage': 'single_use',
+        'fixed_amount': True,
+        'payment_amount': checkout_pricing.payable_amount,
+        'description': f"{price.plan.name} - {checkout_pricing.billing_label}",
+        'close_by': close_by,
+        'notes': {
+            'acquisition_uuid': str(acquisition.uuid),
+            'plan_price_id': str(price.id),
+            'billing_months': str(checkout_pricing.billing_months),
+            'reference_id': reference_id,
+        },
+    }
+    payment_qr = client.qrcode.create(payload)
+    qr_id = payment_qr.get('id', '')
+    acquisition.provider_payment_qr_id = qr_id
+    acquisition.provider_payment_qr_url = payment_qr.get('short_url', '')
+    acquisition.provider_payment_qr_image_url = payment_qr.get('image_url', '')
+    acquisition.provider_order_id = qr_id
+    acquisition.provider_receipt = reference_id
+    acquisition.billing_months = checkout_pricing.billing_months
+    acquisition.list_amount = checkout_pricing.list_amount
+    acquisition.discount_percent = checkout_pricing.discount_percent
+    acquisition.discount_amount = checkout_pricing.discount_amount
+    acquisition.taxable_amount = checkout_pricing.taxable_amount
+    acquisition.tax_rate_percent = checkout_pricing.tax_rate_percent
+    acquisition.tax_amount = checkout_pricing.tax_amount
+    acquisition.payable_amount = checkout_pricing.payable_amount
+    acquisition.provider_payload = {
+        **(acquisition.provider_payload or {}),
+        'payment_qr': payment_qr,
+        'payment_qr_request': payload,
+        'created_by': 'admin_payment_qr',
+        'gst': invoice_snapshot(),
+        'customer_gstin': acquisition.customer_gstin,
+    }
+    acquisition.save(update_fields=[
+        'provider_payment_qr_id', 'provider_payment_qr_url', 'provider_payment_qr_image_url',
+        'provider_order_id', 'provider_receipt', 'provider_payload', 'billing_months',
+        'list_amount', 'discount_percent', 'discount_amount', 'taxable_amount',
+        'tax_rate_percent', 'tax_amount', 'payable_amount', 'updated_at',
+    ])
+    return payment_qr
 
 def create_razorpay_order_for_plan_change(plan_change):
     if plan_change.payable_amount <= 0:
@@ -1199,6 +1256,35 @@ def _payment_reference_from_webhook(payload):
 
 
 def _sync_payment_from_webhook(*, payload, event_type):
+    payment = _razorpay_entity(payload, 'payment')
+    qr_code = _razorpay_entity(payload, 'qr_code')
+    qr_id = qr_code.get('id') or payment.get('receiver_id') or payment.get('qr_code_id') or ''
+    acquisition_uuid = _acquisition_uuid_from_webhook(payload)
+    qr_acquisition = None
+    if qr_id:
+        qr_acquisition = CustomerAcquisition.objects.select_related('plan_price__plan', 'user').filter(provider_payment_qr_id=qr_id).order_by('-created_at').first()
+    if qr_acquisition is None and acquisition_uuid:
+        qr_acquisition = CustomerAcquisition.objects.select_related('plan_price__plan', 'user').filter(uuid=acquisition_uuid).first()
+    if qr_acquisition and event_type in ('payment.captured', 'qr_code.credited') and qr_acquisition.status in {CustomerAcquisition.Status.PAYMENT_PENDING, CustomerAcquisition.Status.FAILED}:
+        paid_amount = payment.get('amount') or qr_code.get('payment_amount') or 0
+        currency = payment.get('currency') or qr_acquisition.plan_price.currency
+        if paid_amount < qr_acquisition.payable_amount or currency != qr_acquisition.plan_price.currency:
+            raise ValidationError('Paid QR amount does not match the acquisition amount and currency.')
+        if qr_id and qr_acquisition.provider_order_id != qr_id:
+            qr_acquisition.provider_order_id = qr_id
+            qr_acquisition.provider_payment_qr_id = qr_id
+            if qr_code.get('short_url'):
+                qr_acquisition.provider_payment_qr_url = qr_code.get('short_url')
+            if qr_code.get('image_url'):
+                qr_acquisition.provider_payment_qr_image_url = qr_code.get('image_url')
+            qr_acquisition.save(update_fields=['provider_order_id', 'provider_payment_qr_id', 'provider_payment_qr_url', 'provider_payment_qr_image_url', 'updated_at'])
+        create_tenant_after_verified_subscription(
+            acquisition=qr_acquisition,
+            provider_order_id=qr_acquisition.provider_order_id or qr_id,
+            payment_reference=_payment_reference_from_webhook(payload) or qr_id,
+            provider_payload={'webhook_event': event_type, 'payload': payload},
+        )
+        return True
     if event_type == 'payment_link.paid':
         payment_link = _razorpay_entity(payload, 'payment_link')
         link_id = payment_link.get('id', '')
