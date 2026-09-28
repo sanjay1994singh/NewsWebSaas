@@ -980,7 +980,13 @@ def create_razorpay_payment_qr_for_acquisition(acquisition):
             'reference_id': reference_id,
         },
     }
-    payment_qr = client.qrcode.create(payload)
+    try:
+        payment_qr = client.qrcode.create(payload)
+    except Exception as exc:
+        message = str(exc)
+        if 'requested URL was not found' in message or 'no Route matched' in message:
+            raise ValidationError('Razorpay direct QR Codes API is not enabled for the configured account/keys. Enable Razorpay QR Codes/Smart Collect, or use the generated payment link QR meanwhile.') from exc
+        raise
     qr_id = payment_qr.get('id', '')
     acquisition.provider_payment_qr_id = qr_id
     acquisition.provider_payment_qr_url = payment_qr.get('short_url', '')
