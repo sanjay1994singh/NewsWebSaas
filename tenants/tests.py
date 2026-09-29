@@ -425,20 +425,22 @@ class TenantIsolationTests(TestCase):
         self.assertTrue(TenantMembership.objects.filter(tenant=self.tenant_a, user=reporter, role=TenantMembership.Role.REPORTER).exists())
         self.assertTrue(NewsArticle.objects.filter(tenant=self.tenant_a, title='Domain independent story').exists())
 
-    def test_tenant_domain_homepage_uses_most_viewed_article_as_top_story(self):
+    def test_tenant_domain_homepage_uses_latest_article_as_top_story(self):
         category = Category.objects.create(tenant=self.tenant_a, name='Local', slug='local')
         author = AuthorProfile.objects.create(tenant=self.tenant_a, display_name='City Desk', slug='city-desk')
-        NewsArticle.objects.create(
+        latest = NewsArticle.objects.create(
             tenant=self.tenant_a,
             category=category,
             author=author,
             title='Fresh latest update',
             slug='fresh-latest-update',
+            short_description='Latest story summary',
             content='<p>Body</p>',
+            featured_image='articles/latest.jpg',
             view_count=2,
             status=NewsArticle.Status.PUBLISHED,
         )
-        popular = NewsArticle.objects.create(
+        older_popular = NewsArticle.objects.create(
             tenant=self.tenant_a,
             category=category,
             author=author,
@@ -454,9 +456,10 @@ class TenantIsolationTests(TestCase):
         response = self.client.get('/', HTTP_HOST='customera.platformdomain.com')
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'Most Viewed')
-        self.assertContains(response, f'/articles/{popular.uuid}/')
-        self.assertContains(response, 'src="/media/articles/popular.jpg"')
+        self.assertContains(response, 'Latest News')
+        self.assertContains(response, f'/articles/{latest.uuid}/')
+        self.assertContains(response, 'src="/media/articles/latest.jpg"')
+        self.assertNotContains(response, f'<a class="lead-card lead-link" href="/articles/{older_popular.uuid}/">', html=True)
 
     def test_tenant_domain_homepage_contact_section_uses_tenant_details(self):
         TenantOnboarding.objects.create(

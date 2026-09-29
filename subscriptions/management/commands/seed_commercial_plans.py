@@ -13,10 +13,10 @@ FEATURES = [
     ('youtube_videos', 'YouTube Videos', 'video', Feature.FeatureType.BOOLEAN, ''),
     ('youtube_shorts', 'YouTube Shorts', 'video', Feature.FeatureType.BOOLEAN, ''),
     ('live_tv', 'Live TV', 'video', Feature.FeatureType.BOOLEAN, ''),
-    ('adsense', 'AdSense', 'monetization', Feature.FeatureType.BOOLEAN, ''),
+    ('adsense', 'Google AdSense', 'monetization', Feature.FeatureType.BOOLEAN, ''),
     ('advertisement_manager', 'Advertisement Manager', 'monetization', Feature.FeatureType.BOOLEAN, ''),
     ('advanced_seo', 'Advanced SEO', 'growth', Feature.FeatureType.BOOLEAN, ''),
-    ('analytics', 'Analytics', 'growth', Feature.FeatureType.BOOLEAN, ''),
+    ('analytics', 'Google Analytics For Views', 'growth', Feature.FeatureType.BOOLEAN, ''),
     ('multiple_staff', 'Multiple Staff', 'team', Feature.FeatureType.LIMIT, 'users'),
     ('mobile_app', 'Mobile App', 'distribution', Feature.FeatureType.BOOLEAN, ''),
     ('photo_gallery', 'Photo Gallery', 'media', Feature.FeatureType.BOOLEAN, ''),
@@ -25,6 +25,25 @@ FEATURES = [
     ('premium_themes', 'Premium Themes', 'site', Feature.FeatureType.BOOLEAN, ''),
 ]
 
+COMMON_NON_EPAPER_FEATURES = {
+    'blog': (True, None),
+    'breaking_news': (True, None),
+    'custom_domain': (True, None),
+    'youtube_videos': (True, None),
+    'youtube_shorts': (True, None),
+    'live_tv': (True, None),
+    'adsense': (True, None),
+    'advertisement_manager': (True, None),
+    'advanced_seo': (True, None),
+    'analytics': (True, None),
+    'multiple_staff': (True, 5),
+    'mobile_app': (True, None),
+    'photo_gallery': (True, None),
+    'api_access': (True, None),
+    'homepage_builder': (True, None),
+    'premium_themes': (True, None),
+}
+
 PLAN_DEFAULTS = {
     Plan.Code.NEWS_STARTER: {
         'name': 'News Starter',
@@ -32,7 +51,7 @@ PLAN_DEFAULTS = {
         'yearly_price': 499000,
         'features': {
             'news_articles': (True, 150),
-            'custom_domain': (True, None),
+            **COMMON_NON_EPAPER_FEATURES,
         },
     },
     Plan.Code.NEWS_VIDEO: {
@@ -41,8 +60,7 @@ PLAN_DEFAULTS = {
         'yearly_price': 999000,
         'features': {
             'news_articles': (True, 300),
-            'blog': (True, None),
-            'custom_domain': (True, None),
+            **COMMON_NON_EPAPER_FEATURES,
         },
     },
     Plan.Code.NEWS_PRO: {
@@ -51,10 +69,7 @@ PLAN_DEFAULTS = {
         'yearly_price': 1999000,
         'features': {
             'news_articles': (True, 1500),
-            'blog': (True, None),
-            'custom_domain': (True, None),
-            'youtube_videos': (True, None),
-            'youtube_shorts': (True, None),
+            **COMMON_NON_EPAPER_FEATURES,
         },
     },
     Plan.Code.PROFESSIONAL: {
@@ -63,12 +78,9 @@ PLAN_DEFAULTS = {
         'yearly_price': 4999000,
         'features': {
             'news_articles': (True, 10000),
-            'blog': (True, None),
-            'custom_domain': (True, None),
+            **COMMON_NON_EPAPER_FEATURES,
             'epaper': (True, None),
             'epaper_editions_per_month': (True, 30),
-            'youtube_videos': (True, None),
-            'youtube_shorts': (True, None),
         },
     },
 }

@@ -1048,7 +1048,7 @@
             {% if top_article.featured_image %}<img src="{{ top_article.featured_image.url }}" alt="{{ top_article.image_alt|default:top_article.title }}">{% else %}<div class="lead-placeholder"><span>{{ top_article.category.name|default:"Top Story" }}</span></div>{% endif %}
           </div>
           <div class="lead-copy">
-            <span class="label">Most Viewed</span>
+            <span class="label">Latest News</span>
             <h2>{{ top_article.title }}</h2>
           </div>
         </a>

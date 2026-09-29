@@ -234,7 +234,7 @@ def _public_plan_context():
                 'offer': offer_context(monthly_price, 1),
                 'yearly_offer': offer_context(monthly_price, 12),
                 'two_year_offer': offer_context(monthly_price, 24),
-                'enabled_features': enabled_features[:8],
+                'enabled_features': enabled_features,
                 'signup_price': monthly_price or yearly_price,
             }
         )
@@ -984,7 +984,7 @@ def upgrade_plan(request):
                 'price': price,
                 'plan': price.plan,
                 'quote': option_quote,
-                'enabled_features': enabled_features[:8],
+                'enabled_features': enabled_features,
                 'is_selected': selected_price and price.id == selected_price.id,
                 'is_current_plan': is_current_plan,
                 'action_label': 'Renew' if is_current_plan else 'Upgrade',
