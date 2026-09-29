@@ -97,7 +97,7 @@ class TenantIsolationTests(TestCase):
         plan = Plan.objects.create(
             name='Domain Plan',
             code=Plan.Code.NEWS_STARTER,
-            entitlements={'custom_domain': True},
+            entitlements={'custom_domain': True, 'adsense': True},
         )
         TenantSubscription.objects.create(
             tenant=self.tenant_a,
@@ -112,6 +112,8 @@ class TenantIsolationTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Domain Setup')
         self.assertContains(response, reverse('domains:domain_list'))
+        self.assertContains(response, 'Google AdSense')
+        self.assertContains(response, reverse('tenants:tenant_settings', args=[self.tenant_a.uuid]) + '#google-monetization')
         self.assertNotContains(response, '/dashboard/domains/')
 
     def test_tenant_scoped_form_rejects_foreign_domain(self):

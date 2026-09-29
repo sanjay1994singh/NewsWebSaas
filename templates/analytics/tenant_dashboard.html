@@ -1,19 +1,150 @@
-<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Analytics</title></head>
-<body><main>
-<h1>Analytics</h1>
-<p>Article view tracking: {% if analytics.article_view_tracking_enabled %}Enabled{% else %}Disabled{% endif %}</p>
-<dl>
-<dt>Unique article viewers today</dt><dd>{{ analytics.today_views }}</dd>
-<dt>Unique article viewers in 7 days</dt><dd>{{ analytics.weekly_views }}</dd>
-<dt>Unique article viewers in 30 days</dt><dd>{{ analytics.monthly_views }}</dd>
-</dl>
-{% if analytics.top_articles %}
-<h2>Top news articles by unique viewers</h2>
-<ol>
-{% for article in analytics.top_articles %}
-  <li>{{ article.article__title }} - {{ article.unique_viewers }}</li>
-{% endfor %}
-</ol>
-{% endif %}
-</main></body></html>
+{% extends "base.html" %}
+
+{% block title %}Analytics - {{ tenant.public_name }}{% endblock %}
+
+{% block styles %}
+  .analytics-shell { display:grid; gap:20px; }
+  .analytics-hero { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:18px; align-items:center; background:linear-gradient(135deg,#fff 0%,#f2faf6 56%,#fff7ec 100%); }
+  .analytics-hero h1 { margin:0; font-size:38px; line-height:1.05; }
+  .hero-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:10px; }
+  .status-pill { display:inline-flex; align-items:center; min-height:34px; padding:7px 11px; border:1px solid var(--line); border-radius:999px; background:#fff; color:var(--muted); font-size:13px; font-weight:800; }
+  .status-pill.good { color:var(--brand); border-color:#b8d9cc; background:#f2faf6; }
+  .metric-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14px; }
+  .metric-card { display:grid; gap:10px; min-height:138px; }
+  .metric-card span { color:var(--muted); font-size:14px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; }
+  .metric-card strong { font-size:42px; line-height:1; }
+  .metric-card p { margin:0; color:var(--muted); }
+  .analytics-grid { display:grid; grid-template-columns:1.35fr .85fr; gap:18px; }
+  .panel-title { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+  .panel-title h2 { margin:0; font-size:24px; }
+  .data-list { display:grid; gap:10px; margin:0; padding:0; list-style:none; }
+  .data-row { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:14px; align-items:center; padding:12px 0; border-top:1px solid var(--line); }
+  .data-row:first-child { border-top:0; }
+  .data-row strong { overflow-wrap:anywhere; }
+  .value-badge { display:inline-flex; min-width:54px; justify-content:center; padding:7px 10px; border-radius:999px; background:#eef6f2; color:var(--brand); font-weight:900; }
+  .mini-grid { display:grid; gap:14px; }
+  .setup-list { display:grid; gap:10px; margin-top:12px; }
+  .setup-row { display:flex; align-items:center; justify-content:space-between; gap:14px; padding:12px; border:1px solid var(--line); border-radius:8px; background:#fbfdfc; }
+  .setup-row span { color:var(--muted); }
+  .empty-note { margin:0; color:var(--muted); }
+  @media (max-width:900px) {
+    .analytics-hero, .analytics-grid { grid-template-columns:1fr; }
+    .hero-actions { justify-content:flex-start; }
+    .metric-grid { grid-template-columns:1fr; }
+  }
+  @media (max-width:640px) {
+    .analytics-hero h1 { font-size:31px; }
+    .data-row, .setup-row { grid-template-columns:1fr; display:grid; align-items:start; }
+    .value-badge { justify-self:start; }
+  }
+{% endblock %}
+
+{% block content %}
+  <main class="page analytics-shell">
+    <section class="card analytics-hero">
+      <div>
+        <p class="muted">Publication analytics</p>
+        <h1>{{ tenant.public_name }}</h1>
+        <p class="muted">Track unique article viewers, popular stories, traffic sources, and Google setup from one clean dashboard.</p>
+      </div>
+      <div class="hero-actions">
+        <span class="status-pill {% if analytics.article_view_tracking_enabled %}good{% endif %}">
+          Article tracking: {% if analytics.article_view_tracking_enabled %}Enabled{% else %}Disabled{% endif %}
+        </span>
+        <a class="btn secondary" href="{% url 'tenants:tenant_settings' tenant.uuid %}">Tracking Settings</a>
+      </div>
+    </section>
+
+    <section class="metric-grid">
+      <article class="card metric-card">
+        <span>Today</span>
+        <strong>{{ analytics.today_views }}</strong>
+        <p>Unique article viewers today</p>
+      </article>
+      <article class="card metric-card">
+        <span>7 days</span>
+        <strong>{{ analytics.weekly_views }}</strong>
+        <p>Unique article viewers in the last week</p>
+      </article>
+      <article class="card metric-card">
+        <span>30 days</span>
+        <strong>{{ analytics.monthly_views }}</strong>
+        <p>Unique article viewers in the last month</p>
+      </article>
+    </section>
+
+    <section class="analytics-grid">
+      <article class="card">
+        <div class="panel-title">
+          <h2>Top News Articles</h2>
+          <span class="status-pill">Unique viewers</span>
+        </div>
+        {% if analytics.top_articles %}
+          <ol class="data-list">
+            {% for article in analytics.top_articles %}
+              <li class="data-row">
+                <strong>{{ article.article__title|default:"Untitled article" }}</strong>
+                <span class="value-badge">{{ article.unique_viewers }}</span>
+              </li>
+            {% endfor %}
+          </ol>
+        {% else %}
+          <p class="empty-note">No article views recorded yet.</p>
+        {% endif %}
+      </article>
+
+      <div class="mini-grid">
+        <article class="card">
+          <div class="panel-title"><h2>Google Setup</h2></div>
+          <div class="setup-list">
+            <div class="setup-row">
+              <strong>Google Analytics</strong>
+              <span>{% if seo_settings.google_analytics_id %}{{ seo_settings.google_analytics_id }}{% else %}Not connected{% endif %}</span>
+            </div>
+            <div class="setup-row">
+              <strong>Google AdSense / Ads</strong>
+              <span>{% if seo_settings.google_ads_id %}{{ seo_settings.google_ads_id }}{% else %}Not connected{% endif %}</span>
+            </div>
+            <div class="setup-row">
+              <strong>Google Verification</strong>
+              <span>{% if seo_settings.google_site_verification %}Added{% else %}Not added{% endif %}</span>
+            </div>
+          </div>
+          <div style="margin-top:14px">
+            <a class="btn secondary" href="{% url 'tenants:tenant_settings' tenant.uuid %}#google-monetization">Configure Google</a>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="panel-title"><h2>Sources & Devices</h2></div>
+          {% if analytics.referrers or analytics.devices %}
+            <ul class="data-list">
+              {% for referrer in analytics.referrers|slice:":4" %}
+                <li class="data-row"><strong>{{ referrer.referrer_domain }}</strong><span class="value-badge">{{ referrer.views }}</span></li>
+              {% endfor %}
+              {% for device in analytics.devices|slice:":4" %}
+                <li class="data-row"><strong>{{ device.device_type|title }}</strong><span class="value-badge">{{ device.views }}</span></li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <p class="empty-note">Referrer and device data will appear after more visits.</p>
+          {% endif %}
+        </article>
+      </div>
+    </section>
+
+    {% if analytics.top_categories %}
+      <section class="card">
+        <div class="panel-title">
+          <h2>Top Categories</h2>
+          <span class="status-pill">Views</span>
+        </div>
+        <ul class="data-list">
+          {% for category in analytics.top_categories %}
+            <li class="data-row"><strong>{{ category.category__name }}</strong><span class="value-badge">{{ category.views }}</span></li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% endif %}
+  </main>
+{% endblock %}

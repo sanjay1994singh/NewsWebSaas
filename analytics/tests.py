@@ -1,5 +1,5 @@
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
@@ -45,3 +45,16 @@ class AnalyticsTests(TestCase):
 
     def test_cache_key_contains_tenant_identity(self):
         self.assertEqual(tenant_cache_key(self.tenant_a, 'homepage'), f'tenant:{self.tenant_a.id}:homepage')
+
+    @override_settings(ALLOWED_HOSTS=['testserver', 'a.example.com'])
+    def test_tenant_analytics_dashboard_uses_dashboard_layout(self):
+        self.client.force_login(self.user_a)
+
+        response = self.client.get(reverse('analytics:tenant_analytics_dashboard'), HTTP_HOST='a.example.com')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Publication analytics')
+        self.assertContains(response, 'Top News Articles')
+        self.assertContains(response, 'Google AdSense / Ads')
+        self.assertContains(response, 'Story')
+        self.assertContains(response, 'google.com')

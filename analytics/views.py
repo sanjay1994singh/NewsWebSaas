@@ -19,6 +19,7 @@ from django.core.exceptions import PermissionDenied
 from django.shortcuts import render
 
 from core.models import user_can_access_tenant
+from seo.services import get_or_create_seo_settings
 from tenants.views import is_platform_admin
 
 from .services import platform_metrics, tenant_analytics
@@ -34,7 +35,11 @@ def super_admin_dashboard(request):
 def tenant_analytics_dashboard(request):
     if not user_can_access_tenant(request.user, request.tenant):
         raise PermissionDenied("You do not have access to this tenant.")
-    return render(request, 'analytics/tenant_dashboard.html', {'analytics': tenant_analytics(request.tenant)})
+    return render(request, 'analytics/tenant_dashboard.html', {
+        'tenant': request.tenant,
+        'analytics': tenant_analytics(request.tenant),
+        'seo_settings': get_or_create_seo_settings(request.tenant),
+    })
 
 @require_http_methods(['GET', 'POST'])
 @never_cache

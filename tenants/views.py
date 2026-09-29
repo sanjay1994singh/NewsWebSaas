@@ -153,6 +153,7 @@ def tenant_dashboard(request):
         ('youtube_shorts', 'YouTube Shorts', reverse('subscriptions:onboarding') + '#youtube-channel'),
         ('live_tv', 'Live TV', '/cms/live-tv/'),
         ('advertisement_manager', 'Advertisements', reverse('tenants:tenant_ads')),
+        ('adsense', 'Google AdSense', reverse('tenants:tenant_settings', args=[tenant.uuid]) + '#google-monetization'),
         ('analytics', 'Analytics', '/dashboard/analytics/'),
         ('custom_domain', 'Domain Setup', reverse('domains:domain_list')),
         ('multiple_staff', 'Reporters', '/dashboard/reporters/'),
