@@ -10,12 +10,14 @@ from .services import absolute_url, sitemap_items
 def robots_txt(request):
     tenant = getattr(request, 'tenant', None)
     sitemap_url = absolute_url(tenant, '/sitemap.xml') if tenant else settings.SITE_BASE_URL + '/sitemap.xml'
+    news_sitemap_url = absolute_url(tenant, '/news-sitemap.xml') if tenant else settings.SITE_BASE_URL + '/news-sitemap.xml'
     body = "\n".join([
         "User-agent: *",
         "Allow: /",
         "Allow: /static/",
         "Allow: /media/",
         f"Sitemap: {sitemap_url}",
+        f"Sitemap: {news_sitemap_url}",
         "",
     ])
     return HttpResponse(body, content_type='text/plain')

@@ -66,6 +66,14 @@
     .article-body { padding:28px; font-size:18px; }
     .article-body img { max-width:100%; height:auto; border-radius:8px; }
     .article-body p:first-child { margin-top:0; }
+    .related-section { margin-top:22px; }
+    .related-title { margin:0 0 14px; font-size:24px; line-height:1.2; }
+    .related-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:14px; }
+    .related-card { display:grid; align-content:start; gap:9px; min-height:100%; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#fff; }
+    .related-card img { width:100%; aspect-ratio:16/10; object-fit:cover; background:var(--soft); }
+    .related-card-body { padding:0 12px 12px; }
+    .related-card h3 { margin:0; font-size:16px; line-height:1.28; letter-spacing:0; }
+    .related-card p { margin:7px 0 0; color:var(--muted); font-size:13px; line-height:1.45; }
     footer { border-top:1px solid var(--line); background:#fff; padding:28px 0; color:var(--muted); font-size:14px; }
     footer strong { color:var(--ink); font-size:18px; }
     .footer-row { display:grid; grid-template-columns:minmax(220px,1fr) minmax(0,2fr); gap:22px; align-items:start; }
@@ -88,6 +96,10 @@
       .meta-share { width:100%; margin-left:0; }
       .account-toggle { width:44px; height:44px; min-width:44px; padding:0; border-radius:50%; }
       .account-toggle-text { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+      .related-grid { grid-template-columns:1fr; }
+    }
+    @media (min-width:761px) and (max-width:1020px) {
+      .related-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); }
     }
   </style>
 {% include 'themes/shared/theme_colors.html' %}
@@ -165,6 +177,25 @@
       <section class="article-body">
         {{ article.content|safe }}
       </section>
+
+      {% if related_articles %}
+        <section class="related-section" aria-labelledby="related-news-heading">
+          <h2 id="related-news-heading" class="related-title">Latest News</h2>
+          <div class="related-grid">
+            {% for related in related_articles %}
+              <a class="related-card" href="/articles/{{ related.uuid }}/">
+                {% if related.featured_image %}
+                  <img src="{{ related.featured_image.url }}" alt="{{ related.image_alt|default:related.title }}">
+                {% endif %}
+                <div class="related-card-body">
+                  <h3>{{ related.title }}</h3>
+                  {% if related.short_description %}<p>{{ related.short_description|truncatechars:96 }}</p>{% endif %}
+                </div>
+              </a>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
     </article>
   </main>
 

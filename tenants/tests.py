@@ -491,6 +491,17 @@ class TenantIsolationTests(TestCase):
             featured_image='articles/shareable.jpg',
             status=NewsArticle.Status.PUBLISHED,
         )
+        related_article = NewsArticle.objects.create(
+            tenant=self.tenant_a,
+            category=category,
+            author=author,
+            title='Related local update',
+            slug='related-local-update',
+            short_description='More local context',
+            content='<p>Related body</p>',
+            featured_image='articles/related.jpg',
+            status=NewsArticle.Status.PUBLISHED,
+        )
 
         response = self.client.get(f'/articles/{article.uuid}/', HTTP_HOST='customera.platformdomain.com')
 
@@ -513,6 +524,9 @@ class TenantIsolationTests(TestCase):
         self.assertContains(response, 'property="og:site_name"')
         self.assertContains(response, 'City Desk')
         self.assertContains(response, '1 views')
+        self.assertContains(response, 'Latest News')
+        self.assertContains(response, 'Related local update')
+        self.assertContains(response, f'/articles/{related_article.uuid}/')
         content = response.content.decode()
         self.assertLess(content.index('Share this story'), content.index('Full story body'))
 

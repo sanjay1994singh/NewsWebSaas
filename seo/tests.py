@@ -68,6 +68,7 @@ class SEOTests(TestCase):
         request_host = 'primary.example.com'
         response = self.client.get(reverse('robots_txt'), HTTP_HOST=request_host)
         self.assertContains(response, 'Sitemap: https://primary.example.com/sitemap.xml')
+        self.assertContains(response, 'Sitemap: https://primary.example.com/news-sitemap.xml')
 
     def test_sitemap_is_tenant_specific(self):
         response = self.client.get(reverse('sitemap_xml'), HTTP_HOST='primary.example.com')

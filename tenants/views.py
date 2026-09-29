@@ -522,10 +522,26 @@ def public_article_detail(request, uuid):
     ad_slots = {key: [] for key, _ in TenantAdvertisement.Placement.choices}
     for ad in tenant.advertisements.filter(is_active=True).order_by('placement', 'display_order', '-created_at'):
         ad_slots.setdefault(ad.placement, []).append(ad)
+    related_articles = list(
+        published_articles_for_tenant(tenant)
+        .filter(category=article.category)
+        .exclude(pk=article.pk)
+        .select_related('category', 'author')[:4]
+    )
+    if len(related_articles) < 4:
+        existing_ids = [item.pk for item in related_articles]
+        latest_articles = list(
+            published_articles_for_tenant(tenant)
+            .exclude(pk=article.pk)
+            .exclude(pk__in=existing_ids)
+            .select_related('category', 'author')[:4 - len(related_articles)]
+        )
+        related_articles.extend(latest_articles)
     _, visitor_cookie = record_article_view(request, article)
     response = render(request, 'themes/theme_classic/article_detail.html', {
         'tenant': tenant,
         'article': article,
+        'related_articles': related_articles,
         'meta': meta,
         'json_ld': article_json_ld(article),
         'seo_settings': seo_settings,
