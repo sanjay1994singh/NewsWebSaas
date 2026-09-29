@@ -22,7 +22,7 @@ from seo.services import article_json_ld, article_meta, get_or_create_seo_settin
 from subscriptions.entitlements import get_effective_entitlements
 from subscriptions.models import CustomerAcquisition, TenantOnboarding, TenantSubscription
 from subscriptions.services import ensure_required_tenant_pages, tenant_public_site_slug, tenant_public_site_url
-from videos.youtube import fetch_youtube_channel_shorts, fetch_youtube_channel_videos
+from videos.youtube import fetch_youtube_channel_videos
 
 from .forms import ReporterCreateForm, TenantAdvertisementForm, TenantSettingsForm, TenantTrackingForm, VisitorRegistrationForm
 from .models import Tenant, TenantAdvertisement, TenantMembership, TenantVisitor
@@ -438,14 +438,7 @@ def _render_public_tenant_site(request, tenant, page='home', category_slug=''):
     youtube_video_groups = []
     youtube_short_groups = []
     if page == 'videos' and has_videos and onboarding and onboarding.youtube_channel_url:
-        if entitlements.get('youtube_shorts', {}).get('is_enabled'):
-            youtube_shorts = fetch_youtube_channel_shorts(onboarding.youtube_channel_url)
-        youtube_videos = fetch_youtube_channel_videos(onboarding.youtube_channel_url)
-        short_ids = {video.get('id') for video in youtube_shorts if video.get('id')}
-        if short_ids:
-            youtube_videos = [video for video in youtube_videos if video.get('id') not in short_ids]
-        youtube_video_groups = _group_youtube_items_by_day(youtube_videos)
-        youtube_short_groups = _group_youtube_items_by_day(youtube_shorts)
+        youtube_videos = fetch_youtube_channel_videos(onboarding.youtube_channel_url, limit=30)[:30]
     can_access_dashboard = user_can_access_tenant(request.user, tenant)
     seo_settings = get_or_create_seo_settings(tenant)
     is_registered_visitor = (

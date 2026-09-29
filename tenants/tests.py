@@ -237,80 +237,31 @@ class TenantIsolationTests(TestCase):
         TenantSubscription.objects.create(tenant=self.tenant_a, plan=plan, status=TenantSubscription.Status.ACTIVE)
         TenantOnboarding.objects.create(tenant=self.tenant_a, youtube_channel_url='https://www.youtube.com/@amedia')
         now = timezone.now()
-
-        with patch('tenants.views.fetch_youtube_channel_videos', return_value=[{
-            'id': 'video123',
-            'title': 'A Media Report',
+        videos = [{
+            'id': f'video{number:02d}abc',
+            'title': f'A Media Video {number}',
             'description': 'Latest video from the newsroom.',
-            'embed_url': 'https://www.youtube.com/embed/video123?enablejsapi=1&rel=0',
-            'published': now.isoformat(),
-        }, {
-            'id': 'yesterday12',
-            'title': 'A Media Yesterday Report',
-            'embed_url': 'https://www.youtube.com/embed/yesterday12?enablejsapi=1&rel=0',
-            'published': (now - timezone.timedelta(days=1)).isoformat(),
-        }, {
-            'id': 'weeklyvid12',
-            'title': 'A Media Weekly Report',
-            'embed_url': 'https://www.youtube.com/embed/weeklyvid12?enablejsapi=1&rel=0',
-            'published': (now - timezone.timedelta(days=3)).isoformat(),
-        }, {
-            'id': 'monthvid123',
-            'title': 'A Media Month Report',
-            'embed_url': 'https://www.youtube.com/embed/monthvid123?enablejsapi=1&rel=0',
-            'published': (now - timezone.timedelta(days=15)).isoformat(),
-        }, {
-            'id': 'oldvideo123',
-            'title': 'A Media Old Report',
-            'embed_url': 'https://www.youtube.com/embed/oldvideo123?enablejsapi=1&rel=0',
-            'published': (now - timezone.timedelta(days=45)).isoformat(),
-        }, {
-            'id': 'short123abc',
-            'title': 'Short should not show in videos tab',
-            'embed_url': 'https://www.youtube.com/embed/short123abc?enablejsapi=1&rel=0',
-            'published': now.isoformat(),
-        }]), patch('tenants.views.fetch_youtube_channel_shorts', return_value=[{
-            'id': 'short123abc',
-            'title': 'A Media Short',
-            'embed_url': 'https://www.youtube.com/embed/short123abc?enablejsapi=1&rel=0',
-            'published': now.isoformat(),
-        }, {
-            'id': 'short456def',
-            'title': 'A Media Second Short',
-            'embed_url': 'https://www.youtube.com/embed/short456def?enablejsapi=1&rel=0',
-            'published': (now - timezone.timedelta(days=1)).isoformat(),
-        }, {
-            'id': 'short789ghi',
-            'title': 'A Media Third Short',
-            'embed_url': 'https://www.youtube.com/embed/short789ghi?enablejsapi=1&rel=0',
-            'published': (now - timezone.timedelta(days=3)).isoformat(),
-        }, {
-            'id': 'shortmonth1',
-            'title': 'A Media Month Short',
-            'embed_url': 'https://www.youtube.com/embed/shortmonth1?enablejsapi=1&rel=0',
-            'published': (now - timezone.timedelta(days=15)).isoformat(),
-        }]):
+            'embed_url': f'https://www.youtube.com/embed/video{number:02d}abc?enablejsapi=1&rel=0',
+            'published': (now - timezone.timedelta(days=number)).isoformat(),
+        } for number in range(1, 32)]
+
+        with patch('tenants.views.fetch_youtube_channel_videos', return_value=videos) as fetch_videos:
             response = self.client.get('/videos/', HTTP_HOST='customera.platformdomain.com')
 
         self.assertEqual(response.status_code, 200)
+        fetch_videos.assert_called_once_with('https://www.youtube.com/@amedia', limit=30)
         self.assertContains(response, 'href="/videos/"')
-        self.assertContains(response, 'data-video-tab="videos"')
-        self.assertContains(response, 'data-video-tab="shorts"')
-        self.assertContains(response, 'Today')
-        self.assertContains(response, 'Yesterday')
-        self.assertContains(response, 'This Week')
-        self.assertContains(response, 'This Month')
-        self.assertContains(response, 'A Media Report')
-        self.assertContains(response, 'A Media Yesterday Report')
-        self.assertContains(response, 'A Media Weekly Report')
-        self.assertContains(response, 'A Media Month Report')
-        self.assertContains(response, 'A Media Short')
-        self.assertContains(response, 'A Media Third Short')
-        self.assertContains(response, 'A Media Month Short')
-        self.assertNotContains(response, 'A Media Old Report')
-        self.assertNotContains(response, 'Short should not show in videos tab')
-        self.assertContains(response, 'https://www.youtube.com/embed/video123')
-        self.assertContains(response, 'https://www.youtube.com/embed/short123abc')
+        self.assertContains(response, 'Latest Videos')
+        self.assertContains(response, 'Open YouTube Channel')
+        self.assertContains(response, 'href="https://www.youtube.com/@amedia"')
+        self.assertContains(response, 'A Media Video 1')
+        self.assertContains(response, 'A Media Video 30')
+        self.assertNotContains(response, 'A Media Video 31')
+        self.assertNotContains(response, 'data-video-tab="videos"')
+        self.assertNotContains(response, 'data-video-tab="shorts"')
+        self.assertNotContains(response, 'Yesterday')
+        self.assertNotContains(response, 'This Week')
+        self.assertNotContains(response, 'This Month')
         self.assertContains(response, 'origin=http%3A//customera.platformdomain.com')
         self.assertContains(response, 'referrerpolicy="origin"')
         self.assertContains(response, 'pauseVideo')
