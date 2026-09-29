@@ -38,18 +38,18 @@ class TenantTrackingForm(TrimmedFormMixin, forms.ModelForm):
             'google_ads_conversion_label',
         ]
         labels = {
-            'google_site_verification': 'Google site verification code',
-            'bing_site_verification': 'Bing site verification code',
-            'google_analytics_id': 'Google Analytics measurement ID',
-            'google_ads_id': 'Google Ads conversion ID',
-            'google_ads_conversion_label': 'Google Ads conversion label',
+            'google_site_verification': '1. Google site verification code',
+            'bing_site_verification': '2. Bing site verification code',
+            'google_analytics_id': '3. Google Analytics measurement ID',
+            'google_ads_id': '4. Google Ads conversion ID',
+            'google_ads_conversion_label': '5. Google Ads conversion label',
         }
         help_texts = {
-            'google_site_verification': 'Paste only the content value, not the full meta tag.',
-            'bing_site_verification': 'Paste only the verification token.',
-            'google_analytics_id': 'Example: G-XXXXXXXXXX.',
-            'google_ads_id': 'Example: AW-123456789. This loads only on your public domain pages.',
-            'google_ads_conversion_label': 'Optional label from Google Ads conversion setup.',
+            'google_site_verification': 'Search Console ya AdSense HTML tag me content="..." ke andar wala code paste karein. Full meta tag paste na karein.',
+            'bing_site_verification': 'Bing Webmaster Tools ka verification token paste karein. Agar Bing use nahi kar rahe to blank chhod sakte hain.',
+            'google_analytics_id': 'Google Analytics Web stream ka Measurement ID paste karein. Example: G-XXXXXXXXXX.',
+            'google_ads_id': 'Google Ads conversion tracking ID paste karein. Example: AW-123456789. AdSense approval ke liye ye required nahi hai.',
+            'google_ads_conversion_label': 'Google Ads conversion label paste karein. Agar conversion tracking setup nahi hai to blank chhod sakte hain.',
         }
 
     def _clean_code(self, field_name, pattern, example):
