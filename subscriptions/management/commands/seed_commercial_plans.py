@@ -50,17 +50,17 @@ COMMON_NON_EPAPER_FEATURES = {
 PLAN_DEFAULTS = {
     Plan.Code.NEWS_STARTER: {
         'name': 'News Starter',
-        'monthly_price': 39900,
-        'yearly_price': 499000,
+        'monthly_price': 79800,
+        'yearly_price': 957600,
         'features': {
             'news_articles': (True, 150),
             **COMMON_NON_EPAPER_FEATURES,
         },
     },
     Plan.Code.NEWS_VIDEO: {
-        'name': 'News Basic',
-        'monthly_price': 99900,
-        'yearly_price': 999000,
+        'name': 'News Plus',
+        'monthly_price': 119800,
+        'yearly_price': 1437600,
         'features': {
             'news_articles': (True, 300),
             **COMMON_NON_EPAPER_FEATURES,
@@ -68,8 +68,8 @@ PLAN_DEFAULTS = {
     },
     Plan.Code.NEWS_PRO: {
         'name': 'News Pro',
-        'monthly_price': 199900,
-        'yearly_price': 1999000,
+        'monthly_price': 159800,
+        'yearly_price': 1917600,
         'features': {
             'news_articles': (True, 1500),
             **COMMON_NON_EPAPER_FEATURES,
@@ -77,8 +77,8 @@ PLAN_DEFAULTS = {
     },
     Plan.Code.PROFESSIONAL: {
         'name': 'News Professional',
-        'monthly_price': 499900,
-        'yearly_price': 4999000,
+        'monthly_price': 199800,
+        'yearly_price': 2397600,
         'features': {
             'news_articles': (True, 10000),
             **COMMON_NON_EPAPER_FEATURES,
