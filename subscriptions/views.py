@@ -208,8 +208,11 @@ def _public_plan_context():
             'list_display': money_display(pricing.list_amount, pricing.currency),
             'discount_percent': pricing.discount_percent,
             'discount_display': money_display(pricing.discount_amount, pricing.currency),
+            'after_discount_display': money_display(pricing.after_discount_amount, pricing.currency),
             'taxable_display': money_display(pricing.taxable_amount, pricing.currency),
             'tax_rate_percent': pricing.tax_rate_percent,
+            'tax_label': pricing.tax_label,
+            'tax_inclusive': pricing.tax_inclusive,
             'tax_display': money_display(pricing.tax_amount, pricing.currency),
             'payable_display': money_display(pricing.payable_amount, pricing.currency),
         }
@@ -339,8 +342,11 @@ def public_plan_quote(request):
             'list_display': money_display(pricing.list_amount, pricing.currency),
             'discount_percent': pricing.discount_percent,
             'discount_display': money_display(pricing.discount_amount, pricing.currency),
+            'after_discount_display': money_display(pricing.after_discount_amount, pricing.currency),
             'taxable_display': money_display(pricing.taxable_amount, pricing.currency),
             'tax_rate_percent': pricing.tax_rate_percent,
+            'tax_label': pricing.tax_label,
+            'tax_inclusive': pricing.tax_inclusive,
             'tax_display': money_display(pricing.tax_amount, pricing.currency),
             'payable_display': money_display(pricing.payable_amount, pricing.currency),
             'signup_url': f"{reverse('public_saas_signup')}?price={plan_price.id}&months={pricing.billing_months}",
@@ -545,11 +551,15 @@ def checkout(request, acquisition_id):
         'taxable_amount': checkout_pricing.taxable_amount,
         'taxable_display': money_display(checkout_pricing.taxable_amount, checkout_pricing.currency),
         'tax_rate_percent': checkout_pricing.tax_rate_percent,
+        'tax_label': checkout_pricing.tax_label,
+        'tax_inclusive': checkout_pricing.tax_inclusive,
         'tax_amount': checkout_pricing.tax_amount,
         'tax_display': money_display(checkout_pricing.tax_amount, checkout_pricing.currency),
         'payable_amount': checkout_pricing.payable_amount,
         'payable_display': money_display(checkout_pricing.payable_amount, checkout_pricing.currency),
     }
+    checkout_data['pricing'].setdefault('tax_label', checkout_pricing.tax_label)
+    checkout_data['pricing'].setdefault('tax_inclusive', checkout_pricing.tax_inclusive)
     return render(request, 'subscriptions/checkout.html', {'acquisition': acquisition, 'checkout': checkout_data, 'duration_form': duration_form})
 
 
@@ -1052,6 +1062,8 @@ def upgrade_plan_quote(request):
             'taxable': quote['taxable_display'],
             'tax': quote['tax_display'],
             'tax_rate_percent': quote['tax_rate_percent'],
+            'tax_label': quote['tax_label'],
+            'tax_inclusive': quote['tax_inclusive'],
             'credit_label': 'Renewal credit' if is_current_plan else 'Unused old-plan credit',
             'final_payable': quote['payable_display'],
             'period': f"{quote['period_start'].strftime('%d %b %Y')} - {quote['period_end'].strftime('%d %b %Y')}",

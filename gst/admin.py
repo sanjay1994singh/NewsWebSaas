@@ -4,7 +4,7 @@ from .models import GSTSettings
 
 @admin.register(GSTSettings)
 class GSTSettingsAdmin(admin.ModelAdmin):
-    list_display = ('gstin', 'rate_percent', 'supply_description')
+    list_display = ('gstin', 'rate_percent', 'price_tax_mode', 'supply_description')
 
     def has_add_permission(self, request):
         return super().has_add_permission(request) and not GSTSettings.objects.exists()

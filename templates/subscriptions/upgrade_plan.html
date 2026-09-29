@@ -111,7 +111,7 @@
           {% endif %}
           <div class="detail-row"><span>{% if selected_price.plan_id == subscription.plan_id %}Renewal credit{% else %}Unused old-plan credit{% endif %}</span><strong>-{{ quote.credit_display }}</strong></div>
           <div class="detail-row"><span>Taxable value</span><strong>{{ quote.taxable_display }}</strong></div>
-          <div class="detail-row"><span>GST @ {{ quote.tax_rate_percent }}%</span><strong>{{ quote.tax_display }}</strong></div>
+          <div class="detail-row"><span>{{ quote.tax_label }}</span><strong>{{ quote.tax_display }}</strong></div>
           <div class="detail-row"><span>Final payable</span><strong>{{ quote.payable_display }}</strong></div>
           <div class="detail-row"><span>New period</span><strong>{{ quote.period_start|date:"d M Y" }} - {{ quote.period_end|date:"d M Y" }}</strong></div>
         </div>
@@ -158,8 +158,8 @@
             <div class="detail-row" data-upgrade-only{% if option.is_current_plan %} hidden{% endif %}><span>Unused days</span><strong data-quote-unused-days>{{ option.quote.remaining_days }} / {{ option.quote.total_days }} days</strong></div>
             <div class="detail-row"><span data-quote-credit-label>{% if option.is_current_plan %}Renewal credit{% else %}Unused old-plan credit{% endif %}</span><strong data-quote-credit>-{{ option.quote.credit_display }}</strong></div>
             <div class="detail-row"><span>Taxable value</span><strong data-quote-taxable>{{ option.quote.taxable_display }}</strong></div>
-            <div class="detail-row"><span>GST @ <span data-quote-tax-rate>{{ option.quote.tax_rate_percent }}</span>%</span><strong data-quote-tax>{{ option.quote.tax_display }}</strong></div>
-            <div class="detail-row final-row"><span>Final payable</span><strong data-quote-final>{{ option.quote.payable_display }}</strong></div>
+            <div class="detail-row"><span data-quote-tax-label>{{ option.quote.tax_label }}</span><strong data-quote-tax>{{ option.quote.tax_display }}</strong></div>
+            <div class="detail-row final-row"><span data-quote-final-label>{% if option.quote.tax_inclusive %}Final payable (GST included){% else %}Final payable{% endif %}</span><strong data-quote-final>{{ option.quote.payable_display }}</strong></div>
             <div class="detail-row"><span>Period</span><strong data-quote-period>{{ option.quote.period_start|date:"d M Y" }} - {{ option.quote.period_end|date:"d M Y" }}</strong></div>
           </div>
           <button class="btn" type="submit" data-quote-action>{{ option.action_label }}</button>
@@ -295,8 +295,9 @@
           form.querySelector('[data-quote-credit-label]').textContent = quote.credit_label;
           form.querySelector('[data-quote-credit]').textContent = quote.credit;
           form.querySelector('[data-quote-taxable]').textContent = quote.taxable;
-          form.querySelector('[data-quote-tax-rate]').textContent = quote.tax_rate_percent;
+          form.querySelector('[data-quote-tax-label]').textContent = quote.tax_label;
           form.querySelector('[data-quote-tax]').textContent = quote.tax;
+          form.querySelector('[data-quote-final-label]').textContent = quote.tax_inclusive ? 'Final payable (GST included)' : 'Final payable';
           form.querySelector('[data-quote-final]').textContent = quote.final_payable;
           form.querySelector('[data-quote-period]').textContent = quote.period;
           form.querySelector('[data-quote-action]').textContent = quote.action_label;

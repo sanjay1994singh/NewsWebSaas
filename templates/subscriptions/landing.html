@@ -200,7 +200,7 @@
                 <h3>{{ card.plan.name }}</h3>
                 {% if card.monthly_price %}
                   <p class="muted">Limited offer: 50% off</p>
-                  <div class="price" data-plan-price>{{ card.offer.taxable_display }}<small data-plan-label>{{ card.offer.billing_label }} after offer</small></div>
+                  <div class="price" data-plan-price>{{ card.offer.after_discount_display }}<small data-plan-label>{{ card.offer.billing_label }} after offer</small></div>
                 {% elif card.yearly_price %}
                   <div class="price">{{ card.yearly_display }}<small>yearly</small></div>
                 {% else %}
@@ -341,7 +341,7 @@
           return response.json();
         })
         .then(function (quote) {
-          card.querySelector('[data-plan-price]').firstChild.nodeValue = quote.taxable_display;
+          card.querySelector('[data-plan-price]').firstChild.nodeValue = quote.after_discount_display;
           card.querySelector('[data-plan-label]').textContent = quote.billing_label + ' after offer';
           card.querySelector('[data-plan-amount]').textContent = quote.list_display;
           card.querySelector('[data-plan-discount]').textContent = '-' + quote.discount_display;

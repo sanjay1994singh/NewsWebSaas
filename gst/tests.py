@@ -26,6 +26,13 @@ class GSTTests(TestCase):
         quote = calculate_checkout_pricing(price)
         self.assertEqual((quote.tax_rate_percent, quote.tax_amount, quote.payable_amount), (12, 1200, 11200))
 
+    def test_admin_can_include_gst_in_discounted_price(self):
+        GSTSettings.objects.create(rate_percent=18, price_tax_mode=GSTSettings.PriceTaxMode.INCLUSIVE)
+        price = SimpleNamespace(amount=20000, billing_cycle=PlanPrice.BillingCycle.MONTHLY, currency='INR')
+        quote = calculate_checkout_pricing(price)
+        self.assertTrue(quote.tax_inclusive)
+        self.assertEqual((quote.taxable_amount, quote.tax_amount, quote.payable_amount), (8475, 1525, 10000))
+
     def test_zero_rate_is_preserved(self):
         GSTSettings.objects.create(rate_percent=0)
         price = SimpleNamespace(amount=20000, billing_cycle=PlanPrice.BillingCycle.MONTHLY, currency='INR')

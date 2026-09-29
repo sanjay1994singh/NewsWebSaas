@@ -116,15 +116,15 @@
                   <p class="signup-kicker">Your selected plan</p>
                   <h2 data-plan-name>{{ form.selected_quote.name|default:"Choose a plan above" }}</h2>
                   <div data-plan-summary {% if not form.selected_quote %}hidden{% endif %}>
-                    <p class="plan-total"><strong data-plan-taxable-total>{{ form.selected_quote.taxable }}</strong> <span>after discount for <span data-plan-duration>{{ form.selected_quote.duration }}</span></span></p>
+                    <p class="plan-total"><strong data-plan-after-discount-total>{{ form.selected_quote.after_discount }}</strong> <span>after discount for <span data-plan-duration>{{ form.selected_quote.duration }}</span></span></p>
                     <dl class="plan-costs">
                       <div><dt>Plan amount</dt><dd data-plan-list>{{ form.selected_quote.list }}</dd></div>
                       <div><dt><span data-plan-percent>{{ form.selected_quote.percent }}</span>% offer discount</dt><dd>−<span data-plan-discount>{{ form.selected_quote.discount }}</span></dd></div>
                       <div><dt>Taxable value</dt><dd data-plan-taxable>{{ form.selected_quote.taxable }}</dd></div>
-                      <div><dt>GST @ <span data-plan-tax-rate>{{ form.selected_quote.tax_rate_percent }}</span>%</dt><dd data-plan-tax>{{ form.selected_quote.tax }}</dd></div>
-                      <div class="final-row"><dt>Final amount after GST and discount</dt><dd data-plan-payable>{{ form.selected_quote.payable }}</dd></div>
+                      <div><dt data-plan-tax-label>{{ form.selected_quote.tax_label }}</dt><dd data-plan-tax>{{ form.selected_quote.tax }}</dd></div>
+                      <div class="final-row"><dt data-plan-final-label>{% if form.selected_quote.tax_inclusive %}Final payable (GST included){% else %}Final amount after GST and discount{% endif %}</dt><dd data-plan-payable>{{ form.selected_quote.payable }}</dd></div>
                     </dl>
-                    <p class="muted">Total payable includes GST for the selected duration. Article limits below apply per month.</p>
+                    <p class="muted" data-plan-tax-note>{% if form.selected_quote.tax_inclusive %}GST is already included in the after-discount plan price. Article limits below apply per month.{% else %}GST is added on checkout for the selected duration. Article limits below apply per month.{% endif %}</p>
                   </div>
                   <div data-plan-details {% if not form.selected_quote %}hidden{% endif %}>
                     <h3 data-details-title>{{ form.selected_quote.name }} includes</h3>
@@ -171,8 +171,12 @@
       ['payable', 'duration', 'list', 'percent', 'discount', 'taxable', 'tax'].forEach(function (key) {
         document.querySelector('[data-plan-' + key + ']').textContent = quote[key];
       });
-      document.querySelector('[data-plan-taxable-total]').textContent = quote.taxable;
-      document.querySelector('[data-plan-tax-rate]').textContent = quote.tax_rate_percent;
+      document.querySelector('[data-plan-after-discount-total]').textContent = quote.after_discount;
+      document.querySelector('[data-plan-tax-label]').textContent = quote.tax_label;
+      document.querySelector('[data-plan-final-label]').textContent = quote.tax_inclusive ? 'Final payable (GST included)' : 'Final amount after GST and discount';
+      document.querySelector('[data-plan-tax-note]').textContent = quote.tax_inclusive
+        ? 'GST is already included in the after-discount plan price. Article limits below apply per month.'
+        : 'GST is added on checkout for the selected duration. Article limits below apply per month.';
     }
     if (plan && duration) {
       plan.addEventListener('change', updatePlan);

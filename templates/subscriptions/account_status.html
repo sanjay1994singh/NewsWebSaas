@@ -94,7 +94,7 @@
           <h3>{{ card.plan.name }}</h3>
           <div class="price-line">
             {% if card.offer %}
-              <strong>{{ card.offer.taxable_display }}</strong>
+              <strong>{{ card.offer.after_discount_display }}</strong>
               <span>after discount for {{ card.offer.billing_label }}</span>
             {% elif card.monthly_display %}
               <strong>{{ card.monthly_display }}</strong>
@@ -108,8 +108,8 @@
               <div><span>Plan amount</span><strong>{{ card.offer.list_display }}</strong></div>
               <div><span>{{ card.offer.discount_percent }}% offer discount</span><strong>-{{ card.offer.discount_display }}</strong></div>
               <div><span>Taxable value</span><strong>{{ card.offer.taxable_display }}</strong></div>
-              <div><span>GST @ {{ card.offer.tax_rate_percent }}%</span><strong>{{ card.offer.tax_display }}</strong></div>
-              <div class="final"><span>Final amount after GST</span><strong>{{ card.offer.payable_display }}</strong></div>
+              <div><span>{{ card.offer.tax_label }}</span><strong>{{ card.offer.tax_display }}</strong></div>
+              <div class="final"><span>{% if card.offer.tax_inclusive %}Final payable (GST included){% else %}Final amount after GST{% endif %}</span><strong>{{ card.offer.payable_display }}</strong></div>
             </div>
           {% endif %}
           <ul class="plan-features">

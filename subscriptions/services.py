@@ -1,4 +1,4 @@
-from gst.services import invoice_snapshot, tax_amount as calculate_tax
+from gst.services import invoice_snapshot, split_inclusive_tax, tax_amount as calculate_tax
 import hmac
 import json
 import re
@@ -266,8 +266,13 @@ def calculate_plan_change_quote(*, tenant, subscription, plan_price, billing_mon
         remaining_days = max((subscription.current_period_end.date() - now.date()).days, 0)
     period_start, period_end, _ = subscription_period_for_cycle(period_start, plan_price.billing_cycle, checkout_pricing.billing_months)
     taxable_amount = max(checkout_pricing.taxable_amount - credit_amount, 0)
-    tax_amount = calculate_tax(taxable_amount, checkout_pricing.tax_rate_percent)
-    payable_amount = taxable_amount + tax_amount
+    if checkout_pricing.tax_inclusive:
+        payable_amount = taxable_amount + calculate_tax(taxable_amount, checkout_pricing.tax_rate_percent)
+        taxable_amount, tax_amount = split_inclusive_tax(payable_amount, checkout_pricing.tax_rate_percent)
+    else:
+        tax_amount = calculate_tax(taxable_amount, checkout_pricing.tax_rate_percent)
+        payable_amount = taxable_amount + tax_amount
+    tax_label = 'GST included @ %s%%' % checkout_pricing.tax_rate_percent if checkout_pricing.tax_inclusive else 'GST @ %s%%' % checkout_pricing.tax_rate_percent
     return {
         'billing_months': checkout_pricing.billing_months,
         'billing_label': checkout_pricing.billing_label,
@@ -277,6 +282,7 @@ def calculate_plan_change_quote(*, tenant, subscription, plan_price, billing_mon
         'credit_amount': credit_amount,
         'taxable_amount': taxable_amount,
         'tax_rate_percent': checkout_pricing.tax_rate_percent,
+        'tax_inclusive': checkout_pricing.tax_inclusive,
         'tax_amount': tax_amount,
         'payable_amount': payable_amount,
         'currency': checkout_pricing.currency,
@@ -289,6 +295,7 @@ def calculate_plan_change_quote(*, tenant, subscription, plan_price, billing_mon
         'discount_display': money_display(checkout_pricing.discount_amount, checkout_pricing.currency),
         'taxable_display': money_display(taxable_amount, checkout_pricing.currency),
         'tax_rate_percent': checkout_pricing.tax_rate_percent,
+        'tax_label': tax_label,
         'tax_display': money_display(tax_amount, checkout_pricing.currency),
         'credit_display': money_display(credit_amount, checkout_pricing.currency),
         'credit_source_display': money_display(paid_amount if not is_same_plan else 0, checkout_pricing.currency),
@@ -849,6 +856,7 @@ def create_razorpay_order_for_acquisition(acquisition):
                 'discount_amount': str(checkout_pricing.discount_amount),
                 'taxable_amount': str(checkout_pricing.taxable_amount),
                 'tax_rate_percent': str(checkout_pricing.tax_rate_percent),
+                'tax_inclusive': str(checkout_pricing.tax_inclusive),
                 'tax_amount': str(checkout_pricing.tax_amount),
                 'payable_amount': str(checkout_pricing.payable_amount),
                 'customer_gstin': acquisition.customer_gstin,
@@ -884,6 +892,8 @@ def create_razorpay_order_for_acquisition(acquisition):
             'taxable_amount': checkout_pricing.taxable_amount,
             'taxable_display': money_display(checkout_pricing.taxable_amount, checkout_pricing.currency),
             'tax_rate_percent': checkout_pricing.tax_rate_percent,
+            'tax_label': checkout_pricing.tax_label,
+            'tax_inclusive': checkout_pricing.tax_inclusive,
             'tax_amount': checkout_pricing.tax_amount,
             'tax_display': money_display(checkout_pricing.tax_amount, checkout_pricing.currency),
             'payable_amount': checkout_pricing.payable_amount,
