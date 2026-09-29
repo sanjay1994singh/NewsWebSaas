@@ -16,7 +16,11 @@
   .guide-card li { margin-top:6px; }
   .link-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
   .google-form { display:grid; gap:16px; }
-  .google-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:16px; }
+  .google-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14px; align-items:start; }
+  .field-group { display:grid; gap:14px; min-width:0; border:1px solid var(--line); border-radius:8px; padding:14px; background:#fbfdfc; }
+  .field-group h3 { margin:0; font-size:18px; line-height:1.2; }
+  .field-group-note { margin:0; color:var(--muted); font-size:13px; }
+  .field-box { min-width:0; }
   .field-error { color:var(--danger); font-size:13px; margin-top:4px; }
   .actions { display:flex; flex-wrap:wrap; gap:10px; }
   @media (max-width:900px) {
@@ -93,14 +97,66 @@
         <p class="muted">Neeche numbered fields me wahi value paste karein jo upar guide me batayi gayi hai. Full HTML, scripts, ya tracking snippets paste na karein.</p>
       </div>
       <div class="google-grid">
-        {% for field in form %}
+        <section class="field-group" aria-labelledby="verification-fields">
           <div>
+            <h3 id="verification-fields">Verification</h3>
+            <p class="field-group-note">Search Console, AdSense, ya Bing ownership verify karne ke codes.</p>
+          </div>
+          {% with field=form.google_site_verification %}
+          <div class="field-box">
             <label for="{{ field.id_for_label }}">{{ field.label }}</label>
             {{ field }}
             {% if field.help_text %}<p class="muted">{{ field.help_text }}</p>{% endif %}
             {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
           </div>
-        {% endfor %}
+          {% endwith %}
+          {% with field=form.bing_site_verification %}
+          <div class="field-box">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<p class="muted">{{ field.help_text }}</p>{% endif %}
+            {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+          </div>
+          {% endwith %}
+        </section>
+
+        <section class="field-group" aria-labelledby="analytics-fields">
+          <div>
+            <h3 id="analytics-fields">Analytics</h3>
+            <p class="field-group-note">Website views ko Google Analytics me track karne ke liye.</p>
+          </div>
+          {% with field=form.google_analytics_id %}
+          <div class="field-box">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<p class="muted">{{ field.help_text }}</p>{% endif %}
+            {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+          </div>
+          {% endwith %}
+        </section>
+
+        <section class="field-group" aria-labelledby="adsense-fields">
+          <div>
+            <h3 id="adsense-fields">AdSense / Google Ads</h3>
+            <p class="field-group-note">AdSense approval Google deta hai. Ads fields conversion tracking ke liye hain.</p>
+          </div>
+          {% with field=form.google_ads_id %}
+          <div class="field-box">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<p class="muted">{{ field.help_text }}</p>{% endif %}
+            {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+          </div>
+          {% endwith %}
+          {% with field=form.google_ads_conversion_label %}
+          <div class="field-box">
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<p class="muted">{{ field.help_text }}</p>{% endif %}
+            {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+          </div>
+          {% endwith %}
+        </section>
       </div>
       {% if form.non_field_errors %}
         {% for error in form.non_field_errors %}<div class="field-error">{{ error }}</div>{% endfor %}
