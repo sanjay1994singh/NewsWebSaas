@@ -124,6 +124,21 @@ class TenantIsolationTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn('domain', form.errors)
 
+    def test_tenant_settings_explains_google_tracking_fields(self):
+        self.client.force_login(self.user_a)
+
+        response = self.client.get(
+            reverse('tenants:tenant_settings', args=[self.tenant_a.uuid]),
+            HTTP_HOST='customera.platformdomain.com',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Google verification code')
+        self.assertContains(response, 'Google Analytics ID')
+        self.assertContains(response, 'Google AdSense / Ads')
+        self.assertContains(response, 'G-XXXXXXXXXX')
+        self.assertContains(response, 'AW-123456789')
+
     def test_middleware_normalizes_host_and_attaches_tenant(self):
         factory = RequestFactory()
         request = factory.get('/', HTTP_HOST='WWW.CUSTOMERA.PLATFORMDOMAIN.COM:443')
