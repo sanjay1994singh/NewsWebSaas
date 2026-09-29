@@ -25,23 +25,26 @@ FEATURES = [
     ('premium_themes', 'Premium Themes', 'site', Feature.FeatureType.BOOLEAN, ''),
 ]
 
+HIDDEN_PUBLIC_FEATURES = {
+    'homepage_builder',
+    'multiple_staff',
+    'youtube_shorts',
+    'live_tv',
+    'mobile_app',
+    'photo_gallery',
+    'api_access',
+    'premium_themes',
+}
+
 COMMON_NON_EPAPER_FEATURES = {
     'blog': (True, None),
     'breaking_news': (True, None),
     'custom_domain': (True, None),
     'youtube_videos': (True, None),
-    'youtube_shorts': (True, None),
-    'live_tv': (True, None),
     'adsense': (True, None),
     'advertisement_manager': (True, None),
     'advanced_seo': (True, None),
     'analytics': (True, None),
-    'multiple_staff': (True, 5),
-    'mobile_app': (True, None),
-    'photo_gallery': (True, None),
-    'api_access': (True, None),
-    'homepage_builder': (True, None),
-    'premium_themes': (True, None),
 }
 
 PLAN_DEFAULTS = {
@@ -108,7 +111,7 @@ class Command(BaseCommand):
                     'feature_type': feature_type,
                     'default_unit': unit,
                     'is_active': True,
-                    'is_public': True,
+                    'is_public': code not in HIDDEN_PUBLIC_FEATURES,
                     'display_order': order,
                 },
             )
