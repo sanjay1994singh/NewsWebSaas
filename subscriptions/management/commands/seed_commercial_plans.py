@@ -55,6 +55,7 @@ PLAN_DEFAULTS = {
         'features': {
             'news_articles': (True, 150),
             **COMMON_NON_EPAPER_FEATURES,
+            'blog': (False, None),
         },
     },
     Plan.Code.NEWS_VIDEO: {
