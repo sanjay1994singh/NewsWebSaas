@@ -153,7 +153,7 @@ def tenant_dashboard(request):
         ('youtube_shorts', 'YouTube Shorts', reverse('subscriptions:onboarding') + '#youtube-channel'),
         ('live_tv', 'Live TV', '/cms/live-tv/'),
         ('advertisement_manager', 'Advertisements', reverse('tenants:tenant_ads')),
-        ('adsense', 'Google AdSense', reverse('tenants:tenant_settings', args=[tenant.uuid]) + '#google-monetization'),
+        ('adsense', 'Google AdSense', reverse('tenants:tenant_google_settings', args=[tenant.uuid])),
         ('analytics', 'Analytics', '/dashboard/analytics/'),
         ('custom_domain', 'Domain Setup', reverse('domains:domain_list')),
         ('multiple_staff', 'Reporters', '/dashboard/reporters/'),
@@ -575,22 +575,38 @@ def tenant_settings(request, uuid):
     tenant = get_object_or_404(Tenant, uuid=uuid)
     if not user_can_access_tenant(request.user, tenant):
         raise PermissionDenied("You do not have access to this tenant.")
-    seo_settings = get_or_create_seo_settings(tenant)
     if request.method == 'POST':
         form = TenantSettingsForm(request.POST, instance=tenant)
-        tracking_form = TenantTrackingForm(request.POST, instance=seo_settings)
-        if form.is_valid() and tracking_form.is_valid():
+        if form.is_valid():
             form.save()
-            tracking = tracking_form.save(commit=False)
-            tracking.tenant = tenant
-            tracking.save()
             messages.success(request, 'Workspace settings updated.')
             return redirect('tenants:tenant_settings', uuid=tenant.uuid)
     else:
         form = TenantSettingsForm(instance=tenant)
-        tracking_form = TenantTrackingForm(instance=seo_settings)
     return render(request, 'tenants/tenant_settings.html', {
         'tenant': tenant,
         'form': form,
-        'tracking_form': tracking_form,
+    })
+
+
+@login_required
+def tenant_google_settings(request, uuid):
+    tenant = get_object_or_404(Tenant, uuid=uuid)
+    if not user_can_access_tenant(request.user, tenant):
+        raise PermissionDenied("You do not have access to this tenant.")
+    seo_settings = get_or_create_seo_settings(tenant)
+    if request.method == 'POST':
+        form = TenantTrackingForm(request.POST, instance=seo_settings)
+        if form.is_valid():
+            tracking = form.save(commit=False)
+            tracking.tenant = tenant
+            tracking.save()
+            messages.success(request, 'Google settings updated.')
+            return redirect('tenants:tenant_google_settings', uuid=tenant.uuid)
+    else:
+        form = TenantTrackingForm(instance=seo_settings)
+    return render(request, 'tenants/tenant_google_settings.html', {
+        'tenant': tenant,
+        'form': form,
+        'seo_settings': seo_settings,
     })

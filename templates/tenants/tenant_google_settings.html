@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+
+{% block title %}Google Setup - {{ tenant.public_name }}{% endblock %}
+
+{% block styles %}
+  .google-shell { display:grid; gap:20px; }
+  .google-hero { display:grid; grid-template-columns:minmax(0, 1fr) auto; gap:18px; align-items:center; background:linear-gradient(135deg,#fff 0%,#f2faf6 58%,#fff7ec 100%); }
+  .google-hero h1 { margin:0; font-size:38px; line-height:1.05; }
+  .hero-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:10px; }
+  .guide-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:14px; }
+  .guide-card { display:grid; gap:10px; min-width:0; }
+  .guide-card h2 { margin:0; font-size:20px; line-height:1.2; }
+  .guide-card p { margin:0; color:var(--muted); }
+  .guide-card code { display:inline-block; max-width:100%; padding:2px 6px; border-radius:5px; background:#eef6f2; color:var(--brand); font-size:13px; overflow-wrap:anywhere; }
+  .guide-card ol { margin:0; padding-left:20px; color:var(--muted); }
+  .guide-card li { margin-top:6px; }
+  .link-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .google-form { display:grid; gap:16px; }
+  .google-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:16px; }
+  .field-error { color:var(--danger); font-size:13px; margin-top:4px; }
+  .actions { display:flex; flex-wrap:wrap; gap:10px; }
+  @media (max-width:900px) {
+    .google-hero, .guide-grid, .google-grid { grid-template-columns:1fr; }
+    .hero-actions { justify-content:flex-start; }
+  }
+  @media (max-width:640px) {
+    .google-hero h1 { font-size:31px; }
+    .actions .btn, .hero-actions .btn { width:100%; }
+  }
+{% endblock %}
+
+{% block content %}
+  <main class="page google-shell">
+    <section class="card google-hero">
+      <div>
+        <p class="muted">Google setup</p>
+        <h1>{{ tenant.public_name }}</h1>
+        <p class="muted">Connect Google verification, Analytics, AdSense, and Ads tracking for this publication website.</p>
+      </div>
+      <div class="hero-actions">
+        <a class="btn secondary" href="{% url 'tenants:tenant_settings' tenant.uuid %}">Publication Settings</a>
+        <a class="btn secondary" href="{% url 'tenants:tenant_dashboard' %}">Dashboard</a>
+      </div>
+    </section>
+
+    <section class="guide-grid">
+      <article class="card guide-card">
+        <h2>1. Verify site ownership</h2>
+        <p>Google Search Console ya AdSense me site add karein. HTML tag mile to sirf <code>content="..."</code> ke andar wala code copy karein.</p>
+        <ol>
+          <li>Google account se sign in karein.</li>
+          <li>Apna domain add karein.</li>
+          <li>HTML meta tag ka content value yaha paste karein.</li>
+        </ol>
+        <div class="link-row">
+          <a class="btn secondary" href="https://search.google.com/search-console" target="_blank" rel="noopener">Open Search Console</a>
+          <a class="btn secondary" href="https://accounts.google.com/signup" target="_blank" rel="noopener">Create Google Account</a>
+        </div>
+      </article>
+
+      <article class="card guide-card">
+        <h2>2. Add Google Analytics</h2>
+        <p>Google Analytics me Web data stream banayein. Measurement ID usually <code>G-XXXXXXXXXX</code> format me hota hai.</p>
+        <ol>
+          <li>Analytics account/property create karein.</li>
+          <li>Web stream me apna website URL add karein.</li>
+          <li>Measurement ID ko yaha paste karein.</li>
+        </ol>
+        <div class="link-row">
+          <a class="btn secondary" href="https://analytics.google.com/" target="_blank" rel="noopener">Open Analytics</a>
+        </div>
+      </article>
+
+      <article class="card guide-card">
+        <h2>3. Add AdSense / Ads</h2>
+        <p>AdSense approval Google deta hai. Ads conversion ID ka format usually <code>AW-123456789</code> hota hai.</p>
+        <ol>
+          <li>AdSense me site add karke approval process complete karein.</li>
+          <li>Google Ads conversion tracking use kar rahe hain to AW ID paste karein.</li>
+          <li>Conversion label optional hai.</li>
+        </ol>
+        <div class="link-row">
+          <a class="btn secondary" href="https://www.google.com/adsense/start/" target="_blank" rel="noopener">Open AdSense</a>
+          <a class="btn secondary" href="https://ads.google.com/" target="_blank" rel="noopener">Open Google Ads</a>
+        </div>
+      </article>
+    </section>
+
+    <form class="card google-form" method="post">
+      {% csrf_token %}
+      <div>
+        <h2>Paste Google codes</h2>
+        <p class="muted">Paste only IDs or verification tokens. Do not paste full HTML, scripts, or tracking snippets.</p>
+      </div>
+      <div class="google-grid">
+        {% for field in form %}
+          <div>
+            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<p class="muted">{{ field.help_text }}</p>{% endif %}
+            {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+      {% if form.non_field_errors %}
+        {% for error in form.non_field_errors %}<div class="field-error">{{ error }}</div>{% endfor %}
+      {% endif %}
+      <div class="actions">
+        <button class="btn" type="submit">Save Google Settings</button>
+        <a class="btn secondary" href="{% url 'tenants:tenant_dashboard' %}">Back to Dashboard</a>
+      </div>
+    </form>
+  </main>
+{% endblock %}

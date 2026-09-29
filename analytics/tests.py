@@ -56,5 +56,6 @@ class AnalyticsTests(TestCase):
         self.assertContains(response, 'Publication analytics')
         self.assertContains(response, 'Top News Articles')
         self.assertContains(response, 'Google AdSense / Ads')
+        self.assertContains(response, reverse('tenants:tenant_google_settings', args=[self.tenant_a.uuid]))
         self.assertContains(response, 'Story')
         self.assertContains(response, 'google.com')

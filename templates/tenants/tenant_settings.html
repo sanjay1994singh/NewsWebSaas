@@ -8,19 +8,10 @@
   .settings-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:16px; }
   .settings-card { display:grid; gap:12px; }
   .settings-card, .settings-card > div { min-width:0; }
-  .settings-note { margin:0; color:var(--muted); font-size:14px; }
-  .setup-help { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:12px; }
-  .setup-help-card { display:grid; gap:8px; border:1px solid var(--line); border-radius:8px; padding:14px; background:#fbfdfc; }
-  .setup-help-card h3 { margin:0; font-size:16px; line-height:1.25; }
-  .setup-help-card p { margin:0; color:var(--muted); font-size:13px; }
-  .setup-help-card code { display:inline-block; max-width:100%; padding:2px 5px; border-radius:5px; background:#eef6f2; color:var(--brand); font-size:12px; overflow-wrap:anywhere; }
-  .setup-help-list { margin:0; padding-left:18px; color:var(--muted); font-size:13px; }
-  .setup-help-list li { margin-top:5px; }
   .field-error { color:var(--danger); font-size:13px; margin-top:4px; }
   .settings-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; }
   @media (max-width:760px) {
     .settings-hero, .settings-grid { grid-template-columns:1fr; display:grid; }
-    .setup-help { grid-template-columns:1fr; }
     .settings-actions .btn, .settings-hero .btn { width:100%; }
   }
 {% endblock %}
@@ -31,7 +22,7 @@
       <div>
         <p class="muted">Workspace settings</p>
         <h1>{{ tenant.public_name }}</h1>
-        <p class="muted">Keep your publication identity, analytics, and monetization tracking updated.</p>
+        <p class="muted">Keep your publication identity and article tracking preferences updated.</p>
       </div>
       <a class="btn secondary" href="{% url 'tenants:tenant_dashboard' %}">Back to Dashboard</a>
     </section>
@@ -55,54 +46,9 @@
         {% endif %}
       </section>
 
-      <section class="card settings-card" id="google-monetization">
-        <div>
-          <h2>Google Analytics &amp; AdSense</h2>
-          <p class="settings-note">Paste only IDs or verification tokens. Google tags load only on this publication's public domain pages.</p>
-        </div>
-        <div class="setup-help" aria-label="Google setup help">
-          <article class="setup-help-card">
-            <h3>1. Google verification code</h3>
-            <p>Google Search Console ya AdSense me site add karne ke baad HTML tag milega.</p>
-            <ol class="setup-help-list">
-              <li>Meta tag me sirf <code>content="..."</code> ke andar wala code copy karein.</li>
-              <li>Is code ko <strong>Google site verification code</strong> field me paste karein.</li>
-            </ol>
-          </article>
-          <article class="setup-help-card">
-            <h3>2. Google Analytics ID</h3>
-            <p>Google Analytics me Web data stream banane ke baad Measurement ID milega.</p>
-            <ol class="setup-help-list">
-              <li>ID format usually <code>G-XXXXXXXXXX</code> hota hai.</li>
-              <li>Isko <strong>Google Analytics measurement ID</strong> field me paste karein.</li>
-            </ol>
-          </article>
-          <article class="setup-help-card">
-            <h3>3. Google AdSense / Ads</h3>
-            <p>AdSense approval Google deta hai. Yaha tracking/conversion ID save hoti hai.</p>
-            <ol class="setup-help-list">
-              <li>Google Ads conversion ID ka format <code>AW-123456789</code> hota hai.</li>
-              <li>Conversion label ho to last field me paste karein, warna blank chhod sakte hain.</li>
-            </ol>
-          </article>
-        </div>
-        <div class="settings-grid">
-          {% for field in tracking_form %}
-            <div>
-              <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-              {{ field }}
-              {% if field.help_text %}<p class="muted">{{ field.help_text }}</p>{% endif %}
-              {% for error in field.errors %}<div class="field-error">{{ error }}</div>{% endfor %}
-            </div>
-          {% endfor %}
-        </div>
-        {% if tracking_form.non_field_errors %}
-          {% for error in tracking_form.non_field_errors %}<div class="field-error">{{ error }}</div>{% endfor %}
-        {% endif %}
-      </section>
-
       <div class="settings-actions">
         <button class="btn" type="submit">Save Settings</button>
+        <a class="btn secondary" href="{% url 'tenants:tenant_google_settings' tenant.uuid %}">Google Setup</a>
         <a class="btn secondary" href="{% url 'subscriptions:billing_dashboard' %}">Billing</a>
       </div>
     </form>

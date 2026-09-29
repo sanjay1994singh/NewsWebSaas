@@ -51,7 +51,7 @@
         <span class="status-pill {% if analytics.article_view_tracking_enabled %}good{% endif %}">
           Article tracking: {% if analytics.article_view_tracking_enabled %}Enabled{% else %}Disabled{% endif %}
         </span>
-        <a class="btn secondary" href="{% url 'tenants:tenant_settings' tenant.uuid %}">Tracking Settings</a>
+        <a class="btn secondary" href="{% url 'tenants:tenant_google_settings' tenant.uuid %}">Google Settings</a>
       </div>
     </section>
 
@@ -111,7 +111,7 @@
             </div>
           </div>
           <div style="margin-top:14px">
-            <a class="btn secondary" href="{% url 'tenants:tenant_settings' tenant.uuid %}#google-monetization">Configure Google</a>
+            <a class="btn secondary" href="{% url 'tenants:tenant_google_settings' tenant.uuid %}">Configure Google</a>
           </div>
         </article>
 
