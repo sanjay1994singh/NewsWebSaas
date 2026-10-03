@@ -55,11 +55,29 @@ def _absolute_site_url(path):
 
 
 def _send_payment_success_whatsapp_once(acquisition_id, tenant_id, payment_reference):
-    acquisition = CustomerAcquisition.objects.select_related('plan_price__plan', 'user', 'tenant').get(pk=acquisition_id)
-    provider_payload = acquisition.provider_payload or {}
-    whatsapp_status = provider_payload.get('whatsapp_success_notification') or {}
-    if whatsapp_status.get('sent'):
-        return True
+    with transaction.atomic():
+        acquisition = (
+            CustomerAcquisition.objects
+            .select_for_update()
+            .select_related('plan_price__plan', 'user', 'tenant')
+            .get(pk=acquisition_id)
+        )
+        provider_payload = acquisition.provider_payload or {}
+        whatsapp_status = provider_payload.get('whatsapp_success_notification') or {}
+        if whatsapp_status.get('sent') or whatsapp_status.get('status') == 'sending':
+            return True
+        acquisition.provider_payload = {
+            **provider_payload,
+            'whatsapp_success_notification': {
+                **whatsapp_status,
+                'status': 'sending',
+                'sent': False,
+                'payment_reference': payment_reference,
+                'started_at': timezone.now().isoformat(),
+                'source': 'central_payment_success',
+            },
+        }
+        acquisition.save(update_fields=['provider_payload', 'updated_at'])
     tenant = Tenant.objects.get(pk=tenant_id)
     billing_record = BillingRecord.objects.filter(tenant=tenant, status='paid').order_by('-created_at').first()
     invoice_document_url = ''
@@ -74,10 +92,13 @@ def _send_payment_success_whatsapp_once(acquisition_id, tenant_id, payment_refer
         profile_url=_absolute_site_url('/account/profile/'),
         invoice_document_url=invoice_document_url,
     )
+    acquisition.refresh_from_db(fields=['provider_payload'])
+    provider_payload = acquisition.provider_payload or {}
     acquisition.provider_payload = {
         **provider_payload,
         'whatsapp_success_notification': {
             'sent': bool(sent),
+            'status': 'sent' if sent else 'failed',
             'payment_reference': payment_reference,
             'sent_at': timezone.now().isoformat(),
             'source': 'central_payment_success',

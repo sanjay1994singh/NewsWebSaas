@@ -48,6 +48,7 @@ from .services import (
     calculate_plan_change_quote,
     create_tenant_after_verified_subscription,
     ensure_paid_tenant_integrity,
+    _send_payment_success_whatsapp_once,
     process_webhook,
     create_plan_change_checkout,
     record_successful_subscription_payment,
@@ -86,6 +87,29 @@ class SubscriptionTests(TestCase):
         TenantSubscription.objects.create(tenant=self.tenant, plan=self.plan, billing_cycle=PlanPrice.BillingCycle.MONTHLY)
         self.assertTrue(tenant_has_feature(self.tenant, 'custom_domain'))
         self.assertEqual(get_feature_limit(self.tenant, 'staff'), 10)
+
+    @patch('subscriptions.services.notify_payment_success')
+    def test_payment_success_whatsapp_skips_when_send_is_already_in_progress(self, notify):
+        acquisition = CustomerAcquisition.objects.create(
+            user=self.user,
+            tenant=self.tenant,
+            plan_price=self.price,
+            business_name='Billing Media',
+            publication_name='Billing News',
+            publication_slug='billing-news',
+            mobile='9999999999',
+            status=CustomerAcquisition.Status.TENANT_CREATED,
+            provider_payload={
+                'whatsapp_success_notification': {
+                    'status': 'sending',
+                    'sent': False,
+                    'payment_reference': 'pay_123',
+                },
+            },
+        )
+
+        self.assertTrue(_send_payment_success_whatsapp_once(acquisition.id, self.tenant.id, 'pay_123'))
+        notify.assert_not_called()
 
     def test_successful_payment_freezes_plan_feature_limits(self):
         feature = Feature.objects.create(
